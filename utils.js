@@ -199,6 +199,15 @@ function detectAudio(text, audioTypeHint) {
  * from whatever quality/size/audio info a provider already extracted, falling
  * back to regex detection over the raw text for anything missing.
  */
+// Wraps LTR content (English/numbers) with Unicode directional isolate marks
+// so it renders correctly when embedded inside RTL Persian text.
+const LRI = '\u2066' // Left-to-Right Isolate
+const PDI = '\u2069' // Pop Directional Isolate
+
+function ltr(text) {
+    return text ? `${LRI}${text}${PDI}` : text
+}
+
 export function formatStreamTitle({providerKey, quality, size, audioType, extraText} = {}) {
     const providerLabel = PROVIDER_LABELS[providerKey] || providerKey || 'Unknown'
     const emoji = PROVIDER_EMOJI[providerKey] || '📡'
@@ -213,10 +222,10 @@ export function formatStreamTitle({providerKey, quality, size, audioType, extraT
     const qualityLine = [resolution, ...extras, source, codec].filter(Boolean).join(' • ')
 
     const lines = [
-        `${emoji} منبع: ${providerLabel}`,
-        qualityLine ? `🎞️ کیفیت: ${qualityLine}` : null,
+        `${emoji} منبع: ${ltr(providerLabel)}`,
+        qualityLine ? `🎞️ کیفیت: ${ltr(qualityLine)}` : null,
         audio,
-        size ? `💾 حجم: ${size}` : null,
+        size ? `💾 حجم: ${ltr(size)}` : null,
     ].filter(Boolean)
 
     return lines.length ? lines.join('\n') : (extraText || providerLabel)
