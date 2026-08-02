@@ -23,7 +23,7 @@ const CATALOGS = [
     {key: 'aslmoviez', name: 'AslMoviez', catalogType: 'movies'},
     {key: 'serialblog', name: 'SerialBlog', catalogType: 'movies'},
     {key: 'iptv', name: 'Seda va Sima - Telewebion', catalogType: 'tv', searchRequired: false},
-    // {key: 'digimovie', name: 'DigiMovie', catalogType: 'movies'},
+    {key: 'digimovie', name: 'DigiMovie', catalogType: 'movies'},
 ]
 
 export function createLogger(env = process.env) {
@@ -73,7 +73,7 @@ export function createProviders({env = process.env, logger = console, httpClient
         new Aslmoviez(env.ASLMOVIEZ_BASEURL, logger, httpClient, env),
         new Serialblog(env.SERIALBLOG_BASEURL, logger, httpClient, env),
         new IPTV(null, logger, httpClient, env),
-        // new Digimovie(env.DIGIMOVIE_BASEURL, logger, httpClient, env),
+        new Digimovie(env.DIGIMOVIE_BASEURL, logger, httpClient, env),
     ]
 }
 
