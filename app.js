@@ -11,7 +11,7 @@ import IPTV from './sources/iptv.js'
 import Peepboxtv from './sources/peepboxtv.js'
 import Serialblog from './sources/serialblog.js'
 import {ID_SEPARATOR, METADATA_SOURCE} from './sources/source.js'
-import {getCinemeta, getSubtitle, modifyUrls} from './utils.js'
+import {formatStreamTitle, getCinemeta, getSubtitle, modifyUrls} from './utils.js'
 
 export const ADDON_PREFIX = 'ip'
 export const ADDON_VERSION = '2.5.0'
@@ -37,12 +37,12 @@ export function createLogger(env = process.env) {
 export function createManifest(env = process.env) {
     const developmentSuffix = env.DEV_MODE === 'true' ? ' - DEV' : ''
     return {
-        id: 'org.mmmohebi.stremioIrProviders',
+        id: 'com.nerdcow.stremio',
         version: ADDON_VERSION,
         contactEmail: 'mmmohebi@outlook.com',
-        description: 'Stream movies and series from Iranian providers. Source: https://github.com/MrMohebi/stremio-ir-providers',
+        description: 'NerdCow Stremio — Stream movies and series from Iranian and international providers.',
         logo: 'https://raw.githubusercontent.com/MrMohebi/stremio-ir-providers/refs/heads/master/logo.png',
-        name: `Iran Provider${developmentSuffix}`,
+        name: `NerdCow Stremio${developmentSuffix}`,
         catalogs: CATALOGS.flatMap((cfg) => {
             const isSearchable = cfg.searchRequired !== false
             const types = cfg.catalogType === 'tv' ? ['tv'] : ['movie', 'series']
@@ -200,12 +200,17 @@ async function imdbStreamResponse(type, id, providers, services, logger) {
                 : null
             const links = provider.getLinks(match.type, videoId, movieData)
 
-            const streamName = match.name || title
             return {
                 key: provider.key,
                 streams: (Array.isArray(links) ? links : []).map((link) => ({
                     url: link.url,
-                    title: `${provider.key} - ${streamName} - ${link.title}`,
+                    title: formatStreamTitle({
+                        providerKey: provider.key,
+                        quality: link.quality,
+                        size: link.size,
+                        audioType: link.audioType,
+                        extraText: link.title,
+                    }),
                 })),
             }
         }),
@@ -362,10 +367,16 @@ export function createAddon({
                 let streams = movieData
                     ? parsedId.provider.getLinks(type, parsedId.videoId, movieData)
                     : []
-                if (Array.isArray(streams) && movieData?.title) {
+                if (Array.isArray(streams)) {
                     streams = streams.map((link) => ({
                         ...link,
-                        title: `${parsedId.provider.key} - ${movieData.title} - ${link.title}`,
+                        title: formatStreamTitle({
+                            providerKey: parsedId.provider.key,
+                            quality: link.quality,
+                            size: link.size,
+                            audioType: link.audioType,
+                            extraText: link.title,
+                        }),
                     }))
                 }
                 return res.json({streams: sortByQuality(Array.isArray(streams) ? streams : [])})
