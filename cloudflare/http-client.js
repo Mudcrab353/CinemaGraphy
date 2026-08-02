@@ -18,6 +18,19 @@ function requestHeaders(values = {}) {
     return headers
 }
 
+function collectResponseHeaders(headers) {
+    const result = {}
+    for (const [key, value] of headers.entries()) {
+        const lower = key.toLowerCase()
+        if (lower === 'set-cookie') {
+            result[lower] = result[lower] ? [...result[lower], value] : [value]
+        } else {
+            result[lower] = value
+        }
+    }
+    return result
+}
+
 async function responseData(response, responseType) {
     if (responseType === 'arraybuffer') {
         return response.arrayBuffer()
@@ -64,7 +77,7 @@ async function fetchRequest(fetcher, method, url, data, config = {}) {
         })
         const result = {
             status: response.status,
-            headers: Object.fromEntries(response.headers),
+            headers: collectResponseHeaders(response.headers),
             data: await responseData(response, config.responseType),
         }
         const validateStatus = config.validateStatus ?? ((status) => status >= 200 && status < 300)
