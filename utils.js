@@ -92,7 +92,7 @@ export const PROVIDER_LABELS = {
     cinamatic: 'Cinamatic',
     aslmoviez: 'AslMoviez',
     serialblog: 'SerialBlog',
-    digimovie: 'DigiMovie',
+    digimovie: 'Digimoviez',
     avamovie: 'AvaMovie',
 }
 
@@ -183,13 +183,13 @@ function detectAudio(text, audioTypeHint) {
     const isDual = /dual\s?audio/i.test(text) || (hasDub && hasSub)
 
     if (audioTypeHint === 'dubbed' || (hasDub && !isDual)) {
-        return '🗣️ دوبله فارسی'
+        return '🗣️ صدا: دوبله فارسی'
     }
     if (audioTypeHint === 'subtitled' || (hasSub && !isDual)) {
-        return '💬 زیرنویس فارسی'
+        return '💬 زیرنویس: فارسی'
     }
     if (isDual) {
-        return '🗣️💬 دوبله + زیرنویس'
+        return '🗣️💬 صدا: دوبله + زیرنویس فارسی'
     }
     return null
 }
