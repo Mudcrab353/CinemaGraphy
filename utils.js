@@ -94,6 +94,15 @@ export const PROVIDER_LABELS = {
     serialblog: 'SerialBlog',
     digimovie: 'Digimoviez',
     avamovie: 'AvaMovie',
+    zardfilm: 'ZardFilm',
+}
+
+// Whether each provider is known to censor content (based on the site's own
+// stated policy / observed behaviour). Update this as new providers are
+// checked. Anything not listed defaults to "uncensored" (unknown === assumed
+// fine) — flip a provider to `true` as soon as it's confirmed to censor.
+const PROVIDER_CENSORED = {
+    zardfilm: true,
 }
 
 const PROVIDER_EMOJI = {
@@ -220,15 +229,72 @@ export function formatStreamTitle({providerKey, quality, size, audioType, extraT
     const audio = detectAudio(combinedText, audioType)
 
     const qualityLine = [resolution, ...extras, source, codec].filter(Boolean).join(' • ')
+    const isCensored = PROVIDER_CENSORED[providerKey] === true
+    const statusLine = isCensored ? '⚠️ وضعیت: سانسور شده' : '✅ وضعیت: سانسور نشده'
 
     const lines = [
         `${emoji} منبع: ${ltr(providerLabel)}`,
         qualityLine ? `🎞️ کیفیت: ${ltr(qualityLine)}` : null,
         audio,
         size ? `💾 حجم: ${ltr(size)}` : null,
+        statusLine,
     ].filter(Boolean)
 
     return lines.length ? lines.join('\n') : (extraText || providerLabel)
+}
+
+// ---------------------------------------------------------------------------
+// External catalog aggregation (e.g. 101Catalogs)
+//
+// Merges another Stremio addon's catalog list into ours and transparently
+// proxies catalog requests to it. These catalogs return standard IMDb
+// ("tt"-prefixed) ids, so our existing IMDb-based stream lookup
+// (imdbStreamResponse / the main-page flow) already handles playback for
+// them automatically — nothing else needs to change for streams to work.
+// ---------------------------------------------------------------------------
+
+const EXTERNAL_CATALOGS_TTL_MS = 60 * 60 * 1_000 // 1 hour
+let externalCatalogsCache = null // {timestamp, sources}
+
+export async function getExternalCatalogSources(env = {}, httpClient = axios, logger = console) {
+    const manifestUrl = env.CATALOG101_MANIFEST_URL
+    if (!manifestUrl) {
+        return []
+    }
+
+    const now = Date.now()
+    if (externalCatalogsCache && now - externalCatalogsCache.timestamp < EXTERNAL_CATALOGS_TTL_MS) {
+        return externalCatalogsCache.sources
+    }
+
+    try {
+        const response = await httpClient.get(manifestUrl, {timeout: REQUEST_TIMEOUT_MS})
+        const manifest = response.data ?? {}
+        const baseUrl = manifestUrl.replace(/\/manifest\.json.*$/, '')
+        const catalogs = Array.isArray(manifest.catalogs) ? manifest.catalogs : []
+        const sources = [{
+            baseUrl,
+            catalogIds: new Set(catalogs.map((catalog) => catalog.id)),
+            catalogs,
+        }]
+        externalCatalogsCache = {timestamp: now, sources}
+        return sources
+    } catch (error) {
+        logAxiosError(error, logger, '101Catalogs manifest fetch failed')
+        return externalCatalogsCache?.sources ?? []
+    }
+}
+
+export async function proxyExternalCatalog(source, type, id, extraPath, httpClient = axios, logger = console) {
+    const suffix = extraPath ? `/${extraPath}` : ''
+    const url = `${source.baseUrl}/catalog/${type}/${id}${suffix}.json`
+    try {
+        const response = await httpClient.get(url, {timeout: REQUEST_TIMEOUT_MS})
+        return response.data ?? {metas: []}
+    } catch (error) {
+        logAxiosError(error, logger, 'External catalog proxy failed')
+        return {metas: []}
+    }
 }
 
 export function modifyUrls(value, prepend, seen = new WeakSet()) {

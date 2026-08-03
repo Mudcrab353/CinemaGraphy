@@ -1,3 +1,4 @@
+import axios from 'axios'
 import cors from 'cors'
 import express from 'express'
 import winston from 'winston'
@@ -11,7 +12,7 @@ import IPTV from './sources/iptv.js'
 import Peepboxtv from './sources/peepboxtv.js'
 import Serialblog from './sources/serialblog.js'
 import {ID_SEPARATOR, METADATA_SOURCE} from './sources/source.js'
-import {formatStreamTitle, getCinemeta, getSubtitle, modifyUrls} from './utils.js'
+import {formatStreamTitle, getCinemeta, getExternalCatalogSources, getSubtitle, modifyUrls, proxyExternalCatalog} from './utils.js'
 
 export const ADDON_PREFIX = 'ip'
 export const ADDON_VERSION = '1.0.0'
@@ -245,10 +246,26 @@ export function createAddon({
     addon.disable('x-powered-by')
     addon.use(cors())
 
-    addon.get('/manifest.json', (req, res) => res.json(createManifest(env)))
+    addon.get('/manifest.json', async (req, res) => {
+        const manifest = createManifest(env)
+        const externalSources = await getExternalCatalogSources(env, axios, logger)
+        for (const source of externalSources) {
+            manifest.catalogs.push(...source.catalogs)
+        }
+        res.json(manifest)
+    })
 
     const catalogHandler = async (req, res) => {
         try {
+            const externalSources = await getExternalCatalogSources(env, axios, logger)
+            const externalSource = externalSources.find((source) => source.catalogIds.has(req.params.id))
+            if (externalSource) {
+                const data = await proxyExternalCatalog(
+                    externalSource, req.params.type, req.params.id, req.params.extraArgs, axios, logger,
+                )
+                return res.json(data)
+            }
+
             const provider = findCatalogProvider(req.params.id, providers)
             if (!provider) {
                 return res.json({metas: []})
