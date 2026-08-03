@@ -217,9 +217,23 @@ function parseSeriesDetail($, path) {
 
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Session cache
+//
+// This is intentionally a MODULE-level variable, not an instance field.
+// A new Digimovie instance is created on every incoming request, but a
+// Cloudflare Worker isolate (or a long-running Node process) is reused
+// across many requests. Keeping the cookie here means we only log in
+// again when the cached session actually stops working, instead of on
+// every single search/stream request — fewer logins looks like normal
+// browsing, not scripted abuse.
+// ---------------------------------------------------------------------------
+let cachedCookie = ''
+
+// ---------------------------------------------------------------------------
+
 export default class Digimovie extends HtmlSource {
     key = 'digimovie'
-    cookie = ''
 
     constructor(baseUrl, logger = console, httpClient = axios, env = process.env) {
         super(baseUrl, logger, httpClient)
@@ -227,6 +241,14 @@ export default class Digimovie extends HtmlSource {
         this.username = env.DIGIMOVIE_USERNAME
         this.password = env.DIGIMOVIE_PASSWORD
         this.loginPath = '/account/login/?next_page=/dashboard'
+    }
+
+    get cookie() {
+        return cachedCookie
+    }
+
+    set cookie(value) {
+        cachedCookie = value
     }
 
     requestConfig() {
