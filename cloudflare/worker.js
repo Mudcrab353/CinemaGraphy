@@ -6,7 +6,7 @@ import IPTV from '../sources/iptv.js'
 import Peepboxtv from '../sources/peepboxtv.js'
 import Serialblog from '../sources/serialblog.js'
 import {ID_SEPARATOR, METADATA_SOURCE} from '../sources/source.js'
-import {formatStreamTitle, getExternalCatalogSources, modifyUrls, proxyExternalCatalog} from '../utils.js'
+import {findExternalMetaSource, formatStreamTitle, getExternalCatalogSources, getTMDBMetaFa, modifyUrls, proxyExternalCatalog, proxyExternalMeta} from '../utils.js'
 import {createFetchHttpClient} from './http-client.js'
 import {createWorkerProxyConfig, handleProxyRequest} from './proxy.js'
 
@@ -19,7 +19,7 @@ const CATALOGS = [
     {key: 'cinamatic', name: 'Cinamatic', catalogType: 'movies'},
     {key: 'aslmoviez', name: 'AslMoviez', catalogType: 'movies'},
     {key: 'serialblog', name: 'SerialBlog', catalogType: 'movies'},
-    {key: 'iptv', name: 'Seda va Sima - Telewebion', catalogType: 'tv', searchRequired: false},
+    {key: 'iptv', name: 'IPTV', catalogType: 'tv', searchRequired: false},
     {key: 'digimovie', name: 'DigiMovie', catalogType: 'movies'},
 ]
 const CORS_HEADERS = {
@@ -51,21 +51,24 @@ export function createWorkerManifest(env = {}) {
         description: 'سینماگرافی — دانلود و تماشای فیلم و سریال از منابع ایرانی و بین‌المللی.',
         logo: 'https://raw.githubusercontent.com/TheNerdCow/CinemaGraphy/refs/heads/master/logo.png',
         name: `سینماگرافی${developmentSuffix}`,
-        catalogs: CATALOGS.flatMap((cfg) => {
-            const isSearchable = cfg.searchRequired !== false
-            const types = cfg.catalogType === 'tv' ? ['tv'] : ['movie', 'series']
-            return types.map((type) => ({
-                name: cfg.catalogType === 'tv' ? cfg.name : `${cfg.name}${developmentSuffix}`,
-                type,
-                id: `${cfg.key}_${cfg.catalogType === 'tv' ? 'tv' : (type === 'movie' ? 'movies' : 'series')}`,
-                extra: isSearchable
-                    ? [{name: 'search', isRequired: true}]
-                    : [{name: 'skip', isRequired: false}, {name: 'search', isRequired: false}],
-            }))
-        }),
+        catalogs: CATALOGS
+            .filter((cfg) => cfg.key !== 'iptv' || env.IPTV_M3U_URL)
+            .flatMap((cfg) => {
+                const isSearchable = cfg.searchRequired !== false
+                const types = cfg.catalogType === 'tv' ? ['tv'] : ['movie', 'series']
+                const displayName = cfg.key === 'iptv' ? (env.IPTV_NAME || cfg.name) : cfg.name
+                return types.map((type) => ({
+                    name: cfg.catalogType === 'tv' ? displayName : `${displayName}${developmentSuffix}`,
+                    type,
+                    id: `${cfg.key}_${cfg.catalogType === 'tv' ? 'tv' : (type === 'movie' ? 'movies' : 'series')}`,
+                    extra: isSearchable
+                        ? [{name: 'search', isRequired: true}]
+                        : [{name: 'skip', isRequired: false}, {name: 'search', isRequired: false}],
+                }))
+            }),
         resources: [
             'catalog',
-            {name: 'meta', types: ['series', 'movie', 'tv'], idPrefixes: [ADDON_PREFIX]},
+            {name: 'meta', types: ['series', 'movie', 'tv'], idPrefixes: [ADDON_PREFIX, 'tt']},
             {name: 'stream', types: ['series', 'movie', 'tv'], idPrefixes: [ADDON_PREFIX, 'tt']},
             {name: 'subtitles', types: ['series', 'movie'], idPrefixes: [ADDON_PREFIX]},
         ],
@@ -254,8 +257,23 @@ async function catalogResponse(route, providers, logger, env = {}, httpClient) {
     }
 }
 
-async function metaResponse(route, providers, services, env, requestUrl, logger) {
+async function metaResponse(route, providers, services, env, requestUrl, logger, httpClient) {
     try {
+        if (route.id.startsWith('tt') && env.TMDB_API_KEY) {
+            const tmdbMeta = await getTMDBMetaFa(route.type, route.id, httpClient, env.TMDB_API_KEY, logger)
+            if (tmdbMeta) {
+                return json({meta: tmdbMeta})
+            }
+            return json({})
+        }
+
+        const externalSources = await getExternalCatalogSources(env, httpClient, logger)
+        const metaSource = findExternalMetaSource(externalSources, route.id)
+        if (metaSource) {
+            const data = await proxyExternalMeta(metaSource, route.type, route.id, httpClient, logger)
+            return json(data)
+        }
+
         const parsedId = parseWorkerAddonId(route.id, providers)
         if (!parsedId || !['movie', 'series', 'tv'].includes(route.type)) {
             return json({})
@@ -463,6 +481,14 @@ export function createWorkerHandler(options = {}) {
                 const externalSources = await getExternalCatalogSources(env, httpClient, logger)
                 for (const source of externalSources) {
                     manifest.catalogs.push(...source.catalogs)
+                    if (source.hasMeta) {
+                        const metaResource = manifest.resources.find((r) => r?.name === 'meta')
+                        for (const prefix of source.idPrefixes) {
+                            if (metaResource && !metaResource.idPrefixes.includes(prefix)) {
+                                metaResource.idPrefixes.push(prefix)
+                            }
+                        }
+                    }
                 }
                 response = json(manifest)
             } else if (url.pathname === '/health') {
@@ -483,7 +509,7 @@ export function createWorkerHandler(options = {}) {
                     if (route.resource === 'catalog') {
                         response = await catalogResponse(route, providers, logger, env, httpClient)
                     } else if (route.resource === 'meta') {
-                        response = await metaResponse(route, providers, services, env, request.url, logger)
+                        response = await metaResponse(route, providers, services, env, request.url, logger, httpClient)
                     } else if (route.resource === 'stream') {
                         response = await streamResponse(route, providers, services, logger)
                     } else {
