@@ -191,7 +191,7 @@ export default class Peepboxtv extends Source {
         const videos = Array.isArray(movieData?.videos) ? movieData.videos : []
         return videos
             .filter((item) => item?.file_url)
-            .map((item) => ({url: item.file_url, title: item.label ?? ''}))
+            .map((item) => ({url: item.file_url, quality: item.label ?? null, title: item.label ?? ''}))
     }
 
     getSeriesLinks(movieData, videoId) {
@@ -214,6 +214,7 @@ export default class Peepboxtv extends Source {
                 const edition = String(item.seasons_name ?? '').split(' - ')[1]
                 return {
                     url: selectedEpisode?.file_url,
+                    quality: edition || null,
                     title: [movieData?.title, seasonTitle, selectedEpisode?.episodes_name, edition]
                         .filter(Boolean)
                         .join(' - '),

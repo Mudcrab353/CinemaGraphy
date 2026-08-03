@@ -2,8 +2,7 @@ import axios from 'axios'
 import Source, {METADATA_SOURCE, ID_SEPARATOR} from './source.js'
 import {logAxiosError} from '../utils.js'
 
-const PLAYLIST_URL = 'https://github.com/iptv-org/iptv/raw/refs/heads/master/streams/ir_telewebion.m3u'
-const CACHE_TTL_MS = 5 * 60 * 1000
+const CACHE_TTL_MS = 5 * 60 * 1_000
 const CATALOG_PAGE_SIZE = 20
 
 function generatePlaceholder(name) {
@@ -88,19 +87,24 @@ export default class IPTV extends Source {
     #cache = null
     #cacheTime = 0
 
-    constructor(baseUrl, logger = console, httpClient = axios) {
+    constructor(baseUrl, logger = console, httpClient = axios, env = {}) {
         super(baseUrl, logger, httpClient, 'https:')
         this.providerID = `${this.key}${ID_SEPARATOR}`
+        this.playlistUrl = env.IPTV_M3U_URL || null
+        this.displayName = env.IPTV_NAME || 'IPTV'
     }
 
     async #loadChannels() {
+        if (!this.playlistUrl) {
+            return []
+        }
         if (this.#cache && Date.now() - this.#cacheTime < CACHE_TTL_MS) {
             return this.#cache
         }
 
         try {
-            this.logger.debug('IPTV fetching playlist', {url: PLAYLIST_URL})
-            const response = await this.httpClient.get(PLAYLIST_URL, {timeout: 15_000})
+            this.logger.debug('IPTV fetching playlist', {url: this.playlistUrl})
+            const response = await this.httpClient.get(this.playlistUrl, {timeout: 15_000})
             const content = typeof response.data === 'string' ? response.data : ''
             const channels = parseM3U(content)
             this.logger.debug('IPTV playlist loaded', {channelCount: channels.length})

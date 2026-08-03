@@ -55,7 +55,10 @@ function parseAslmoviezMovieLinks($) {
     $('.dlbox_group_body .dlbox_row').each((_, row) => {
         const url = $(row).find('a[href*=".sbs/"]').first().attr('href')
         const quality = normalizeText($(row).find('.dlbox_quality').first().text())
-        const size = normalizeText($(row).find('.dlbox_meta_compact_item').first().text())
+        const size = normalizeText(
+            $(row).find('.dlbox_meta_compact_item').map((__, m) => normalizeText($(m).text())).get()
+                .find((t) => /\d+\s*(MB|GB)/i.test(t)) ?? '',
+        )
 
         if (!url) {
             return
