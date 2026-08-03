@@ -41,7 +41,7 @@ export function createManifest(env = process.env) {
         version: ADDON_VERSION,
         contactEmail: 'mmmohebi@outlook.com',
         description: 'سینماگرافی — دانلود و تماشای فیلم و سریال از منابع ایرانی و بین‌المللی.',
-        logo: 'https://raw.githubusercontent.com/MrMohebi/stremio-ir-providers/refs/heads/master/logo.png',
+        logo: 'https://raw.githubusercontent.com/TheNerdCow/CinemaGraphy/refs/heads/master/logo.png',
         name: `سینماگرافی${developmentSuffix}`,
         catalogs: CATALOGS.flatMap((cfg) => {
             const isSearchable = cfg.searchRequired !== false
