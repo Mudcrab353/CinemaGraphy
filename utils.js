@@ -86,6 +86,75 @@ export async function getSubtitle(type, imdbId, httpClient = axios) {
     }
 }
 
+const TMDB_GENRE_CACHE_TTL_MS = 24 * 60 * 60 * 1_000 // 24h
+const tmdbGenreCache = new Map() // `${type}` -> {timestamp, genres: Map(id -> name)}
+
+async function getTMDBGenreMap(type, httpClient, apiKey, logger) {
+    const cached = tmdbGenreCache.get(type)
+    if (cached && Date.now() - cached.timestamp < TMDB_GENRE_CACHE_TTL_MS) {
+        return cached.genres
+    }
+    try {
+        const response = await httpClient.get(
+            `https://api.themoviedb.org/3/genre/${type === 'series' ? 'tv' : 'movie'}/list`,
+            {params: {api_key: apiKey, language: 'fa-IR'}, timeout: REQUEST_TIMEOUT_MS},
+        )
+        const genres = new Map((response.data?.genres ?? []).map((g) => [g.id, g.name]))
+        tmdbGenreCache.set(type, {timestamp: Date.now(), genres})
+        return genres
+    } catch (error) {
+        logAxiosError(error, logger, 'Unable to get TMDB genre list')
+        return cached?.genres ?? new Map()
+    }
+}
+
+/**
+ * Persian (fa-IR) metadata for a piece of IMDb-id'd content — poster,
+ * backdrop, overview, and genre names all localized via TMDB, so Iranian
+ * posters/covers and Persian descriptions show up in the catalog instead of
+ * the English Cinemeta defaults. Requires TMDB_API_KEY; returns null (so the
+ * caller can fall back to Cinemeta) if unavailable or nothing is found.
+ */
+export async function getTMDBMetaFa(type, imdbId, httpClient = axios, apiKey, logger = console) {
+    if (!apiKey || !imdbId) {
+        return null
+    }
+
+    try {
+        const findResponse = await httpClient.get(
+            `https://api.themoviedb.org/3/find/${encodeURIComponent(imdbId)}`,
+            {
+                params: {api_key: apiKey, external_source: 'imdb_id', language: 'fa-IR'},
+                timeout: REQUEST_TIMEOUT_MS,
+            },
+        )
+        const resultsKey = type === 'series' ? 'tv_results' : 'movie_results'
+        const item = findResponse.data?.[resultsKey]?.[0]
+        if (!item) {
+            return null
+        }
+
+        const genreMap = await getTMDBGenreMap(type, httpClient, apiKey, logger)
+        const genres = (item.genre_ids ?? []).map((id) => genreMap.get(id)).filter(Boolean)
+        const year = (item.release_date || item.first_air_date || '').slice(0, 4) || null
+
+        return {
+            id: imdbId,
+            type,
+            name: item.title || item.name || null,
+            poster: item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : null,
+            background: item.backdrop_path ? `https://image.tmdb.org/t/p/original${item.backdrop_path}` : null,
+            description: item.overview || null,
+            releaseInfo: year,
+            imdbRating: item.vote_average ? String(Math.round(item.vote_average * 10) / 10) : null,
+            genres: genres.length ? genres : undefined,
+        }
+    } catch (error) {
+        logAxiosError(error, logger, 'Unable to get TMDB Persian metadata')
+        return null
+    }
+}
+
 export const PROVIDER_LABELS = {
     f2media: 'F2Media',
     peepboxtv: 'PeepBoxTv',
@@ -256,9 +325,13 @@ export function formatStreamTitle({providerKey, quality, size, audioType, extraT
 const EXTERNAL_CATALOGS_TTL_MS = 60 * 60 * 1_000 // 1 hour
 let externalCatalogsCache = null // {timestamp, sources}
 
+function externalManifestUrls(env) {
+    return [env.CATALOG101_MANIFEST_URL, env.CATALOG_ANIME_MANIFEST_URL].filter(Boolean)
+}
+
 export async function getExternalCatalogSources(env = {}, httpClient = axios, logger = console) {
-    const manifestUrl = env.CATALOG101_MANIFEST_URL
-    if (!manifestUrl) {
+    const manifestUrls = externalManifestUrls(env)
+    if (!manifestUrls.length) {
         return []
     }
 
@@ -267,22 +340,33 @@ export async function getExternalCatalogSources(env = {}, httpClient = axios, lo
         return externalCatalogsCache.sources
     }
 
-    try {
-        const response = await httpClient.get(manifestUrl, {timeout: REQUEST_TIMEOUT_MS})
-        const manifest = response.data ?? {}
-        const baseUrl = manifestUrl.replace(/\/manifest\.json.*$/, '')
-        const catalogs = Array.isArray(manifest.catalogs) ? manifest.catalogs : []
-        const sources = [{
-            baseUrl,
-            catalogIds: new Set(catalogs.map((catalog) => catalog.id)),
-            catalogs,
-        }]
+    const sources = []
+    for (const manifestUrl of manifestUrls) {
+        try {
+            const response = await httpClient.get(manifestUrl, {timeout: REQUEST_TIMEOUT_MS})
+            const manifest = response.data ?? {}
+            const baseUrl = manifestUrl.replace(/\/manifest\.json.*$/, '')
+            const catalogs = Array.isArray(manifest.catalogs) ? manifest.catalogs : []
+            const metaResource = (manifest.resources ?? []).find((r) => (
+                r === 'meta' || r?.name === 'meta'
+            ))
+            sources.push({
+                baseUrl,
+                catalogIds: new Set(catalogs.map((catalog) => catalog.id)),
+                catalogs,
+                idPrefixes: manifest.idPrefixes ?? [],
+                hasMeta: Boolean(metaResource),
+            })
+        } catch (error) {
+            logAxiosError(error, logger, `External catalog manifest fetch failed (${manifestUrl})`)
+        }
+    }
+
+    if (sources.length) {
         externalCatalogsCache = {timestamp: now, sources}
         return sources
-    } catch (error) {
-        logAxiosError(error, logger, '101Catalogs manifest fetch failed')
-        return externalCatalogsCache?.sources ?? []
     }
+    return externalCatalogsCache?.sources ?? []
 }
 
 export async function proxyExternalCatalog(source, type, id, extraPath, httpClient = axios, logger = console) {
@@ -294,6 +378,26 @@ export async function proxyExternalCatalog(source, type, id, extraPath, httpClie
     } catch (error) {
         logAxiosError(error, logger, 'External catalog proxy failed')
         return {metas: []}
+    }
+}
+
+// For external sources whose items use a non-IMDb id (e.g. Anime Catalogs'
+// "kitsu:" ids), Cinemeta has no entry, so we pass the meta request straight
+// through to that addon's own /meta endpoint instead.
+export function findExternalMetaSource(sources, id) {
+    return sources.find((source) => (
+        source.hasMeta && source.idPrefixes.some((prefix) => id.startsWith(prefix))
+    ))
+}
+
+export async function proxyExternalMeta(source, type, id, httpClient = axios, logger = console) {
+    const url = `${source.baseUrl}/meta/${type}/${id}.json`
+    try {
+        const response = await httpClient.get(url, {timeout: REQUEST_TIMEOUT_MS})
+        return response.data ?? {}
+    } catch (error) {
+        logAxiosError(error, logger, 'External meta proxy failed')
+        return {}
     }
 }
 

@@ -12,7 +12,7 @@ import IPTV from './sources/iptv.js'
 import Peepboxtv from './sources/peepboxtv.js'
 import Serialblog from './sources/serialblog.js'
 import {ID_SEPARATOR, METADATA_SOURCE} from './sources/source.js'
-import {formatStreamTitle, getCinemeta, getExternalCatalogSources, getSubtitle, modifyUrls, proxyExternalCatalog} from './utils.js'
+import {findExternalMetaSource, formatStreamTitle, getCinemeta, getExternalCatalogSources, getSubtitle, getTMDBMetaFa, modifyUrls, proxyExternalCatalog, proxyExternalMeta} from './utils.js'
 
 export const ADDON_PREFIX = 'ip'
 export const ADDON_VERSION = '1.0.0'
@@ -23,7 +23,7 @@ const CATALOGS = [
     {key: 'cinamatic', name: 'Cinamatic', catalogType: 'movies'},
     {key: 'aslmoviez', name: 'AslMoviez', catalogType: 'movies'},
     {key: 'serialblog', name: 'SerialBlog', catalogType: 'movies'},
-    {key: 'iptv', name: 'Seda va Sima - Telewebion', catalogType: 'tv', searchRequired: false},
+    {key: 'iptv', name: 'IPTV', catalogType: 'tv', searchRequired: false},
     {key: 'digimovie', name: 'DigiMovie', catalogType: 'movies'},
 ]
 
@@ -44,21 +44,24 @@ export function createManifest(env = process.env) {
         description: 'سینماگرافی — دانلود و تماشای فیلم و سریال از منابع ایرانی و بین‌المللی.',
         logo: 'https://raw.githubusercontent.com/TheNerdCow/CinemaGraphy/refs/heads/master/logo.png',
         name: `سینماگرافی${developmentSuffix}`,
-        catalogs: CATALOGS.flatMap((cfg) => {
-            const isSearchable = cfg.searchRequired !== false
-            const types = cfg.catalogType === 'tv' ? ['tv'] : ['movie', 'series']
-            return types.map((type) => ({
-                name: cfg.catalogType === 'tv' ? cfg.name : `${cfg.name}${developmentSuffix}`,
-                type,
-                id: `${cfg.key}_${cfg.catalogType === 'tv' ? 'tv' : (type === 'movie' ? 'movies' : 'series')}`,
-                extra: isSearchable
-                    ? [{name: 'search', isRequired: true}]
-                    : [{name: 'skip', isRequired: false}, {name: 'search', isRequired: false}],
-            }))
-        }),
+        catalogs: CATALOGS
+            .filter((cfg) => cfg.key !== 'iptv' || env.IPTV_M3U_URL)
+            .flatMap((cfg) => {
+                const isSearchable = cfg.searchRequired !== false
+                const types = cfg.catalogType === 'tv' ? ['tv'] : ['movie', 'series']
+                const displayName = cfg.key === 'iptv' ? (env.IPTV_NAME || cfg.name) : cfg.name
+                return types.map((type) => ({
+                    name: cfg.catalogType === 'tv' ? displayName : `${displayName}${developmentSuffix}`,
+                    type,
+                    id: `${cfg.key}_${cfg.catalogType === 'tv' ? 'tv' : (type === 'movie' ? 'movies' : 'series')}`,
+                    extra: isSearchable
+                        ? [{name: 'search', isRequired: true}]
+                        : [{name: 'skip', isRequired: false}, {name: 'search', isRequired: false}],
+                }))
+            }),
         resources: [
             'catalog',
-            {name: 'meta', types: ['series', 'movie', 'tv'], idPrefixes: [ADDON_PREFIX]},
+            {name: 'meta', types: ['series', 'movie', 'tv'], idPrefixes: [ADDON_PREFIX, 'tt']},
             {name: 'stream', types: ['series', 'movie', 'tv'], idPrefixes: [ADDON_PREFIX, 'tt']},
             {name: 'subtitles', types: ['series', 'movie'], idPrefixes: [ADDON_PREFIX]},
         ],
@@ -251,6 +254,14 @@ export function createAddon({
         const externalSources = await getExternalCatalogSources(env, axios, logger)
         for (const source of externalSources) {
             manifest.catalogs.push(...source.catalogs)
+            if (source.hasMeta) {
+                const metaResource = manifest.resources.find((r) => r?.name === 'meta')
+                for (const prefix of source.idPrefixes) {
+                    if (metaResource && !metaResource.idPrefixes.includes(prefix)) {
+                        metaResource.idPrefixes.push(prefix)
+                    }
+                }
+            }
         }
         res.json(manifest)
     })
@@ -320,6 +331,23 @@ export function createAddon({
 
     addon.get('/meta/:type/:id.json', async (req, res) => {
         try {
+            if (req.params.id.startsWith('tt') && env.TMDB_API_KEY) {
+                const tmdbMeta = await getTMDBMetaFa(
+                    req.params.type, req.params.id, axios, env.TMDB_API_KEY, logger,
+                )
+                if (tmdbMeta) {
+                    return res.json({meta: tmdbMeta})
+                }
+                return res.json({})
+            }
+
+            const externalSources = await getExternalCatalogSources(env, axios, logger)
+            const metaSource = findExternalMetaSource(externalSources, req.params.id)
+            if (metaSource) {
+                const data = await proxyExternalMeta(metaSource, req.params.type, req.params.id, axios, logger)
+                return res.json(data)
+            }
+
             const parsedId = parseAddonId(req.params.id, providers)
             if (!parsedId || !['movie', 'series', 'tv'].includes(req.params.type)) {
                 return res.json({})
