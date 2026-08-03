@@ -1,275 +1,202 @@
 <div align="center">
-  <img src="https://raw.githubusercontent.com/MrMohebi/stremio-ir-providers/refs/heads/master/logo.png" alt="Stremio IR Providers Logo" width="120" height="120" />
-  <h1>Stremio IR Providers</h1>
-  <p>A Stremio addon that aggregates Iranian and international streaming sources, delivering movies, series, and live TV directly inside Stremio.</p>
+  <img src="./logo.png" alt="Cinemagraphy Logo" width="120" height="120" />
+  <h1>سینماگرافی — Cinemagraphy</h1>
+  <p>افزونه‌ی استریمیو برای دانلود و تماشای فیلم، سریال و تلویزیون زنده از منابع ایرانی و بین‌المللی.</p>
+  <p><em>A Stremio addon that aggregates Iranian and international streaming sources.</em></p>
 
   <p>
-    <a href="#-features">Features</a> •
-    <a href="#-supported-providers">Providers</a> •
-    <a href="#-installation">Installation</a> •
-    <a href="#-configuration">Configuration</a> •
-    <a href="#-deployment">Deployment</a> •
-    <a href="#-development">Development</a>
-  </p>
-
-  <p>
-    <img src="https://img.shields.io/badge/version-2.5.0-blue.svg" alt="Version 2.5.0" />
+    <img src="https://img.shields.io/badge/version-1.0.0-blue.svg" alt="Version" />
     <img src="https://img.shields.io/badge/node-%3E%3D24.18.0-green.svg" alt="Node >=24.18.0" />
     <img src="https://img.shields.io/badge/cloudflare-workers-orange.svg" alt="Cloudflare Workers" />
-    <img src="https://img.shields.io/badge/license-MIT-lightgrey.svg" alt="License MIT" />
+    <img src="https://img.shields.io/badge/docker-ready-2496ED.svg" alt="Docker Ready" />
+    <img src="https://img.shields.io/badge/license-ISC-lightgrey.svg" alt="License ISC" />
   </p>
 </div>
 
 ---
 
-## 📖 Introduction
+## 🙏 اصالت پروژه / Project Origin
 
-**Stremio IR Providers** is a [Stremio](https://www.stremio.com/) addon that brings together multiple Iranian and international media sources into a single, unified streaming experience.
+**سینماگرافی** یک فورک شخصی‌سازی‌شده از پروژه‌ی متن‌باز
+[**stremio-ir-providers**](https://github.com/MrMohebi/stremio-ir-providers) نوشته‌ی
+**آقای محبی (MrMohebi)** است. تمام ساختار پایه، معماری پروایدرها، و ایده‌ی اصلی متعلق به ایشونه.
 
-Instead of juggling multiple websites, this addon lets you search once and get results from all supported providers — with automatic quality sorting, metadata enrichment, and a consistent stream interface.
+روی این پایه، تغییرات گسترده‌ای اعمال شده: بازطراحی کامل نمایش اطلاعات استریم (کیفیت/حجم/صدا با ایموجی)،
+اضافه‌شدن پروایدر DigiMovie (شامل حل خودکار سوال امنیتی لاگین)، رفع چند باگ زیرساختی در نسخه‌ی
+Cloudflare Workers، ریبرندینگ کامل، و مستندسازی از نو.
 
-Whether you're looking for the latest Persian films, classic Iranian series, international blockbusters, or live TV channels, this addon aggregates everything through Stremio's familiar interface.
+**Cinemagraphy** is a personalized fork of the open-source
+[**stremio-ir-providers**](https://github.com/MrMohebi/stremio-ir-providers) project by
+**MrMohebi**. The core architecture and provider framework are his original work. This fork adds
+extensive customizations on top of it — see [Changes from Upstream](#-تغییرات-نسبت-به-نسخه‌ی-اصلی--changes-from-upstream).
+
+این پروژه طبق [مجوز ISC](https://opensource.org/licenses/ISC) منتشر شده (همون مجوز نسخه‌ی اصلی) —
+یعنی آزادانه قابل استفاده، تغییر و توزیعه، به شرط حفظ یادداشت کپی‌رایت.
 
 ---
 
-## ✨ Features
+## ✨ ویژگی‌ها / Features
 
-| Capability | Description |
+| ویژگی | توضیح |
 |---|---|
-| **Multi-Provider Search** | Search across all supported providers simultaneously |
-| **Movie & Series Support** | Full support for both movies and TV series with season/episode handling |
-| **Iranian Content** | Dedicated providers for Persian-dubbed and original Iranian content |
-| **Quality Sorting** | Streams are automatically sorted by resolution (4K → 1080p → 720p → 480p) |
-| **Stream Metadata** | Quality, file size, audio type, and encoder info displayed in stream titles |
-| **IMDb ID Lookup** | Streams appear on main Stremio pages via IMDb ID integration |
-| **Live TV / IPTV** | Watch live Iranian TV channels directly in Stremio |
-| **Cloudflare Workers** | Deploy the entire addon as a serverless Cloudflare Worker |
-| **Image Proxy** | Built-in proxy for metadata images in restricted regions |
-| **Subtitles** | Integrated subtitle support via OpenSubtitles |
+| 🔍 جستجوی همزمان | جستجو در همه‌ی پروایدرها با یک بار تایپ |
+| 🎬 فیلم و سریال | پشتیبانی کامل فصل/قسمت |
+| 📊 اطلاعات دقیق استریم | منبع، کیفیت (4K/1080p/...)، HDR/10bit/کدک، نوع صدا، حجم — با ایموجی و خوانای فارسی |
+| 🗣️ تفکیک صدا از زیرنویس | تشخیص واضح «دوبله فارسی» در برابر «زیرنویس فارسی» |
+| 📺 تلویزیون زنده | کانال‌های IPTV صداوسیما/تلوبیون |
+| ☁️ سه روش دیپلوی | Cloudflare Workers، Docker، یا هر VPS |
+| 🎛️ روشن/خاموش کردن پروایدرها | با متغیرهای محیطی، بدون نیاز به تغییر کد |
+| 🌐 پروکسی تصویر داخلی | برای دور زدن محدودیت دسترسی به متادیتا |
 
 ---
 
-## 🎯 Supported Providers
+## 🎯 پروایدرهای پشتیبانی‌شده / Supported Providers
 
-| Provider | Type | Description |
-|---|---|---|
-| **Cinamatic** | 🎬 Movies & 📺 Series | Persian movie and series site with dubbed and subtitled content, multiple quality options and file sizes |
-| **AslMoviez** | 🎬 Movies & 📺 Series | Comprehensive Persian media library with IMDb ratings, genre classification, and multiple CDN sources |
-| **SerialBlog** | 🎬 Movies & 📺 Series | Mirrors AslMoviez content (redirects to aslmoviez.com) |
-| **F2Media** | 🎬 Movies & 📺 Series | Persian movie and series site with direct download links, multiple encoders, and quality options |
-| **PeepBoxTV** | 🎬 Movies & 📺 Series | REST API-based provider with search, genre categories, and streaming details |
-| **Seda va Sima - Telewebion** | 📺 Live TV | IPTV channels from the official Iranian Telewebion M3U playlist — watch live TV directly in Stremio |
+| پروایدر | نوع | سانسور محتوا | یادداشت |
+|---|---|---|---|
+| **F2Media** | 🎬 فیلم و 📺 سریال | ✅ دارد (طبق اعلام خود سایت) | لینک مستقیم دانلود |
+| **Cinamatic** | 🎬 فیلم و 📺 سریال | 🔍 در حال بررسی | چند کیفیت و انکودر |
+| **AslMoviez** | 🎬 فیلم و 📺 سریال | 🔍 در حال بررسی | رتبه‌بندی IMDb |
+| **SerialBlog** | 🎬 فیلم و 📺 سریال | 🔍 در حال بررسی | آینه‌ی AslMoviez |
+| **PeepBoxTV** | 🎬 فیلم و 📺 سریال | 🔍 در حال بررسی | نیاز به اکانت و کلید API شخصی |
+| **DigiMovie** 🎁 بونوس | 🎬 فیلم و 📺 سریال | ✅ دارد | نیاز به اکانت شخصی؛ پشت محافظت Cloudflare — رو Workers ممکنه ناپایدار باشه، رو VPS/Docker پایدارتره |
+| **Seda va Sima - Telewebion** | 📺 تلویزیون زنده | — | پلی‌لیست رسمی M3U |
+
+> ردیف‌های «در حال بررسی» به‌مرور تکمیل میشن.
 
 ---
 
-## 🔧 Installation
+## 🔧 نصب / Installation
 
-### Install in Stremio
+سینماگرافی رو می‌شه به سه روش اجرا کرد. هرکدوم رو که می‌خوای انتخاب کن:
 
-Paste the following URL into Stremio → Community Add-ons → **Install from URL**:
-
-```
-https://sip.m17i.xyz/manifest.json
-```
-
-> **Note:** An official personal deployment is available at `https://persianstremio.vercel.app/manifest.json`. This is not the official project deployment — see [Deployment](#-deployment) to run your own instance.
-
-### Run Locally
+### روش ۱ — Cloudflare Workers (رایگان، بدون سرور)
 
 ```sh
-# 1. Clone the repository
-git clone https://github.com/MrMohebi/stremio-ir-providers.git
-cd stremio-ir-providers
-
-# 2. Install dependencies
+git clone https://github.com/<YOUR_USERNAME>/cinemagraphy.git
+cd cinemagraphy
 corepack enable
 pnpm install
 
-# 3. Copy and configure environment variables
-cp .env.example .env
-# Edit .env with your provider credentials (see Configuration below)
-
-# 4. Run the addon
-pnpm dev
-```
-
-The addon will be available at `http://127.0.0.1:7000/manifest.json`.
-
----
-
-## ⚙️ Configuration
-
-Copy `.env.example` to `.env` and fill in the required values:
-
-| Variable | Required | Description |
-|---|---|---|
-| `CINAMATIC_BASEURL` | ✅ | Cinamatic website base URL |
-| `ASLMOVIEZ_BASEURL` | ✅ | AslMoviez website base URL |
-| `SERIALBLOG_BASEURL` | ✅ | SerialBlog website base URL |
-| `F2MEDIA_BASEURL` | ✅ | F2Media website base URL |
-| `PEEPBOXTV_BASEURL` | ✅ | PeepBoxTV API base URL |
-| `PEEPBOXTV_USER_ID` | ✅ | PeepBoxTV account user ID |
-| `PEEPBOXTV_ANDROID_ID` | ✅ | PeepBoxTV device identifier |
-| `PEEPBOXTV_API_KEY` | ✅ | PeepBoxTV API credential |
-| `TMDB_API_KEY` | ⬜ | TMDB API key (IMDb ID fallback for some providers) |
-| `PROXY_ENABLE` | ⬜ | Set to `true` to proxy metadata images |
-| `LOG_LEVEL` | ⬜ | Logging level: `error`, `warn`, `info`, `debug` |
-
-> **Note:** Base URLs should point to the provider's root domain. The `TMDB_API_KEY` improves IMDb ID resolution when providers don't expose it directly.
-
----
-
-## ☁️ Deployment
-
-### Cloudflare Workers
-
-The addon can run entirely on Cloudflare Workers — no server needed.
-
-```sh
-# 1. Authenticate with Cloudflare
 npx wrangler login
-
-# 2. Copy secrets file
 cp .dev.vars.example .dev.vars
-# Fill in .dev.vars with your provider credentials
+# مقادیر .dev.vars رو طبق جدول «متغیرهای محیطی» پایین پر کن
 
-# 3. Deploy
 pnpm worker:deploy
 ```
+آدرس نهایی: `https://cinemagraphy.<your-subdomain>.workers.dev/manifest.json`
 
-Your worker will be available at `https://stremio-ir-providers.<your-subdomain>.workers.dev/manifest.json`.
+> **نکته:** اگه از Git integration کلادفلر استفاده می‌کنی (بدون خط‌فرمان)، فقط کافیه ریپازیتوری رو به Workers & Pages وصل کنی و متغیرها رو تو داشبورد (Settings → Variables and secrets) وارد کنی.
 
-See [Deploying to Cloudflare Workers](docs/CLOUDFLARE.md) for detailed instructions on secrets, proxy configuration, and local testing.
-
-### Docker
+### روش ۲ — Docker
 
 ```sh
 docker compose up -d
 ```
+پیش از اجرا، فایل `.env` رو طبق `.env.example` پر کن. سرویس رو پورت `7000` بالا میاد.
 
-The addon runs on port `7000` with an optional proxy on port `3005`.
-
----
-
-## 🛠️ Development
-
-### Requirements
-
-- **Node.js** >= 24.18.0
-- **pnpm** (enable with `corepack enable`)
-- A code editor of your choice
-
-### Commands
-
-| Command | Description |
-|---|---|
-| `pnpm install` | Install dependencies |
-| `pnpm test` | Run the full test suite |
-| `pnpm dev` | Start local development server with file watching |
-| `pnpm check` | Run tests + syntax checks |
-| `pnpm start` | Start production server |
-| `pnpm worker:dev` | Run locally as a Cloudflare Worker |
-| `pnpm worker:deploy` | Deploy to Cloudflare Workers |
-
-### Project Structure
-
-```
-stremio-ir-providers/
-├── app.js                  # Express addon — routing, catalogs, streams, metadata
-├── index.js                # Express entry point
-├── cloudflare/
-│   ├── index.js            # Worker entry point
-│   ├── worker.js           # Worker request routing (mirrors app.js)
-│   ├── http-client.js      # Fetch-based HTTP client for Workers
-│   └── proxy.js            # Worker-native image proxy
-├── sources/
-│   ├── source.js            # Base Source class
-│   ├── html-source.js       # Cheerio-based HTML scraping source
-│   ├── cinamatic.js         # Cinamatic provider
-│   ├── aslmoviez.js         # AslMoviez provider
-│   ├── serialblog.js        # SerialBlog provider
-│   ├── f2media.js           # F2Media provider
-│   ├── peepboxtv.js         # PeepBoxTV provider (REST API)
-│   ├── iptv.js              # IPTV / live TV provider
-│   └── digimovie.js         # DigiMovie provider (REST API, experimental)
-├── test/                    # Test suite (Node.js built-in test runner)
-├── docs/                    # Documentation
-└── utils.js                 # Shared utilities (Cinemeta, TMDB, image proxy)
-```
-
-### Running Tests
+### روش ۳ — روی هر VPS (بدون Docker)
 
 ```sh
-pnpm test
+git clone https://github.com/<YOUR_USERNAME>/cinemagraphy.git
+cd cinemagraphy
+corepack enable
+pnpm install
+cp .env.example .env
+# مقادیر رو پر کن
+pnpm start
 ```
 
-All tests use mock HTTP responses — no external network calls are made during testing.
-
-### Adding a New Provider
-
-See [Adding a New Provider](docs/ADDING-A-PROVIDER.md) for a complete integration guide.
+> 💡 روی VPS، پروایدرهایی مثل DigiMovie که پشت محافظت ضدربات هستن، معمولاً پایدارتر از Cloudflare Workers کار می‌کنن — چون IP دیتاسنترهای عمومی کمتر به چشم این سیستم‌ها مشکوک میاد.
 
 ---
 
-## 🏗️ Architecture
+## ⚙️ متغیرهای محیطی / Environment Variables
 
-### Provider Layer
+| متغیر | لازم؟ | توضیح |
+|---|---|---|
+| `F2MEDIA_BASEURL` | فقط اگه F2Media می‌خوای | آدرس فعلی سایت F2Media |
+| `ASLMOVIEZ_BASEURL` | فقط اگه AslMoviez می‌خوای | آدرس فعلی سایت AslMoviez |
+| `SERIALBLOG_BASEURL` | فقط اگه SerialBlog می‌خوای | آدرس فعلی سایت SerialBlog |
+| `CINAMATIC_BASEURL` | فقط اگه Cinamatic می‌خوای | آدرس فعلی سایت Cinamatic |
+| `PEEPBOXTV_BASEURL` | فقط اگه PeepBoxTV می‌خوای | آدرس API پیپ‌باکس |
+| `PEEPBOXTV_USER_ID` | همراه PeepBoxTV | شناسه اکانت شخصی |
+| `PEEPBOXTV_ANDROID_ID` | همراه PeepBoxTV | شناسه دستگاه |
+| `PEEPBOXTV_API_KEY` | همراه PeepBoxTV | کلید API شخصی (Secret) |
+| `DIGIMOVIE_BASEURL` | فقط اگه DigiMovie می‌خوای | معمولاً `https://digimoviez.com` |
+| `DIGIMOVIE_USERNAME` | همراه DigiMovie | یوزرنیم اکانت شخصی (Secret) |
+| `DIGIMOVIE_PASSWORD` | همراه DigiMovie | پسورد اکانت شخصی (Secret) |
+| `TMDB_API_KEY` | اختیاری | بهبود تشخیص IMDb ID (Secret) |
+| `PROXY_ENABLE` | اختیاری | `true`/`false` — فقط لازم اگه سرور خودت داخل ایرانه |
+| `LOG_LEVEL` | اختیاری | `error` / `warn` / `info` / `debug` |
+| `DEV_MODE` | اختیاری | `true`/`false` |
 
-Each provider extends one of two base classes:
+**روشن/خاموش‌کردن پروایدرها:** هر پروایدری که `BASEURL`ش رو خالی بذاری، خودکار از سرچ و لیست استریم‌ها حذف میشه — نیازی به تغییر کد نیست.
 
-- **`Source`** — for REST API-based providers (PeepBoxTV, DigiMovie, IPTV)
-- **`HtmlSource`** — for HTML-scraped providers (Cinamatic, AslMoviez, F2Media)
-
-All providers implement the same interface (`search()`, `getMovieData()`, `getLinks()`) with dependency-injected HTTP client and logger.
-
-### Stream Handling
-
-1. **Catalog Search** → User searches → provider's `search()` returns results → IDs prefixed with addon namespace
-2. **Metadata Lookup** → Stremio requests metadata → provider fetches details → IMDb ID resolved via Cinemeta or TMDB
-3. **Stream Extraction** → Stremio requests streams → `getMovieData()` fetches detail → `getLinks()` extracts URLs → quality-sorted and returned
-
-For generic IMDb IDs from Stremio's main pages, the addon searches each provider, finds matching content, and returns streams — making the addon work alongside Torrentio and other addons.
-
-### Catalog Types
-
-| Type | Description |
-|---|---|
-| `movies` | Search-based catalogs (f2media, peepboxtv, cinamatic, aslmoviez) |
-| `series` | Same providers, filtered to series only |
-| `tv` | Browseable catalogs with pagination (IPTV channels) |
+هر متغیری که مقدارش رمز/حساسه (پسورد، API Key، Username) رو حتماً به‌صورت **Secret** ثبت کن، نه Plaintext.
 
 ---
 
-## 📸 Screenshots
+## 🛠️ توسعه / Development
 
-> Screenshots coming soon. If you'd like to contribute, feel free to open a PR with screenshots showing the addon in action.
+```sh
+pnpm install        # نصب پکیج‌ها
+pnpm test           # اجرای تست‌ها
+pnpm dev            # اجرای لوکال با ری‌استارت خودکار
+pnpm worker:dev      # اجرای لوکال به‌شکل Cloudflare Worker
+pnpm worker:deploy   # دیپلوی روی Cloudflare Workers
+```
+
+### ساختار پروژه
+
+```
+cinemagraphy/
+├── app.js                  # نسخه‌ی Express (سرور/Docker/VPS)
+├── cloudflare/              # نسخه‌ی Cloudflare Workers
+│   ├── worker.js
+│   └── http-client.js
+├── sources/                  # هر پروایدر یک فایل
+│   ├── digimovie.js          # پروایدر DigiMovie (حل خودکار سوال امنیتی)
+│   └── ...
+├── utils.js                  # فرمت‌بندی استریم (کیفیت/حجم/صدا/ایموجی)
+├── docs/                     # مستندات فنی (اضافه‌کردن پروایدر جدید و ...)
+└── wrangler.jsonc            # تنظیمات Cloudflare Workers
+```
+
+راهنمای اضافه‌کردن پروایدر جدید: [`docs/ADDING-A-PROVIDER.md`](docs/ADDING-A-PROVIDER.md)
 
 ---
 
-## ⚠️ Disclaimer
+## 📝 تغییرات نسبت به نسخه‌ی اصلی / Changes from Upstream
 
-This project is for **educational purposes only**. The addon indexes publicly available content from third-party sources. Users are responsible for complying with applicable laws and the terms of service of any sources they access. The maintainers do not host, store, or distribute any copyrighted content.
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome! Whether it's adding a new provider, fixing a bug, or improving documentation:
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Run `pnpm test` to ensure nothing is broken
-5. Submit a Pull Request
+- بازنویسی کامل نمایش اطلاعات استریم: منبع، کیفیت (رزولوشن/HDR/10bit/کدک/BluRay-WEB-DL)، نوع صدا (دوبله/زیرنویس)، و حجم — با ایموجی، خوانا و بدون به‌هم‌ریختگی راست‌به‌چپ/چپ‌به‌راست
+- اضافه‌شدن کامل پروایدر DigiMovie، شامل حل خودکار سوال امنیتی متنی فارسی هنگام لاگین
+- رفع باگی در نسخه‌ی Workers که کوکی‌های چندگانه‌ی پاسخ سرور رو نادرست ادغام می‌کرد
+- کش‌کردن نشست لاگین بین درخواست‌ها برای کاهش لاگین‌های تکراری
+- ریبرندینگ کامل (اسم، شناسه، مستندات)
 
 ---
 
-## 📄 License
+## ⚠️ سلب مسئولیت / Disclaimer
 
-This project is open source and available under the [ISC License](https://opensource.org/licenses/ISC).
+این پروژه صرفاً برای **مقاصد آموزشی** منتشر شده. افزونه محتوایی رو میزبانی، ذخیره یا توزیع نمی‌کنه —
+فقط به منابع عمومی موجود در وب لینک میده. مسئولیت رعایت قوانین محلی و شرایط استفاده‌ی هر منبع، با کاربره.
+
+This project is for **educational purposes only**. The addon does not host, store, or distribute any
+content — it only links to publicly available third-party sources. Users are responsible for complying
+with applicable laws and each source's terms of service.
+
+---
+
+## 📄 مجوز / License
+
+منتشر شده تحت [مجوز ISC](https://opensource.org/licenses/ISC)، همون مجوز پروژه‌ی اصلی.
+
+Copyright © original work by MrMohebi ([stremio-ir-providers](https://github.com/MrMohebi/stremio-ir-providers)).
+Modifications and Cinemagraphy branding © their respective author.
 
 ---
 
 <div align="center">
-  <sub>Built with ❤️ for the Stremio community</sub>
+  <sub>یه فورک شخصی‌سازی‌شده، با احترام به کار اصلی آقای محبی. 🎬</sub>
 </div>
