@@ -6,7 +6,7 @@ import IPTV from '../sources/iptv.js'
 import Peepboxtv from '../sources/peepboxtv.js'
 import Serialblog from '../sources/serialblog.js'
 import {ID_SEPARATOR, METADATA_SOURCE} from '../sources/source.js'
-import {formatStreamTitle, modifyUrls} from '../utils.js'
+import {formatStreamTitle, getExternalCatalogSources, modifyUrls, proxyExternalCatalog} from '../utils.js'
 import {createFetchHttpClient} from './http-client.js'
 import {createWorkerProxyConfig, handleProxyRequest} from './proxy.js'
 
@@ -208,8 +208,15 @@ async function getSubtitle(type, imdbId, httpClient) {
     }
 }
 
-async function catalogResponse(route, providers, logger) {
+async function catalogResponse(route, providers, logger, env = {}, httpClient) {
     try {
+        const externalSources = await getExternalCatalogSources(env, httpClient, logger)
+        const externalSource = externalSources.find((source) => source.catalogIds.has(route.id))
+        if (externalSource) {
+            const data = await proxyExternalCatalog(externalSource, route.type, route.id, route.extraArgs, httpClient, logger)
+            return json(data)
+        }
+
         const provider = findCatalogProvider(route.id, providers)
         if (!provider) {
             return json({metas: []})
@@ -451,7 +458,13 @@ export function createWorkerHandler(options = {}) {
             const headOnly = request.method === 'HEAD'
             let response
             if (url.pathname === '/manifest.json') {
-                response = json(createWorkerManifest(env))
+                const httpClient = options.httpClient ?? createFetchHttpClient(options.fetcher ?? fetch)
+                const manifest = createWorkerManifest(env)
+                const externalSources = await getExternalCatalogSources(env, httpClient, logger)
+                for (const source of externalSources) {
+                    manifest.catalogs.push(...source.catalogs)
+                }
+                response = json(manifest)
             } else if (url.pathname === '/health') {
                 response = new Response('ok', {headers: {'content-type': 'text/plain; charset=utf-8'}})
             } else if (url.pathname === `/${createWorkerProxyConfig(env).path}`) {
@@ -468,7 +481,7 @@ export function createWorkerHandler(options = {}) {
                         getSubtitle: (type, id) => getSubtitle(type, id, httpClient),
                     }
                     if (route.resource === 'catalog') {
-                        response = await catalogResponse(route, providers, logger)
+                        response = await catalogResponse(route, providers, logger, env, httpClient)
                     } else if (route.resource === 'meta') {
                         response = await metaResponse(route, providers, services, env, request.url, logger)
                     } else if (route.resource === 'stream') {
