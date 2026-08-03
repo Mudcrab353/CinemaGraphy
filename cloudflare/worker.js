@@ -45,12 +45,12 @@ export function createWorkerLogger(env = {}) {
 export function createWorkerManifest(env = {}) {
     const developmentSuffix = env.DEV_MODE === 'true' ? ' - DEV' : ''
     return {
-        id: 'com.nerdcow.stremio',
+        id: 'com.cinemagraphy.stremio',
         version: ADDON_VERSION,
         contactEmail: 'mmmohebi@outlook.com',
-        description: 'NerdCow Stremio — Stream movies and series from Iranian and international providers.',
+        description: 'سینماگرافی — دانلود و تماشای فیلم و سریال از منابع ایرانی و بین‌المللی.',
         logo: 'https://raw.githubusercontent.com/MrMohebi/stremio-ir-providers/refs/heads/master/logo.png',
-        name: `NerdCow Stremio${developmentSuffix}`,
+        name: `سینماگرافی${developmentSuffix}`,
         catalogs: CATALOGS.flatMap((cfg) => {
             const isSearchable = cfg.searchRequired !== false
             const types = cfg.catalogType === 'tv' ? ['tv'] : ['movie', 'series']
