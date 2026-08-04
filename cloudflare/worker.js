@@ -6,12 +6,12 @@ import IPTV from '../sources/iptv.js'
 import Peepboxtv from '../sources/peepboxtv.js'
 import Serialblog from '../sources/serialblog.js'
 import {ID_SEPARATOR, METADATA_SOURCE} from '../sources/source.js'
-import {findExternalMetaSource, formatStreamTitle, getExternalCatalogSources, getKitsuTitle, getTMDBMetaFa, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxySubtitles, translateCatalogName} from '../utils.js'
+import {findExternalMetaSource, formatStreamTitle, getExternalCatalogSources, getKitsuTitle, getTMDBMetaFa, getTMDBTitle, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxySubtitles, translateCatalogName} from '../utils.js'
 import {createFetchHttpClient} from './http-client.js'
 import {createWorkerProxyConfig, handleProxyRequest} from './proxy.js'
 
 const ADDON_PREFIX = 'ip'
-const ADDON_VERSION = '1.3.0'
+const ADDON_VERSION = '1.4.0'
 
 const CATALOGS = [
     {key: 'f2media', name: 'F2Media', catalogType: 'movies'},
@@ -69,8 +69,8 @@ export function createWorkerManifest(env = {}) {
         resources: [
             'catalog',
             {name: 'meta', types: ['series', 'movie', 'tv'], idPrefixes: [ADDON_PREFIX, 'tt']},
-            {name: 'stream', types: ['series', 'movie', 'tv'], idPrefixes: [ADDON_PREFIX, 'tt', 'kitsu:']},
-            {name: 'subtitles', types: ['series', 'movie'], idPrefixes: [ADDON_PREFIX, 'tt', 'kitsu:']},
+            {name: 'stream', types: ['series', 'movie', 'tv'], idPrefixes: [ADDON_PREFIX, 'tt', 'kitsu:', 'tmdb:']},
+            {name: 'subtitles', types: ['series', 'movie'], idPrefixes: [ADDON_PREFIX, 'tt', 'kitsu:', 'tmdb:']},
         ],
         types: ['movie', 'series', 'tv'],
     }
@@ -419,7 +419,34 @@ async function kitsuStreamResponse(type, id, providers, httpClient, logger) {
     return json({streams})
 }
 
-async function streamResponse(route, providers, services, logger, httpClient) {
+function parseTmdbId(value) {
+    const match = String(value ?? '').match(/^tmdb:(\d+)(?::(\d+):(\d+))?$/)
+    if (!match) {
+        return null
+    }
+    return {
+        tmdbId: match[1],
+        season: match[2] ? Number(match[2]) : null,
+        episode: match[3] ? Number(match[3]) : null,
+    }
+}
+
+async function tmdbStreamResponse(type, id, providers, httpClient, apiKey, logger) {
+    const parsed = parseTmdbId(id)
+    if (!parsed) {
+        return json({streams: []})
+    }
+
+    const title = await getTMDBTitle(type, parsed.tmdbId, httpClient, apiKey, logger)
+    if (!title) {
+        return json({streams: []})
+    }
+
+    const streams = await streamsByTitle(title, type, parsed.season, parsed.episode, providers)
+    return json({streams})
+}
+
+async function streamResponse(route, providers, services, logger, httpClient, env) {
     try {
         if (!['movie', 'series', 'tv'].includes(route.type)) {
             return json({streams: []})
@@ -445,6 +472,10 @@ async function streamResponse(route, providers, services, logger, httpClient) {
                 }))
             }
             return json({streams: sortByQuality(Array.isArray(streams) ? streams : [])})
+        }
+
+        if (route.id.startsWith('tmdb:')) {
+            return await tmdbStreamResponse(route.type, route.id, providers, httpClient, env.TMDB_API_KEY, logger)
         }
 
         if (route.id.startsWith('kitsu:')) {
@@ -564,7 +595,7 @@ export function createWorkerHandler(options = {}) {
                     } else if (route.resource === 'meta') {
                         response = await metaResponse(route, providers, services, env, request.url, logger, httpClient)
                     } else if (route.resource === 'stream') {
-                        response = await streamResponse(route, providers, services, logger, httpClient)
+                        response = await streamResponse(route, providers, services, logger, httpClient, env)
                     } else {
                         response = await subtitleResponse(route, providers, services, env, httpClient, logger)
                     }
