@@ -6,12 +6,12 @@ import IPTV from '../sources/iptv.js'
 import Peepboxtv from '../sources/peepboxtv.js'
 import Serialblog from '../sources/serialblog.js'
 import {ID_SEPARATOR, METADATA_SOURCE} from '../sources/source.js'
-import {findExternalMetaSource, formatStreamTitle, getExternalCatalogSources, getKitsuTitle, getTMDBMetaFa, modifyUrls, proxyExternalCatalog, proxyExternalMeta, translateCatalogName} from '../utils.js'
+import {findExternalMetaSource, formatStreamTitle, getExternalCatalogSources, getKitsuTitle, getTMDBMetaFa, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxySubtitles, translateCatalogName} from '../utils.js'
 import {createFetchHttpClient} from './http-client.js'
 import {createWorkerProxyConfig, handleProxyRequest} from './proxy.js'
 
 const ADDON_PREFIX = 'ip'
-const ADDON_VERSION = '1.2.0'
+const ADDON_VERSION = '1.3.0'
 
 const CATALOGS = [
     {key: 'f2media', name: 'F2Media', catalogType: 'movies'},
@@ -70,7 +70,7 @@ export function createWorkerManifest(env = {}) {
             'catalog',
             {name: 'meta', types: ['series', 'movie', 'tv'], idPrefixes: [ADDON_PREFIX, 'tt']},
             {name: 'stream', types: ['series', 'movie', 'tv'], idPrefixes: [ADDON_PREFIX, 'tt', 'kitsu:']},
-            {name: 'subtitles', types: ['series', 'movie'], idPrefixes: [ADDON_PREFIX]},
+            {name: 'subtitles', types: ['series', 'movie'], idPrefixes: [ADDON_PREFIX, 'tt', 'kitsu:']},
         ],
         types: ['movie', 'series', 'tv'],
     }
@@ -367,6 +367,7 @@ async function streamsByTitle(title, type, season, episode, providers) {
                         size: link.size,
                         audioType: link.audioType,
                         extraText: link.title,
+                        url: link.url,
                     }),
                 })),
             }
@@ -439,6 +440,7 @@ async function streamResponse(route, providers, services, logger, httpClient) {
                         size: link.size,
                         audioType: link.audioType,
                         extraText: link.title,
+                        url: link.url,
                     }),
                 }))
             }
@@ -460,10 +462,24 @@ async function streamResponse(route, providers, services, logger, httpClient) {
     }
 }
 
-async function subtitleResponse(route, providers, services, logger) {
+async function subtitleResponse(route, providers, services, env, httpClient, logger) {
     try {
+        if (!['movie', 'series'].includes(route.type)) {
+            return json({subtitles: []})
+        }
+
+        const isOwnId = route.id.startsWith(ADDON_PREFIX)
+        if (!isOwnId && env.SUBSOURCE_MANIFEST_URL) {
+            const result = await proxySubtitles(
+                env.SUBSOURCE_MANIFEST_URL, route.type, route.id, route.extraArgs, httpClient, logger,
+            )
+            if (result) {
+                return json(result)
+            }
+        }
+
         const parsedId = parseWorkerAddonId(route.id, providers)
-        if (!parsedId || !parsedId.videoId || !['movie', 'series'].includes(route.type)) {
+        if (!parsedId || !parsedId.videoId) {
             return json({subtitles: []})
         }
         const result = await services.getSubtitle(route.type, parsedId.videoId)
@@ -508,20 +524,24 @@ export function createWorkerHandler(options = {}) {
             if (url.pathname === '/manifest.json') {
                 const httpClient = options.httpClient ?? createFetchHttpClient(options.fetcher ?? fetch)
                 const manifest = createWorkerManifest(env)
-                const externalSources = await getExternalCatalogSources(env, httpClient, logger)
-                for (const source of externalSources) {
-                    manifest.catalogs.push(...source.catalogs.map((catalog) => ({
-                        ...catalog,
-                        name: translateCatalogName(catalog.name),
-                    })))
-                    if (source.hasMeta) {
-                        const metaResource = manifest.resources.find((r) => r?.name === 'meta')
-                        for (const prefix of source.idPrefixes) {
-                            if (metaResource && !metaResource.idPrefixes.includes(prefix)) {
-                                metaResource.idPrefixes.push(prefix)
+                try {
+                    const externalSources = await getExternalCatalogSources(env, httpClient, logger)
+                    for (const source of externalSources) {
+                        manifest.catalogs.push(...source.catalogs.map((catalog) => ({
+                            ...catalog,
+                            name: translateCatalogName(catalog.name, catalog.type),
+                        })))
+                        if (source.hasMeta) {
+                            const metaResource = manifest.resources.find((r) => r?.name === 'meta')
+                            for (const prefix of source.idPrefixes) {
+                                if (metaResource && !metaResource.idPrefixes.includes(prefix)) {
+                                    metaResource.idPrefixes.push(prefix)
+                                }
                             }
                         }
                     }
+                } catch (error) {
+                    logResourceError(logger, 'External catalogs unavailable, serving own catalogs only', error)
                 }
                 response = json(manifest)
             } else if (url.pathname === '/health') {
@@ -546,7 +566,7 @@ export function createWorkerHandler(options = {}) {
                     } else if (route.resource === 'stream') {
                         response = await streamResponse(route, providers, services, logger, httpClient)
                     } else {
-                        response = await subtitleResponse(route, providers, services, logger)
+                        response = await subtitleResponse(route, providers, services, env, httpClient, logger)
                     }
                 }
             }
