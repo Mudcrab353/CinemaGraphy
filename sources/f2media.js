@@ -82,16 +82,43 @@ function mediaUrl($element) {
     return isHttpUrl(onclickUrl) ? onclickUrl : null
 }
 
+function blockAudioType(blockElement, $) {
+    const classAttr = $(blockElement).attr('class') ?? ''
+    if (/dub/i.test(classAttr)) {
+        return 'dubbed'
+    }
+    if (/sub/i.test(classAttr)) {
+        return 'subtitled'
+    }
+    return null
+}
+
+function labeledFieldValue($, blockElement, labelPattern) {
+    let value = ''
+    $(blockElement).find('.text-muted').each((_, el) => {
+        if (labelPattern.test($(el).text())) {
+            const full = normalizeText($(el).parent().text())
+            value = normalizeText(full.replace(normalizeText($(el).text()), ''))
+        }
+    })
+    return value && value !== '—' ? value : ''
+}
+
 function parseMovieLinks($) {
     const links = []
-    $('#downloads .download-list li').each((_, item) => {
-        const quality = normalizeText($(item).find('.text[dir="ltr"]').first().text())
-        const url = mediaUrl($(item).find('a[download][href], a[onclick*="handleDownloadClick"]').first())
+    $('#downloads .download-list').each((_, block) => {
+        const audioType = blockAudioType(block, $)
+        const encoder = labeledFieldValue($, block, /انکودر/)
 
-        if (url) {
-            const titleParts = [quality, filenameFromUrl(url)].filter(Boolean)
-            links.push({url, quality: quality || null, title: titleParts.join(' - ')})
-        }
+        $(block).find('li').each((__, item) => {
+            const quality = normalizeText($(item).find('.text[dir="ltr"]').first().text())
+            const url = mediaUrl($(item).find('a[download][href], a[onclick*="handleDownloadClick"]').first())
+            if (!url) {
+                return
+            }
+            const titleParts = [quality, encoder, filenameFromUrl(url)].filter(Boolean)
+            links.push({url, quality: quality || null, audioType, title: titleParts.join(' - ')})
+        })
     })
     return uniqueLinks(links)
 }
@@ -103,28 +130,38 @@ function parseSeriesLinks($) {
             normalizeText($(seasonElement).children('button').first().text()),
             seasonIndex + 1,
         )
-        $(seasonElement).find('.series-downloaditems > .d-flex').each((episodeIndex, episodeElement) => {
-            const directLink = $(episodeElement).find('a.btn-default[href]').last()
-            const fallbackLink = $(episodeElement).find('a[onclick*="handleDownloadClick"]').first()
-            const url = mediaUrl(directLink.length ? directLink : fallbackLink)
-            const episode = numberFromText(directLink.text()) ?? episodeIndex + 1
-            if (url) {
-                const quality = normalizeText($(episodeElement).find('.text[dir="ltr"]').first().text())
-                    || extractQualityFromFilename(url)
-                    || ''
+
+        $(seasonElement).find('.download-list').each((_, block) => {
+            const audioType = blockAudioType(block, $)
+            const quality = normalizeText($(block).find('.text[dir="ltr"]').first().text())
+            const size = labeledFieldValue($, block, /حجم/)
+            const encoder = labeledFieldValue($, block, /انکودر/)
+
+            $(block).find('.series-downloaditems > .d-flex').each((episodeIndex, episodeElement) => {
+                const directLink = $(episodeElement).find('a.btn-default[href]').last()
+                const fallbackLink = $(episodeElement).find('a[onclick*="handleDownloadClick"]').first()
+                const url = mediaUrl(directLink.length ? directLink : fallbackLink)
+                const episode = numberFromText(directLink.text()) ?? episodeIndex + 1
+                if (!url) {
+                    return
+                }
+                const resolvedQuality = quality || extractQualityFromFilename(url) || ''
                 const titleParts = [
                     `S${season}E${String(episode).padStart(2, '0')}`,
-                    quality,
+                    resolvedQuality,
+                    encoder,
                     filenameFromUrl(url),
                 ].filter(Boolean)
                 links.push({
                     season,
                     episode,
-                    quality: quality || null,
+                    quality: resolvedQuality || null,
+                    size: size || null,
+                    audioType,
                     url,
                     title: titleParts.join(' - '),
                 })
-            }
+            })
         })
     })
     return uniqueLinks(links, (item) => `${item.season}:${item.episode}:${item.url}`)
