@@ -4,7 +4,7 @@
   <p>افزونه‌ی استریمیو من برای فیلم، سریال، انیمه و تلویزیون زنده — چند تا سایت ایرانی و چند تا کاتالوگ خارجی، همه با هم تو یه افزونه.</p>
 
   <p>
-    <img src="https://img.shields.io/badge/version-1.3.0-blue.svg" alt="Version" />
+    <img src="https://img.shields.io/badge/version-1.4.0-blue.svg" alt="Version" />
     <img src="https://img.shields.io/badge/node-%3E%3D24.18.0-green.svg" alt="Node >=24.18.0" />
     <img src="https://img.shields.io/badge/cloudflare-workers-orange.svg" alt="Cloudflare Workers" />
     <img src="https://img.shields.io/badge/docker-ready-2496ED.svg" alt="Docker Ready" />
@@ -39,6 +39,7 @@
 | 🇮🇷 متادیتای فارسی (TMDB) | پوستر، توضیحات و ژانر به فارسی برای فیلم/سریال‌ها (نیاز به `TMDB_API_KEY`) |
 | 📡 M3U دلخواه | به‌جای یه لیست پیش‌فرض، لینک M3U و اسم دلخواه خودت رو بده |
 | 💬 زیرنویس SubSource | لینک شخصی‌سازی‌شده‌ی خودتو بده، اولویت با زیرنویس فارسی |
+| 🎭 کاتالوگ TMDB | متادیتای غنی (پوستر/امتیاز/ژانر با هر زبانی که خودت رو صفحه‌ی کانفیگش انتخاب کنی) |
 | 🌐 پروکسی تصویر داخلی | برای دور زدن محدودیت دسترسی به متادیتا |
 
 ---
@@ -129,6 +130,7 @@ pnpm start
 | `CATALOG101_MANIFEST_URL` | اختیاری | لینک منیفست شخصی‌سازی‌شده‌ت از [101Catalogs](https://config.101catalogs.xyz/) |
 | `CATALOG_ANIME_MANIFEST_URL` | اختیاری | لینک منیفست شخصی‌سازی‌شده‌ت از [Anime Catalogs](https://1fe84bc728af-stremio-anime-catalogs.baby-beamup.club/configure) |
 | `SUBSOURCE_MANIFEST_URL` | اختیاری | لینک منیفست شخصی‌سازی‌شده‌ت از [SubSource](https://subsource.net/) — اگه خالی باشه، زیرنویس از OpenSubtitles میاد |
+| `CATALOG_TMDB_MANIFEST_URL` | اختیاری | لینک منیفست شخصی‌سازی‌شده‌ت از [The Movie Database Addon](https://94c8cb9f702d-tmdb-addon.baby-beamup.club/configure) — قبل از Anime Catalogs نشون داده میشه |
 | `TMDB_API_KEY` | اختیاری | بهبود تشخیص IMDb ID + پوستر/توضیحات/ژانر فارسی برای فیلم و سریال (Secret) |
 | `PROXY_ENABLE` | اختیاری | `true`/`false` — فقط لازم اگه سرور خودت داخل ایرانه |
 | `LOG_LEVEL` | اختیاری | `error` / `warn` / `info` / `debug` |
@@ -195,6 +197,11 @@ cinemagraphy/
 - تشخیص کیفیت/انکد حالا از رو اسم واقعی فایل تو URL هم انجام میشه (برای همه‌ی پروایدرها، نه فقط یکی)
 - خط کیفیت به دو خط جدا («کیفیت» و «انکد») تقسیم شد تا رو گوشی بهم نریزه
 - منیفست حالا در برابر خطای موقت یه کاتالوگ خارجی مقاومه — یه سرویس قطع باشه، بقیه‌چیز درست کار می‌کنه
+
+**نسخه‌ی ۱.۴:**
+- بازنویسی کامل پارسر F2Media برای تم جدید سایتشون (ساختار HTML کاملاً عوض شده بود) — کیفیت/انکودر/صدا حالا برای سریال هم درست خونده میشه؛ حجم فیلم واقعاً تو سایتشون وجود نداره (تایید شد، نه باگ)
+- ادغام [The Movie Database Addon](https://94c8cb9f702d-tmdb-addon.baby-beamup.club/) با لینک شخصی‌سازی‌شده‌ی هرکس، قبل از Anime Catalogs
+- ایموجی منبع Cinamatic عوض شد (قبلاً با ایموجی خط «کیفیت» یکی بود)
 
 ---
 

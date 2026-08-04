@@ -12,10 +12,10 @@ import IPTV from './sources/iptv.js'
 import Peepboxtv from './sources/peepboxtv.js'
 import Serialblog from './sources/serialblog.js'
 import {ID_SEPARATOR, METADATA_SOURCE} from './sources/source.js'
-import {findExternalMetaSource, formatStreamTitle, getCinemeta, getExternalCatalogSources, getKitsuTitle, getSubtitle, getTMDBMetaFa, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxySubtitles, translateCatalogName} from './utils.js'
+import {findExternalMetaSource, formatStreamTitle, getCinemeta, getExternalCatalogSources, getKitsuTitle, getSubtitle, getTMDBMetaFa, getTMDBTitle, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxySubtitles, translateCatalogName} from './utils.js'
 
 export const ADDON_PREFIX = 'ip'
-export const ADDON_VERSION = '1.3.0'
+export const ADDON_VERSION = '1.4.0'
 
 const CATALOGS = [
     {key: 'f2media', name: 'F2Media', catalogType: 'movies'},
@@ -62,8 +62,8 @@ export function createManifest(env = process.env) {
         resources: [
             'catalog',
             {name: 'meta', types: ['series', 'movie', 'tv'], idPrefixes: [ADDON_PREFIX, 'tt']},
-            {name: 'stream', types: ['series', 'movie', 'tv'], idPrefixes: [ADDON_PREFIX, 'tt', 'kitsu:']},
-            {name: 'subtitles', types: ['series', 'movie'], idPrefixes: [ADDON_PREFIX, 'tt', 'kitsu:']},
+            {name: 'stream', types: ['series', 'movie', 'tv'], idPrefixes: [ADDON_PREFIX, 'tt', 'kitsu:', 'tmdb:']},
+            {name: 'subtitles', types: ['series', 'movie'], idPrefixes: [ADDON_PREFIX, 'tt', 'kitsu:', 'tmdb:']},
         ],
         types: ['movie', 'series', 'tv'],
     }
@@ -251,6 +251,33 @@ async function kitsuStreamResponse(type, id, providers, httpClient, logger) {
 
     // Most anime addons treat everything as a single season.
     const streams = await streamsByTitle(title, 'series', parsed.episode ? 1 : null, parsed.episode, providers)
+    return {streams}
+}
+
+function parseTmdbId(value) {
+    const match = String(value ?? '').match(/^tmdb:(\d+)(?::(\d+):(\d+))?$/)
+    if (!match) {
+        return null
+    }
+    return {
+        tmdbId: match[1],
+        season: match[2] ? Number(match[2]) : null,
+        episode: match[3] ? Number(match[3]) : null,
+    }
+}
+
+async function tmdbStreamResponse(type, id, providers, httpClient, apiKey, logger) {
+    const parsed = parseTmdbId(id)
+    if (!parsed) {
+        return {streams: []}
+    }
+
+    const title = await getTMDBTitle(type, parsed.tmdbId, httpClient, apiKey, logger)
+    if (!title) {
+        return {streams: []}
+    }
+
+    const streams = await streamsByTitle(title, type, parsed.season, parsed.episode, providers)
     return {streams}
 }
 
@@ -458,6 +485,11 @@ export function createAddon({
                     }))
                 }
                 return res.json({streams: sortByQuality(Array.isArray(streams) ? streams : [])})
+            }
+
+            if (id.startsWith('tmdb:')) {
+                const result = await tmdbStreamResponse(type, id, providers, axios, env.TMDB_API_KEY, logger)
+                return res.json(result)
             }
 
             if (id.startsWith('kitsu:')) {

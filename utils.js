@@ -263,6 +263,23 @@ export function translateCatalogName(name, type) {
     return working || typeWord || name
 }
 
+export async function getTMDBTitle(type, tmdbId, httpClient = axios, apiKey, logger = console) {
+    if (!apiKey || !tmdbId) {
+        return null
+    }
+    const kind = type === 'series' ? 'tv' : 'movie'
+    try {
+        const response = await httpClient.get(`https://api.themoviedb.org/3/${kind}/${tmdbId}`, {
+            params: {api_key: apiKey},
+            timeout: REQUEST_TIMEOUT_MS,
+        })
+        return response.data?.title || response.data?.name || null
+    } catch (error) {
+        logAxiosError(error, logger, 'Unable to get TMDB title')
+        return null
+    }
+}
+
 export async function getKitsuTitle(kitsuId, httpClient = axios, logger = console) {
     const numericId = String(kitsuId ?? '').match(/(\d+)$/)?.[1]
     if (!numericId) {
@@ -322,7 +339,7 @@ const PROVIDER_CENSORED = {
 const PROVIDER_EMOJI = {
     f2media: '📀',
     peepboxtv: '📦',
-    cinamatic: '🎞️',
+    cinamatic: '🎦',
     aslmoviez: '🎬',
     serialblog: '📺',
     digimovie: '🎥',
@@ -508,7 +525,8 @@ const EXTERNAL_CATALOGS_TTL_MS = 60 * 60 * 1_000 // 1 hour
 let externalCatalogsCache = null // {timestamp, sources}
 
 function externalManifestUrls(env) {
-    return [env.CATALOG101_MANIFEST_URL, env.CATALOG_ANIME_MANIFEST_URL].filter(Boolean)
+    return [env.CATALOG101_MANIFEST_URL, env.CATALOG_TMDB_MANIFEST_URL, env.CATALOG_ANIME_MANIFEST_URL]
+        .filter(Boolean)
 }
 
 export async function getExternalCatalogSources(env = {}, httpClient = axios, logger = console) {
