@@ -12,10 +12,10 @@ import IPTV from './sources/iptv.js'
 import Peepboxtv from './sources/peepboxtv.js'
 import Serialblog from './sources/serialblog.js'
 import {ID_SEPARATOR, METADATA_SOURCE} from './sources/source.js'
-import {findExternalMetaSource, formatStreamTitle, getCinemeta, getExternalCatalogSources, getSubtitle, getTMDBMetaFa, modifyUrls, proxyExternalCatalog, proxyExternalMeta} from './utils.js'
+import {findExternalMetaSource, formatStreamTitle, getCinemeta, getExternalCatalogSources, getKitsuTitle, getSubtitle, getTMDBMetaFa, modifyUrls, proxyExternalCatalog, proxyExternalMeta, translateCatalogName} from './utils.js'
 
 export const ADDON_PREFIX = 'ip'
-export const ADDON_VERSION = '1.0.0'
+export const ADDON_VERSION = '1.2.0'
 
 const CATALOGS = [
     {key: 'f2media', name: 'F2Media', catalogType: 'movies'},
@@ -62,7 +62,7 @@ export function createManifest(env = process.env) {
         resources: [
             'catalog',
             {name: 'meta', types: ['series', 'movie', 'tv'], idPrefixes: [ADDON_PREFIX, 'tt']},
-            {name: 'stream', types: ['series', 'movie', 'tv'], idPrefixes: [ADDON_PREFIX, 'tt']},
+            {name: 'stream', types: ['series', 'movie', 'tv'], idPrefixes: [ADDON_PREFIX, 'tt', 'kitsu:']},
             {name: 'subtitles', types: ['series', 'movie'], idPrefixes: [ADDON_PREFIX]},
         ],
         types: ['movie', 'series', 'tv'],
@@ -169,19 +169,8 @@ async function getCinemetaName(type, imdbId, services) {
     return cinemeta?.meta?.name ?? null
 }
 
-async function imdbStreamResponse(type, id, providers, services, logger) {
-    const parsed = parseImdbId(id)
-    if (!parsed) {
-        return {streams: []}
-    }
-
-    const title = await getCinemetaName(type, parsed.imdbId, services)
-    if (!title) {
-        return {streams: []}
-    }
-
+async function streamsByTitle(title, type, season, episode, providers) {
     const cleanTitle = title.replace(/[؀-ۿݐ-ݿࢠ-ࣿﭐ-﷿ﹰ-﻿]/g, '').trim().toLowerCase()
-    const proto = String(id ?? '')
 
     const settled = await Promise.allSettled(
         providers.map(async (provider) => {
@@ -199,9 +188,7 @@ async function imdbStreamResponse(type, id, providers, services, logger) {
                 return {key: provider.key, streams: []}
             }
 
-            const videoId = parsed.season && parsed.episode
-                ? `${parsed.imdbId}:${parsed.season}:${parsed.episode}`
-                : null
+            const videoId = season && episode ? `${match.id}:${season}:${episode}` : null
             const links = provider.getLinks(match.type, videoId, movieData)
 
             return {
@@ -220,13 +207,50 @@ async function imdbStreamResponse(type, id, providers, services, logger) {
         }),
     )
 
-    const allStreams = sortByQuality(
+    return sortByQuality(
         settled
             .filter((r) => r.status === 'fulfilled')
-            .flatMap((r) => r.value.streams)
+            .flatMap((r) => r.value.streams),
     )
+}
 
-    return {streams: allStreams}
+async function imdbStreamResponse(type, id, providers, services, logger) {
+    const parsed = parseImdbId(id)
+    if (!parsed) {
+        return {streams: []}
+    }
+
+    const title = await getCinemetaName(type, parsed.imdbId, services)
+    if (!title) {
+        return {streams: []}
+    }
+
+    const streams = await streamsByTitle(title, type, parsed.season, parsed.episode, providers)
+    return {streams}
+}
+
+function parseKitsuId(value) {
+    const match = String(value ?? '').match(/^kitsu:(\d+)(?::(\d+))?$/)
+    if (!match) {
+        return null
+    }
+    return {kitsuId: `kitsu:${match[1]}`, episode: match[2] ? Number(match[2]) : null}
+}
+
+async function kitsuStreamResponse(type, id, providers, httpClient, logger) {
+    const parsed = parseKitsuId(id)
+    if (!parsed) {
+        return {streams: []}
+    }
+
+    const title = await getKitsuTitle(parsed.kitsuId, httpClient, logger)
+    if (!title) {
+        return {streams: []}
+    }
+
+    // Most anime addons treat everything as a single season.
+    const streams = await streamsByTitle(title, 'series', parsed.episode ? 1 : null, parsed.episode, providers)
+    return {streams}
 }
 
 async function getProviderMetadata(provider, type, itemId, movieData, services) {
@@ -253,7 +277,10 @@ export function createAddon({
         const manifest = createManifest(env)
         const externalSources = await getExternalCatalogSources(env, axios, logger)
         for (const source of externalSources) {
-            manifest.catalogs.push(...source.catalogs)
+            manifest.catalogs.push(...source.catalogs.map((catalog) => ({
+                ...catalog,
+                name: translateCatalogName(catalog.name),
+            })))
             if (source.hasMeta) {
                 const metaResource = manifest.resources.find((r) => r?.name === 'meta')
                 for (const prefix of source.idPrefixes) {
@@ -425,6 +452,11 @@ export function createAddon({
                     }))
                 }
                 return res.json({streams: sortByQuality(Array.isArray(streams) ? streams : [])})
+            }
+
+            if (id.startsWith('kitsu:')) {
+                const result = await kitsuStreamResponse(type, id, providers, axios, logger)
+                return res.json(result)
             }
 
             if (!/^tt/.test(id)) {

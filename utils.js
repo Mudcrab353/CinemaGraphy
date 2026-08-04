@@ -155,6 +155,112 @@ export async function getTMDBMetaFa(type, imdbId, httpClient = axios, apiKey, lo
     }
 }
 
+// ---------------------------------------------------------------------------
+// Persian catalog-name translation for external aggregated catalogs
+// (101Catalogs, Anime Catalogs, ...). Pattern-based rather than a fixed
+// per-name dictionary, so it covers catalogs we haven't seen yet too.
+// ---------------------------------------------------------------------------
+
+const CATALOG_NAME_PHRASES = [
+    // Longer / more specific phrases first so they win over single-word matches.
+    [/top\s*all[\s-]*time/i, 'برترین‌های همه‌ی دوران'],
+    [/all[\s-]*time\s*top/i, 'برترین‌های همه‌ی دوران'],
+    [/top\s*airing/i, 'بهترین‌های در حال پخش'],
+    [/currently\s*airing/i, 'در حال پخش'],
+    [/now\s*playing/i, 'در حال اکران'],
+    [/new\s*releases?/i, 'تازه‌ها'],
+    [/coming\s*soon/i, 'به‌زودی'],
+    [/most\s*popular/i, 'محبوب‌ترین‌ها'],
+    [/critically\s*acclaimed/i, 'مورد تحسین منتقدان'],
+    [/award[\s-]*winning/i, 'برنده‌ی جایزه'],
+    [/hidden\s*gems?/i, 'گوهرهای ناشناخته'],
+    [/sci-?fi/i, 'علمی‌تخیلی'],
+    [/live\s*action/i, 'لایو اکشن'],
+
+    // Genres / origins
+    [/\bkorean\b/i, 'کره‌ای'],
+    [/\bchinese\b/i, 'چینی'],
+    [/\bjapanese\b/i, 'ژاپنی'],
+    [/\bturkish\b/i, 'ترکی'],
+    [/\bindian\b/i, 'هندی'],
+    [/\bbollywood\b/i, 'بالیوود'],
+    [/\banimation\b/i, 'انیمیشن'],
+    [/\banime\b/i, 'انیمه'],
+    [/\bkids?\b/i, 'کودک'],
+    [/\bfamily\b/i, 'خانوادگی'],
+    [/\bdocumentary\b/i, 'مستند'],
+    [/\bcrime\b/i, 'جنایی'],
+    [/\bfantasy\b/i, 'فانتزی'],
+    [/\badventure\b/i, 'ماجراجویی'],
+    [/\bwar\b/i, 'جنگی'],
+    [/\bwestern\b/i, 'وسترن'],
+    [/\bmusical\b/i, 'موزیکال'],
+    [/\bmusic\b/i, 'موسیقی'],
+    [/\bsports?\b/i, 'ورزشی'],
+    [/\bmystery\b/i, 'رازآلود'],
+    [/\bbiography\b/i, 'بیوگرافی'],
+    [/\bhistory\b/i, 'تاریخی'],
+    [/\bhorror\b/i, 'ترسناک'],
+    [/\bromance\b/i, 'عاشقانه'],
+    [/\bthriller\b/i, 'هیجان‌انگیز'],
+    [/\baction\b/i, 'اکشن'],
+    [/\bcomedy\b/i, 'کمدی'],
+    [/\bdrama\b/i, 'درام'],
+
+    // Modifiers
+    [/\btop\b/i, 'برترین'],
+    [/\bbest\b/i, 'بهترین'],
+    [/\bpopular\b/i, 'محبوب'],
+    [/\btrending\b/i, 'پرطرفدار'],
+    [/\bnew\b/i, 'جدید'],
+    [/\blatest\b/i, 'آخرین'],
+    [/\bupcoming\b/i, 'به‌زودی'],
+    [/\bairing\b/i, 'در حال پخش'],
+    [/\bongoing\b/i, 'در حال پخش'],
+    [/\bcompleted\b/i, 'تمام‌شده'],
+    [/\bclassic\b/i, 'کلاسیک'],
+    [/\brated\b/i, 'امتیاز'],
+    [/\brating[s]?\b/i, 'امتیاز'],
+
+    // Content types
+    [/\bmovies?\b/i, 'فیلم'],
+    [/\bseries\b/i, 'سریال'],
+    [/\btv\s*shows?\b/i, 'سریال'],
+    [/\btv\b/i, 'تلویزیونی'],
+]
+
+export function translateCatalogName(name) {
+    if (!name) {
+        return name
+    }
+    let result = name
+    for (const [pattern, replacement] of CATALOG_NAME_PHRASES) {
+        result = result.replace(pattern, replacement)
+    }
+    // Tidy up leftover separators from partial translations (e.g. "Korean - Series").
+    return result
+        .replace(/\s*-\s*/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+}
+
+export async function getKitsuTitle(kitsuId, httpClient = axios, logger = console) {
+    const numericId = String(kitsuId ?? '').match(/(\d+)$/)?.[1]
+    if (!numericId) {
+        return null
+    }
+    try {
+        const response = await httpClient.get(`https://kitsu.io/api/edge/anime/${numericId}`, {
+            timeout: REQUEST_TIMEOUT_MS,
+        })
+        const attrs = response.data?.data?.attributes
+        return attrs?.canonicalTitle || attrs?.titles?.en || attrs?.titles?.en_jp || null
+    } catch (error) {
+        logAxiosError(error, logger, 'Unable to get Kitsu title')
+        return null
+    }
+}
+
 export const PROVIDER_LABELS = {
     f2media: 'F2Media',
     peepboxtv: 'PeepBoxTv',
@@ -224,7 +330,7 @@ function detectSource(text) {
     if (/blu-?ray|bdrip|brrip/i.test(text)) {
         return 'BluRay'
     }
-    if (/web-?dl/i.test(text)) {
+    if (/web[.\-]?dl/i.test(text)) {
         return 'WEB-DL'
     }
     if (/webrip/i.test(text)) {
@@ -257,7 +363,7 @@ function detectCodec(text) {
 
 function detectAudio(text, audioTypeHint) {
     const hasDub = /دوبله/i.test(text) || /\bdub(bed)?\b/i.test(text)
-    const hasSub = /زیرنویس/i.test(text) || /\bsub(bed|title)?\b/i.test(text)
+    const hasSub = /زیرنویس/i.test(text) || /\bsub(bed|title)?\b/i.test(text) || /soft\s?sub|hard\s?sub/i.test(text)
     const isDual = /dual\s?audio/i.test(text) || (hasDub && hasSub)
 
     if (audioTypeHint === 'dubbed' || (hasDub && !isDual)) {
@@ -270,6 +376,15 @@ function detectAudio(text, audioTypeHint) {
         return '🗣️💬 صدا: دوبله + زیرنویس فارسی'
     }
     return null
+}
+
+// Some providers also offer a standalone dubbed-audio-track download (no
+// video at all) meant to be muxed with a copy of the movie you already have.
+// These need a distinct, unambiguous label so they don't look like a normal
+// video stream.
+function isAudioOnlyFile(text) {
+    return /فایل\s*صوتی|صوت\s*(جدا|خالی)|audio\s*only|dubbed\s*audio\s*track|\.(mp3|ac3|aac|flac|wav|m4a)(\?|$|\s)/i
+        .test(text)
 }
 
 /**
@@ -290,6 +405,18 @@ export function formatStreamTitle({providerKey, quality, size, audioType, extraT
     const providerLabel = PROVIDER_LABELS[providerKey] || providerKey || 'Unknown'
     const emoji = PROVIDER_EMOJI[providerKey] || '📡'
     const combinedText = [quality, extraText].filter(Boolean).join(' ')
+    const isCensored = PROVIDER_CENSORED[providerKey] === true
+    const statusLine = isCensored ? '⚠️ وضعیت: سانسور شده' : '✅ وضعیت: سانسور نشده'
+
+    if (isAudioOnlyFile(combinedText)) {
+        const lines = [
+            `${emoji} منبع: ${ltr(providerLabel)}`,
+            '🎧 فقط فایل صوتی: دوبله فارسی (بدون تصویر)',
+            size ? `💾 حجم: ${ltr(size)}` : null,
+            statusLine,
+        ].filter(Boolean)
+        return lines.join('\n')
+    }
 
     const resolution = detectResolution(combinedText)
     const extras = detectExtras(combinedText)
@@ -298,8 +425,6 @@ export function formatStreamTitle({providerKey, quality, size, audioType, extraT
     const audio = detectAudio(combinedText, audioType)
 
     const qualityLine = [resolution, ...extras, source, codec].filter(Boolean).join(' • ')
-    const isCensored = PROVIDER_CENSORED[providerKey] === true
-    const statusLine = isCensored ? '⚠️ وضعیت: سانسور شده' : '✅ وضعیت: سانسور نشده'
 
     const lines = [
         `${emoji} منبع: ${ltr(providerLabel)}`,
