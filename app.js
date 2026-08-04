@@ -12,10 +12,10 @@ import IPTV from './sources/iptv.js'
 import Peepboxtv from './sources/peepboxtv.js'
 import Serialblog from './sources/serialblog.js'
 import {ID_SEPARATOR, METADATA_SOURCE} from './sources/source.js'
-import {findExternalMetaSource, formatStreamTitle, getCinemeta, getExternalCatalogSources, getKitsuTitle, getSubtitle, getTMDBMetaFa, modifyUrls, proxyExternalCatalog, proxyExternalMeta, translateCatalogName} from './utils.js'
+import {findExternalMetaSource, formatStreamTitle, getCinemeta, getExternalCatalogSources, getKitsuTitle, getSubtitle, getTMDBMetaFa, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxySubtitles, translateCatalogName} from './utils.js'
 
 export const ADDON_PREFIX = 'ip'
-export const ADDON_VERSION = '1.2.0'
+export const ADDON_VERSION = '1.3.0'
 
 const CATALOGS = [
     {key: 'f2media', name: 'F2Media', catalogType: 'movies'},
@@ -63,7 +63,7 @@ export function createManifest(env = process.env) {
             'catalog',
             {name: 'meta', types: ['series', 'movie', 'tv'], idPrefixes: [ADDON_PREFIX, 'tt']},
             {name: 'stream', types: ['series', 'movie', 'tv'], idPrefixes: [ADDON_PREFIX, 'tt', 'kitsu:']},
-            {name: 'subtitles', types: ['series', 'movie'], idPrefixes: [ADDON_PREFIX]},
+            {name: 'subtitles', types: ['series', 'movie'], idPrefixes: [ADDON_PREFIX, 'tt', 'kitsu:']},
         ],
         types: ['movie', 'series', 'tv'],
     }
@@ -201,6 +201,7 @@ async function streamsByTitle(title, type, season, episode, providers) {
                         size: link.size,
                         audioType: link.audioType,
                         extraText: link.title,
+                        url: link.url,
                     }),
                 })),
             }
@@ -275,20 +276,24 @@ export function createAddon({
 
     addon.get('/manifest.json', async (req, res) => {
         const manifest = createManifest(env)
-        const externalSources = await getExternalCatalogSources(env, axios, logger)
-        for (const source of externalSources) {
-            manifest.catalogs.push(...source.catalogs.map((catalog) => ({
-                ...catalog,
-                name: translateCatalogName(catalog.name),
-            })))
-            if (source.hasMeta) {
-                const metaResource = manifest.resources.find((r) => r?.name === 'meta')
-                for (const prefix of source.idPrefixes) {
-                    if (metaResource && !metaResource.idPrefixes.includes(prefix)) {
-                        metaResource.idPrefixes.push(prefix)
+        try {
+            const externalSources = await getExternalCatalogSources(env, axios, logger)
+            for (const source of externalSources) {
+                manifest.catalogs.push(...source.catalogs.map((catalog) => ({
+                    ...catalog,
+                    name: translateCatalogName(catalog.name, catalog.type),
+                })))
+                if (source.hasMeta) {
+                    const metaResource = manifest.resources.find((r) => r?.name === 'meta')
+                    for (const prefix of source.idPrefixes) {
+                        if (metaResource && !metaResource.idPrefixes.includes(prefix)) {
+                            metaResource.idPrefixes.push(prefix)
+                        }
                     }
                 }
             }
+        } catch (error) {
+            logAxiosError(error, logger, 'External catalogs unavailable, serving own catalogs only')
         }
         res.json(manifest)
     })
@@ -448,6 +453,7 @@ export function createAddon({
                             size: link.size,
                             audioType: link.audioType,
                             extraText: link.title,
+                        url: link.url,
                         }),
                     }))
                 }
@@ -473,8 +479,22 @@ export function createAddon({
 
     const subtitleHandler = async (req, res) => {
         try {
+            if (!['movie', 'series'].includes(req.params.type)) {
+                return res.json({subtitles: []})
+            }
+
+            const isOwnId = req.params.id.startsWith(ADDON_PREFIX)
+            if (!isOwnId && env.SUBSOURCE_MANIFEST_URL) {
+                const result = await proxySubtitles(
+                    env.SUBSOURCE_MANIFEST_URL, req.params.type, req.params.id, req.params.extraArgs, axios, logger,
+                )
+                if (result) {
+                    return res.json(result)
+                }
+            }
+
             const parsedId = parseAddonId(req.params.id, providers)
-            if (!parsedId || !parsedId.videoId || !['movie', 'series'].includes(req.params.type)) {
+            if (!parsedId || !parsedId.videoId) {
                 return res.json({subtitles: []})
             }
             const result = await services.getSubtitle(req.params.type, parsedId.videoId)

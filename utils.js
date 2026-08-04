@@ -161,12 +161,20 @@ export async function getTMDBMetaFa(type, imdbId, httpClient = axios, apiKey, lo
 // per-name dictionary, so it covers catalogs we haven't seen yet too.
 // ---------------------------------------------------------------------------
 
+const CATALOG_BRAND_STRIP_RE = /\b(myanimelist|anidb|anilist|anisearch|livechart(\.me)?|notify\.moe|kitsu|rpdb)\b/gi
+
+const CATALOG_TYPE_WORD = {movie: 'فیلم', series: 'سریال', tv: 'تلویزیونی'}
+
+// High-priority exact-phrase overrides (checked before the generic word-by-word
+// pass) for names we know the wording of ahead of time.
+const CATALOG_EXACT_PHRASES = [
+    [/top[\s-]*airing/i, 'بهترین انیمه‌های در حال پخش'],
+    [/currently[\s-]*airing/i, 'انیمه‌های در حال پخش'],
+    [/top[\s-]*all[\s-]*time/i, 'برترین انیمه‌های همه‌ی دوران'],
+    [/all[\s-]*time[\s-]*top/i, 'برترین انیمه‌های همه‌ی دوران'],
+]
+
 const CATALOG_NAME_PHRASES = [
-    // Longer / more specific phrases first so they win over single-word matches.
-    [/top\s*all[\s-]*time/i, 'برترین‌های همه‌ی دوران'],
-    [/all[\s-]*time\s*top/i, 'برترین‌های همه‌ی دوران'],
-    [/top\s*airing/i, 'بهترین‌های در حال پخش'],
-    [/currently\s*airing/i, 'در حال پخش'],
     [/now\s*playing/i, 'در حال اکران'],
     [/new\s*releases?/i, 'تازه‌ها'],
     [/coming\s*soon/i, 'به‌زودی'],
@@ -221,27 +229,38 @@ const CATALOG_NAME_PHRASES = [
     [/\bclassic\b/i, 'کلاسیک'],
     [/\brated\b/i, 'امتیاز'],
     [/\brating[s]?\b/i, 'امتیاز'],
-
-    // Content types
-    [/\bmovies?\b/i, 'فیلم'],
-    [/\bseries\b/i, 'سریال'],
-    [/\btv\s*shows?\b/i, 'سریال'],
-    [/\btv\b/i, 'تلویزیونی'],
 ]
 
-export function translateCatalogName(name) {
+export function translateCatalogName(name, type) {
     if (!name) {
         return name
     }
-    let result = name
-    for (const [pattern, replacement] of CATALOG_NAME_PHRASES) {
-        result = result.replace(pattern, replacement)
+
+    let working = name.replace(CATALOG_BRAND_STRIP_RE, ' ')
+
+    for (const [pattern, replacement] of CATALOG_EXACT_PHRASES) {
+        if (pattern.test(working)) {
+            return replacement
+        }
     }
-    // Tidy up leftover separators from partial translations (e.g. "Korean - Series").
-    return result
-        .replace(/\s*-\s*/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim()
+
+    for (const [pattern, replacement] of CATALOG_NAME_PHRASES) {
+        working = working.replace(pattern, replacement)
+    }
+
+    working = working.replace(/\s*[-–—]\s*/g, ' ').replace(/\s+/g, ' ').trim()
+
+    // Safety net: never leave stray untranslated Latin words in the final name.
+    if (/[a-z]/i.test(working)) {
+        working = working.replace(/[a-z][a-z0-9.'&]*/gi, '').replace(/\s+/g, ' ').trim()
+    }
+
+    const typeWord = CATALOG_TYPE_WORD[type]
+    if (typeWord && !working.includes(typeWord) && !working.includes('انیمه')) {
+        working = working ? `${typeWord}‌های ${working}` : typeWord
+    }
+
+    return working || typeWord || name
 }
 
 export async function getKitsuTitle(kitsuId, httpClient = axios, logger = console) {
@@ -258,6 +277,26 @@ export async function getKitsuTitle(kitsuId, httpClient = axios, logger = consol
     } catch (error) {
         logAxiosError(error, logger, 'Unable to get Kitsu title')
         return null
+    }
+}
+
+// User-provided SubSource subtitle addon (subsource.net) — each self-hoster
+// configures SUBSOURCE_MANIFEST_URL with their own personalized manifest link
+// (generated on subsource's own configure page, language preference baked
+// into the URL itself), we just proxy /subtitles requests straight through.
+export async function proxySubtitles(manifestUrl, type, id, extraPath, httpClient = axios, logger = console) {
+    if (!manifestUrl) {
+        return null
+    }
+    const baseUrl = manifestUrl.replace(/\/manifest\.json.*$/, '')
+    const suffix = extraPath ? `/${extraPath}` : ''
+    const url = `${baseUrl}/subtitles/${type}/${encodeURIComponent(id)}${suffix}.json`
+    try {
+        const response = await httpClient.get(url, {timeout: REQUEST_TIMEOUT_MS})
+        return response.data ?? {subtitles: []}
+    } catch (error) {
+        logAxiosError(error, logger, 'SubSource subtitle proxy failed')
+        return {subtitles: []}
     }
 }
 
@@ -401,10 +440,24 @@ function ltr(text) {
     return text ? `${LRI}${text}${PDI}` : text
 }
 
-export function formatStreamTitle({providerKey, quality, size, audioType, extraText} = {}) {
+// Almost every provider's actual filename (visible in the download URL) carries
+// far more detail than the short on-page label — pull it in as extra
+// detection text for every provider, universally, not just the ones whose
+// scraper happens to capture it explicitly.
+function filenameTextFromUrl(url) {
+    try {
+        const {pathname} = new URL(url)
+        const raw = decodeURIComponent(pathname.split('/').filter(Boolean).pop() ?? '')
+        return raw.replace(/\.[a-z0-9]{2,4}$/i, '').replace(/[._]+/g, ' ')
+    } catch {
+        return ''
+    }
+}
+
+export function formatStreamTitle({providerKey, quality, size, audioType, extraText, url} = {}) {
     const providerLabel = PROVIDER_LABELS[providerKey] || providerKey || 'Unknown'
     const emoji = PROVIDER_EMOJI[providerKey] || '📡'
-    const combinedText = [quality, extraText].filter(Boolean).join(' ')
+    const combinedText = [quality, extraText, filenameTextFromUrl(url)].filter(Boolean).join(' ')
     const isCensored = PROVIDER_CENSORED[providerKey] === true
     const statusLine = isCensored ? '⚠️ وضعیت: سانسور شده' : '✅ وضعیت: سانسور نشده'
 
@@ -424,11 +477,15 @@ export function formatStreamTitle({providerKey, quality, size, audioType, extraT
     const codec = detectCodec(combinedText)
     const audio = detectAudio(combinedText, audioType)
 
-    const qualityLine = [resolution, ...extras, source, codec].filter(Boolean).join(' • ')
+    // Split across two shorter lines instead of one long bullet-joined line —
+    // long single lines were wrapping awkwardly mid-way in some Stremio clients.
+    const qualityLine = [resolution, source].filter(Boolean).join(' • ')
+    const encodeLine = [...extras, codec].filter(Boolean).join(' • ')
 
     const lines = [
         `${emoji} منبع: ${ltr(providerLabel)}`,
         qualityLine ? `🎞️ کیفیت: ${ltr(qualityLine)}` : null,
+        encodeLine ? `⚙️ انکد: ${ltr(encodeLine)}` : null,
         audio,
         size ? `💾 حجم: ${ltr(size)}` : null,
         statusLine,
