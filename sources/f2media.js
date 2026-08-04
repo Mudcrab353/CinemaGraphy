@@ -60,6 +60,19 @@ function extractQualityFromFilename(url) {
     return match?.[1]?.toLowerCase() ?? null
 }
 
+function filenameFromUrl(url) {
+    try {
+        const {pathname} = new URL(url)
+        const raw = decodeURIComponent(pathname.split('/').pop() ?? '')
+        // Filenames are dot/underscore-separated (e.g. "S01E01.1080p.WEB.DL.Farsi.Sub.mkv") —
+        // turn separators into spaces so the shared quality/audio regexes (which expect
+        // word-boundary-separated tokens) can actually match them.
+        return raw.replace(/\.[a-z0-9]{2,4}$/i, '').replace(/[._]+/g, ' ')
+    } catch {
+        return ''
+    }
+}
+
 function mediaUrl($element) {
     const href = $element.attr('href')
     if (isHttpUrl(href)) {
@@ -76,8 +89,8 @@ function parseMovieLinks($) {
         const url = mediaUrl($(item).find('a[download][href], a[onclick*="handleDownloadClick"]').first())
 
         if (url) {
-            const titleParts = [quality].filter(Boolean)
-            links.push({url, title: titleParts.join(' - ')})
+            const titleParts = [quality, filenameFromUrl(url)].filter(Boolean)
+            links.push({url, quality: quality || null, title: titleParts.join(' - ')})
         }
     })
     return uniqueLinks(links)
@@ -102,6 +115,7 @@ function parseSeriesLinks($) {
                 const titleParts = [
                     `S${season}E${String(episode).padStart(2, '0')}`,
                     quality,
+                    filenameFromUrl(url),
                 ].filter(Boolean)
                 links.push({
                     season,
