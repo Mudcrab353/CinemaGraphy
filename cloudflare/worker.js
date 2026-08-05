@@ -1,6 +1,7 @@
 import Aslmoviez from '../sources/aslmoviez.js'
 import Cinamatic from '../sources/cinamatic.js'
 import Digimovie from '../sources/digimovie.js'
+import Donyayeserial from '../sources/donyayeserial.js'
 import F2Media from '../sources/f2media.js'
 import IPTV from '../sources/iptv.js'
 import Peepboxtv from '../sources/peepboxtv.js'
@@ -21,6 +22,7 @@ const CATALOGS = [
     {key: 'serialblog', name: 'SerialBlog', catalogType: 'movies'},
     {key: 'iptv', name: 'IPTV', catalogType: 'tv', searchRequired: false},
     {key: 'digimovie', name: 'DigiMovie', catalogType: 'movies'},
+    {key: 'donyayeserial', name: 'DonyayeSerial', catalogType: 'movies'},
 ]
 const CORS_HEADERS = {
     'access-control-allow-headers': 'Content-Type',
@@ -85,6 +87,7 @@ export function createWorkerProviders({env = {}, logger = console, httpClient} =
         new Serialblog(env.SERIALBLOG_BASEURL, logger, httpClient, env),
         new IPTV(null, logger, httpClient, env),
         new Digimovie(env.DIGIMOVIE_BASEURL, logger, httpClient, env),
+        new Donyayeserial(env.DONYAYESERIAL_BASEURL, logger, httpClient),
     ]
 }
 
