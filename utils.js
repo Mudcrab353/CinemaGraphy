@@ -326,6 +326,7 @@ export const PROVIDER_LABELS = {
     digimovie: 'Digimoviez',
     avamovie: 'AvaMovie',
     zardfilm: 'ZardFilm',
+    donyayeserial: 'DonyayeSerial',
 }
 
 // Whether each provider is known to censor content (based on the site's own
@@ -344,6 +345,7 @@ const PROVIDER_EMOJI = {
     serialblog: '📺',
     digimovie: '🎥',
     avamovie: '🍿',
+    donyayeserial: '🌍',
 }
 
 const RESOLUTION_PATTERNS = [
