@@ -3,7 +3,6 @@ import Cinamatic from '../sources/cinamatic.js'
 import Digimovie from '../sources/digimovie.js'
 import Donyayeserial from '../sources/donyayeserial.js'
 import F2Media from '../sources/f2media.js'
-import IPTV from '../sources/iptv.js'
 import Peepboxtv from '../sources/peepboxtv.js'
 import Serialblog from '../sources/serialblog.js'
 import {ID_SEPARATOR, METADATA_SOURCE} from '../sources/source.js'
@@ -12,7 +11,7 @@ import {createFetchHttpClient} from './http-client.js'
 import {createWorkerProxyConfig, handleProxyRequest} from './proxy.js'
 
 const ADDON_PREFIX = 'ip'
-const ADDON_VERSION = '1.5.0'
+const ADDON_VERSION = '1.6.0'
 
 const CATALOGS = [
     {key: 'f2media', name: 'F2Media', catalogType: 'movies'},
@@ -20,7 +19,6 @@ const CATALOGS = [
     {key: 'cinamatic', name: 'Cinamatic', catalogType: 'movies'},
     {key: 'aslmoviez', name: 'AslMoviez', catalogType: 'movies'},
     {key: 'serialblog', name: 'SerialBlog', catalogType: 'movies'},
-    {key: 'iptv', name: 'IPTV', catalogType: 'tv', searchRequired: false},
     {key: 'digimovie', name: 'DigiMovie', catalogType: 'movies'},
     {key: 'donyayeserial', name: 'DonyayeSerial', catalogType: 'movies'},
 ]
@@ -53,21 +51,15 @@ export function createWorkerManifest(env = {}) {
         description: 'سینماگرافی — دانلود و تماشای فیلم و سریال از منابع ایرانی و بین‌المللی.',
         logo: 'https://raw.githubusercontent.com/TheNerdCow/CinemaGraphy/refs/heads/master/logo.png',
         name: `سینماگرافی${developmentSuffix}`,
-        catalogs: CATALOGS
-            .filter((cfg) => cfg.key !== 'iptv' || env.IPTV_M3U_URL)
-            .flatMap((cfg) => {
-                const isSearchable = cfg.searchRequired !== false
-                const types = cfg.catalogType === 'tv' ? ['tv'] : ['movie', 'series']
-                const displayName = cfg.key === 'iptv' ? (env.IPTV_NAME || cfg.name) : cfg.name
-                return types.map((type) => ({
-                    name: cfg.catalogType === 'tv' ? displayName : `${displayName}${developmentSuffix}`,
-                    type,
-                    id: `${cfg.key}_${cfg.catalogType === 'tv' ? 'tv' : (type === 'movie' ? 'movies' : 'series')}`,
-                    extra: isSearchable
-                        ? [{name: 'search', isRequired: true}]
-                        : [{name: 'skip', isRequired: false}, {name: 'search', isRequired: false}],
-                }))
-            }),
+        catalogs: CATALOGS.flatMap((cfg) => {
+            const types = cfg.catalogType === 'tv' ? ['tv'] : ['movie', 'series']
+            return types.map((type) => ({
+                name: `${cfg.name}${developmentSuffix}`,
+                type,
+                id: `${cfg.key}_${cfg.catalogType === 'tv' ? 'tv' : (type === 'movie' ? 'movies' : 'series')}`,
+                extra: [{name: 'search', isRequired: true}],
+            }))
+        }),
         resources: [
             'catalog',
             {name: 'meta', types: ['series', 'movie', 'tv'], idPrefixes: [ADDON_PREFIX, 'tt']},
@@ -85,7 +77,6 @@ export function createWorkerProviders({env = {}, logger = console, httpClient} =
         new Cinamatic(env.CINAMATIC_BASEURL, logger, httpClient, env),
         new Aslmoviez(env.ASLMOVIEZ_BASEURL, logger, httpClient, env),
         new Serialblog(env.SERIALBLOG_BASEURL, logger, httpClient, env),
-        new IPTV(null, logger, httpClient, env),
         new Digimovie(env.DIGIMOVIE_BASEURL, logger, httpClient, env),
         new Donyayeserial(env.DONYAYESERIAL_BASEURL, logger, httpClient),
     ]
@@ -228,30 +219,15 @@ async function catalogResponse(route, providers, logger, env = {}, httpClient) {
             return json({metas: []})
         }
 
-        const cfg = CATALOGS.find((c) => c.key === provider.key)
-        const isSearchable = cfg ? cfg.searchRequired !== false : true
         const extraQuery = new URLSearchParams(route.extraArgs ?? '')
         const search = extraQuery.get('search')?.trim()
-
-        if (isSearchable) {
-            if (!search || !['movie', 'series'].includes(route.type)) {
-                return json({metas: []})
-            }
-            const results = await provider.search(search)
-            const metas = (Array.isArray(results) ? results : [])
-                .filter((item) => item?.id != null && item.type === route.type)
-                .map((item) => ({...item, id: `${ADDON_PREFIX}${provider.providerID}${item.id}`}))
-            return json({metas})
-        }
-
-        if (route.type !== 'tv') {
+        if (!search || !['movie', 'series'].includes(route.type)) {
             return json({metas: []})
         }
 
-        const extraArgs = Object.fromEntries(extraQuery)
-        const results = await provider.getCatalog(route.type, extraArgs)
+        const results = await provider.search(search)
         const metas = (Array.isArray(results) ? results : [])
-            .filter((item) => item?.id != null)
+            .filter((item) => item?.id != null && item.type === route.type)
             .map((item) => ({...item, id: `${ADDON_PREFIX}${provider.providerID}${item.id}`}))
         return json({metas})
     } catch (error) {
