@@ -6,12 +6,12 @@ import F2Media from '../sources/f2media.js'
 import Peepboxtv from '../sources/peepboxtv.js'
 import Serialblog from '../sources/serialblog.js'
 import {ID_SEPARATOR, METADATA_SOURCE} from '../sources/source.js'
-import {findExternalMetaSource, formatStreamTitle, getExternalCatalogSources, getKitsuTitle, getTMDBMetaFa, getTMDBTitle, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxySubtitles, translateCatalogName} from '../utils.js'
+import {findExternalMetaSource, findExternalStreamSource, formatStreamTitle, getExternalCatalogSources, getKitsuTitle, getTMDBMetaFa, getTMDBTitle, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxyExternalStream, proxySubtitles, translateCatalogName} from '../utils.js'
 import {createFetchHttpClient} from './http-client.js'
 import {createWorkerProxyConfig, handleProxyRequest} from './proxy.js'
 
 const ADDON_PREFIX = 'ip'
-const ADDON_VERSION = '1.6.0'
+const ADDON_VERSION = '1.6.1'
 
 const CATALOGS = [
     {key: 'f2media', name: 'F2Media', catalogType: 'movies'},
@@ -453,6 +453,12 @@ async function streamResponse(route, providers, services, logger, httpClient, en
             return json({streams: sortByQuality(Array.isArray(streams) ? streams : [])})
         }
 
+        const externalSources = await getExternalCatalogSources(env, httpClient, logger)
+        const streamSource = findExternalStreamSource(externalSources, route.id)
+        if (streamSource) {
+            return json(await proxyExternalStream(streamSource, route.type, route.id, route.extraArgs, httpClient, logger))
+        }
+
         if (route.id.startsWith('tmdb:')) {
             return await tmdbStreamResponse(route.type, route.id, providers, httpClient, env.TMDB_API_KEY, logger)
         }
@@ -546,6 +552,14 @@ export function createWorkerHandler(options = {}) {
                             for (const prefix of source.idPrefixes) {
                                 if (metaResource && !metaResource.idPrefixes.includes(prefix)) {
                                     metaResource.idPrefixes.push(prefix)
+                                }
+                            }
+                        }
+                        if (source.hasStream) {
+                            const streamResource = manifest.resources.find((r) => r?.name === 'stream')
+                            for (const prefix of source.idPrefixes) {
+                                if (streamResource && !streamResource.idPrefixes.includes(prefix)) {
+                                    streamResource.idPrefixes.push(prefix)
                                 }
                             }
                         }
