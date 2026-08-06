@@ -4,9 +4,10 @@
   <p>افزونه‌ی استریمیو من برای فیلم، سریال، انیمه و تلویزیون زنده — چند تا سایت ایرانی و چند تا کاتالوگ خارجی، همه با هم تو یه افزونه.</p>
 
   <p>
-    <img src="https://img.shields.io/badge/version-1.4.0-blue.svg" alt="Version" />
+    <img src="https://img.shields.io/badge/version-1.5.0-blue.svg" alt="Version" />
     <img src="https://img.shields.io/badge/node-%3E%3D24.18.0-green.svg" alt="Node >=24.18.0" />
     <img src="https://img.shields.io/badge/cloudflare-workers-orange.svg" alt="Cloudflare Workers" />
+    <img src="https://img.shields.io/badge/vercel-ready-black.svg" alt="Vercel Ready" />
     <img src="https://img.shields.io/badge/docker-ready-2496ED.svg" alt="Docker Ready" />
     <img src="https://img.shields.io/badge/license-ISC-lightgrey.svg" alt="License ISC" />
   </p>
@@ -33,7 +34,7 @@
 | 📊 اطلاعات دقیق استریم | منبع، کیفیت (4K/1080p/...)، HDR/10bit/کدک، نوع صدا، حجم — با ایموجی و خوانای فارسی |
 | 🗣️ تفکیک صدا از زیرنویس | تشخیص واضح «دوبله فارسی» در برابر «زیرنویس فارسی» |
 | 📺 تلویزیون زنده | کانال‌های IPTV صداوسیما/تلوبیون |
-| ☁️ سه روش دیپلوی | Cloudflare Workers، Docker، یا هر VPS |
+| ☁️ چهار روش دیپلوی | Cloudflare Workers، Vercel، Docker، یا هر VPS |
 | 🎛️ روشن/خاموش کردن پروایدرها | با متغیرهای محیطی، بدون نیاز به تغییر کد |
 | 🧩 ادغام کاتالوگ‌های خارجی | کاتالوگ‌های [101Catalogs](https://config.101catalogs.xyz/) و Anime Catalogs داخل همین یک افزونه، بدون نصب جدا |
 | 🇮🇷 متادیتای فارسی (TMDB) | پوستر، توضیحات و ژانر به فارسی برای فیلم/سریال‌ها (نیاز به `TMDB_API_KEY`) |
@@ -55,18 +56,21 @@
 | **PeepBoxTV** | 🎬 فیلم و 📺 سریال | ✅ سانسور نشده | نیاز به اکانت و کلید API شخصی |
 | **DigiMovie** 🎁 بونوس | 🎬 فیلم و 📺 سریال | ✅ سانسور نشده | نیاز به اکانت شخصی؛ پشت محافظت Cloudflare — رو Workers ممکنه ناپایدار باشه، رو VPS/Docker پایدارتره |
 | **ZardFilm** | 🎬 فیلم و 📺 سریال | ⚠️ سانسور شده | فقط با IP ایران محتوای درست میده — رو VPS ایرانی جواب میده، رو Cloudflare Workers (IP خارج) نه |
+| **DonyayeSerial** | 🎬 فیلم و 📺 سریال | ✅ سانسور نشده | کیفیت/حجم/انکد مستقیم از متن لینک‌های دانلود خونده میشه |
 | **IPTV (M3U دلخواه)** | 📺 تلویزیون زنده | بستگی به لیست خودت داره | پیش‌فرض کاملاً خاموشه؛ لینک M3U و اسم دلخواه خودت رو بده تا فعال بشه |
 | **Anime Catalogs** 🧩 | 🎬 انیمه (کاتالوگ) | — | فقط مرور/پوستر — پخش هنوز وصل نیست (پایین توضیح داده شده) |
 
 > وضعیت سانسور هر پروایدر، آخرین خط توضیحات هر استریم هم داخل خود اپ Stremio نشون داده میشه.
 
 > **Anime Catalogs:** با آیدی داخلی `kitsu:` کار می‌کنه (حتی اگه از تنظیماتش MyAnimeList رو انتخاب کرده باشی — خود این افزونه همه‌چی رو به Kitsu نگاشت می‌کنه). عنوان انیمه از Kitsu گرفته میشه و تو پروایدرهای خودمون سرچ میشه؛ اسم کاتالوگ‌ها هم کامل فارسیه.
+>
+> ⚠️ **مشکل شناخته‌شده:** فعلاً تطبیق عنوان انیمه با نتایج پروایدرها کامل نیست — بعضی انیمه‌ها درست پیدا میشن، بعضی‌ها نه (چون عنوان Kitsu همیشه دقیقاً با چیزی که پروایدرهای فارسی روش گذاشتن یکی نیست). هنوز بررسی نشده، فعلاً همینه.
 
 ---
 
 ## 🔧 نصب / Installation
 
-سینماگرافی رو می‌شه به سه روش اجرا کرد. هرکدوم رو که می‌خوای انتخاب کن:
+سینماگرافی رو می‌شه به چهار روش اجرا کرد. هرکدوم رو که می‌خوای انتخاب کن:
 
 ### روش ۱ — Cloudflare Workers (رایگان، بدون سرور)
 
@@ -86,14 +90,23 @@ pnpm worker:deploy
 
 > **نکته:** اگه از Git integration کلادفلر استفاده می‌کنی (بدون خط‌فرمان)، فقط کافیه ریپازیتوری رو به Workers & Pages وصل کنی و متغیرها رو تو داشبورد (Settings → Variables and secrets) وارد کنی.
 
-### روش ۲ — Docker
+### روش ۲ — Vercel (رایگان، بدون سرور)
+
+1. برو `vercel.com` → **Add New** → **Project** → ریپوی `cinemagraphy` رو Import کن
+2. Framework Preset رو بذار رو `Other`؛ Build/Output Command خالی بمونه
+3. متغیرها رو تو **Settings → Environment Variables** وارد کن (همون جدول پایین)
+4. Deploy بزن
+
+آدرس نهایی: `https://<project-name>.vercel.app/manifest.json`
+
+### روش ۳ — Docker
 
 ```sh
 docker compose up -d
 ```
 پیش از اجرا، فایل `.env` رو طبق `.env.example` پر کن. سرویس رو پورت `7000` بالا میاد.
 
-### روش ۳ — روی هر VPS (بدون Docker)
+### روش ۴ — روی هر VPS (بدون Docker)
 
 ```sh
 git clone https://github.com/<YOUR_USERNAME>/cinemagraphy.git
@@ -125,6 +138,7 @@ pnpm start
 | `DIGIMOVIE_USERNAME` | همراه DigiMovie | یوزرنیم اکانت شخصی (Secret) |
 | `DIGIMOVIE_PASSWORD` | همراه DigiMovie | پسورد اکانت شخصی (Secret) |
 | `ZARDFILM_BASEURL` | فقط اگه ZardFilm می‌خوای | معمولاً `https://zardfilm.in` (نیاز به IP ایران) |
+| `DONYAYESERIAL_BASEURL` | فقط اگه DonyayeSerial می‌خوای | معمولاً `https://donyayeserial.com` |
 | `IPTV_M3U_URL` | اختیاری | لینک M3U دلخواه خودت — اگه خالی باشه، این پروایدر کلاً غیرفعاله |
 | `IPTV_NAME` | اختیاری | اسم کاتالوگ تلویزیون زنده (پیش‌فرض: `IPTV`) |
 | `CATALOG101_MANIFEST_URL` | اختیاری | لینک منیفست شخصی‌سازی‌شده‌ت از [101Catalogs](https://config.101catalogs.xyz/) |
@@ -157,14 +171,18 @@ pnpm worker:deploy   # دیپلوی روی Cloudflare Workers
 ```
 cinemagraphy/
 ├── app.js                  # نسخه‌ی Express (سرور/Docker/VPS)
+├── api/
+│   └── index.js             # نقطه‌ی ورود Vercel (همون app.js رو صدا می‌زنه)
 ├── cloudflare/              # نسخه‌ی Cloudflare Workers
 │   ├── worker.js
 │   └── http-client.js
 ├── sources/                  # هر پروایدر یک فایل
 │   ├── digimovie.js          # پروایدر DigiMovie (حل خودکار سوال امنیتی)
+│   ├── donyayeserial.js      # پروایدر DonyayeSerial
 │   └── ...
 ├── utils.js                  # فرمت‌بندی استریم (کیفیت/حجم/صدا/ایموجی)
 ├── docs/                     # مستندات فنی (اضافه‌کردن پروایدر جدید و ...)
+├── vercel.json                # تنظیمات مسیریابی Vercel
 └── wrangler.jsonc            # تنظیمات Cloudflare Workers
 ```
 
@@ -202,6 +220,10 @@ cinemagraphy/
 - بازنویسی کامل پارسر F2Media برای تم جدید سایتشون (ساختار HTML کاملاً عوض شده بود) — کیفیت/انکودر/صدا حالا برای سریال هم درست خونده میشه؛ حجم فیلم واقعاً تو سایتشون وجود نداره (تایید شد، نه باگ)
 - ادغام [The Movie Database Addon](https://94c8cb9f702d-tmdb-addon.baby-beamup.club/) با لینک شخصی‌سازی‌شده‌ی هرکس، قبل از Anime Catalogs
 - ایموجی منبع Cinamatic عوض شد (قبلاً با ایموجی خط «کیفیت» یکی بود)
+
+**نسخه‌ی ۱.۵:**
+- پروایدر جدید **DonyayeSerial** اضافه شد — بدون سانسور؛ کیفیت/حجم/انکد مستقیم از متن خودتوضیح‌ده‌ی لینک‌های دانلود سایت خونده میشه (نه حدس، نه Fallback)
+- پشتیبانی کامل از **Vercel** به‌عنوان روش چهارم دیپلوی (`api/index.js` + `vercel.json`) — بدون تغییری تو Cloudflare Workers یا نسخه‌ی محلی
 
 ---
 
