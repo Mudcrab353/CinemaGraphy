@@ -4,7 +4,7 @@
   <p>افزونه‌ی استریمیو من برای فیلم، سریال، انیمه و تلویزیون زنده — چند تا سایت ایرانی و چند تا کاتالوگ خارجی، همه با هم تو یه افزونه.</p>
 
   <p>
-    <img src="https://img.shields.io/badge/version-1.6.0-blue.svg" alt="Version" />
+    <img src="https://img.shields.io/badge/version-1.6.1-blue.svg" alt="Version" />
     <img src="https://img.shields.io/badge/node-%3E%3D24.18.0-green.svg" alt="Node >=24.18.0" />
     <img src="https://img.shields.io/badge/cloudflare-workers-orange.svg" alt="Cloudflare Workers" />
     <img src="https://img.shields.io/badge/vercel-ready-black.svg" alt="Vercel Ready" />
@@ -227,6 +227,9 @@ cinemagraphy/
 - سیستم قدیمی IPTV داخلی (M3U دستی) کامل حذف شد — کد مرده‌ای ازش باقی نموند
 - به‌جاش **IPTV Bridge** اضافه شد، دقیقاً مثل بقیه‌ی کاتالوگ‌های خارجی (۱۰۱Catalogs، TMDB، Anime Catalogs) — لینک منیفست شخصی‌سازی‌شده‌ی خودتو بده، بعد از Anime Catalogs نمایش داده میشه
 - کاتالوگ‌ها و ژانرهای IPTV Bridge کامل فارسی شدن (مثلاً «IPTV Live Channels» → «پخش زنده ماهواره»)
+
+**نسخه‌ی ۱.۶.۱ (رفع باگ):**
+- استریم‌های IPTV Bridge حالا درست نمایش داده میشن — دو مشکل بود: منیفست ما اصلاً idPrefix کانال‌های IPTV Bridge رو تو بخش stream اعلام نمی‌کرد (پس Stremio هیچ‌وقت ازمون استریم نمی‌خواست)، و حتی اگه می‌خواست، درخواست به پروایدرهای خودمون (که اصلاً محتوای زنده ندارن) می‌رفت نه به خود IPTV Bridge. الان مستقیم و بدون تغییر (Pass-through) به IPTV Bridge پروکسی میشه، دقیقاً مثل نصب مستقیم خودش
 
 ---
 

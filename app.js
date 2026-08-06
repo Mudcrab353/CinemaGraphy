@@ -12,10 +12,10 @@ import F2Media from './sources/f2media.js'
 import Peepboxtv from './sources/peepboxtv.js'
 import Serialblog from './sources/serialblog.js'
 import {ID_SEPARATOR, METADATA_SOURCE} from './sources/source.js'
-import {findExternalMetaSource, formatStreamTitle, getCinemeta, getExternalCatalogSources, getKitsuTitle, getSubtitle, getTMDBMetaFa, getTMDBTitle, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxySubtitles, translateCatalogName} from './utils.js'
+import {findExternalMetaSource, findExternalStreamSource, formatStreamTitle, getCinemeta, getExternalCatalogSources, getKitsuTitle, getSubtitle, getTMDBMetaFa, getTMDBTitle, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxyExternalStream, proxySubtitles, translateCatalogName} from './utils.js'
 
 export const ADDON_PREFIX = 'ip'
-export const ADDON_VERSION = '1.6.0'
+export const ADDON_VERSION = '1.6.1'
 
 const CATALOGS = [
     {key: 'f2media', name: 'F2Media', catalogType: 'movies'},
@@ -312,6 +312,14 @@ export function createAddon({
                         }
                     }
                 }
+                if (source.hasStream) {
+                    const streamResource = manifest.resources.find((r) => r?.name === 'stream')
+                    for (const prefix of source.idPrefixes) {
+                        if (streamResource && !streamResource.idPrefixes.includes(prefix)) {
+                            streamResource.idPrefixes.push(prefix)
+                        }
+                    }
+                }
             }
         } catch (error) {
             logAxiosError(error, logger, 'External catalogs unavailable, serving own catalogs only')
@@ -461,6 +469,13 @@ export function createAddon({
                     }))
                 }
                 return res.json({streams: sortByQuality(Array.isArray(streams) ? streams : [])})
+            }
+
+            const externalSources = await getExternalCatalogSources(env, axios, logger)
+            const streamSource = findExternalStreamSource(externalSources, id)
+            if (streamSource) {
+                const result = await proxyExternalStream(streamSource, type, id, null, axios, logger)
+                return res.json(result)
             }
 
             if (id.startsWith('tmdb:')) {
