@@ -4,7 +4,7 @@
   <p>افزونه‌ی استریمیو من برای فیلم، سریال، انیمه و تلویزیون زنده — چند تا سایت ایرانی و چند تا کاتالوگ خارجی، همه با هم تو یه افزونه.</p>
 
   <p>
-    <img src="https://img.shields.io/badge/version-1.5.0-blue.svg" alt="Version" />
+    <img src="https://img.shields.io/badge/version-1.6.0-blue.svg" alt="Version" />
     <img src="https://img.shields.io/badge/node-%3E%3D24.18.0-green.svg" alt="Node >=24.18.0" />
     <img src="https://img.shields.io/badge/cloudflare-workers-orange.svg" alt="Cloudflare Workers" />
     <img src="https://img.shields.io/badge/vercel-ready-black.svg" alt="Vercel Ready" />
@@ -19,7 +19,7 @@
 
 **سینماگرافی** فورک شخصی‌سازی‌شده‌ی [**stremio-ir-providers**](https://github.com/MrMohebi/stremio-ir-providers) هست، کار **آقای محبی (MrMohebi)**. معماری اصلی، ایده‌ی پروایدرها، همه‌ش کار ایشونه — من روش کلی چیز اضافه کردم.
 
-چیزهایی که روی نسخه‌ی اصلی اضافه/تغییر دادم: نمایش کامل‌تر اطلاعات هر استریم (کیفیت، حجم، صدا با ایموجی)، پروایدر DigiMovie با حل خودکار سوال امنیتی، ادغام دو تا کاتالوگ خارجی (101Catalogs و Anime Catalogs) با اسم‌های فارسی‌شده، متادیتای فارسی از TMDB، تلویزیون زنده با M3U دلخواه به‌جای یه لیست ثابت، و یه سری باگ‌فیکس تو نسخه‌ی Workers.
+چیزهایی که روی نسخه‌ی اصلی اضافه/تغییر دادم: نمایش کامل‌تر اطلاعات هر استریم (کیفیت، حجم، صدا با ایموجی)، پروایدر DigiMovie با حل خودکار سوال امنیتی، ادغام چند تا کاتالوگ خارجی (101Catalogs، TMDB، Anime Catalogs، IPTV Bridge) با اسم‌های فارسی‌شده، متادیتای فارسی از TMDB، و یه سری باگ‌فیکس تو نسخه‌ی Workers.
 
 مجوز همون [ISC](https://opensource.org/licenses/ISC) نسخه‌ی اصلیه — آزاد برای استفاده و تغییر، فقط یادداشت کپی‌رایت رو نگه دار.
 
@@ -33,7 +33,7 @@
 | 🎬 فیلم و سریال | پشتیبانی کامل فصل/قسمت |
 | 📊 اطلاعات دقیق استریم | منبع، کیفیت (4K/1080p/...)، HDR/10bit/کدک، نوع صدا، حجم — با ایموجی و خوانای فارسی |
 | 🗣️ تفکیک صدا از زیرنویس | تشخیص واضح «دوبله فارسی» در برابر «زیرنویس فارسی» |
-| 📺 تلویزیون زنده | کانال‌های IPTV صداوسیما/تلوبیون |
+| 📺 پخش زنده (IPTV Bridge) | لینک منیفست شخصی‌سازی‌شده‌ی خودتو بده، کاتالوگ‌هاش کامل فارسی نمایش داده میشه |
 | ☁️ چهار روش دیپلوی | Cloudflare Workers، Vercel، Docker، یا هر VPS |
 | 🎛️ روشن/خاموش کردن پروایدرها | با متغیرهای محیطی، بدون نیاز به تغییر کد |
 | 🧩 ادغام کاتالوگ‌های خارجی | کاتالوگ‌های [101Catalogs](https://config.101catalogs.xyz/) و Anime Catalogs داخل همین یک افزونه، بدون نصب جدا |
@@ -57,7 +57,6 @@
 | **DigiMovie** 🎁 بونوس | 🎬 فیلم و 📺 سریال | ✅ سانسور نشده | نیاز به اکانت شخصی؛ پشت محافظت Cloudflare — رو Workers ممکنه ناپایدار باشه، رو VPS/Docker پایدارتره |
 | **ZardFilm** | 🎬 فیلم و 📺 سریال | ⚠️ سانسور شده | فقط با IP ایران محتوای درست میده — رو VPS ایرانی جواب میده، رو Cloudflare Workers (IP خارج) نه |
 | **DonyayeSerial** | 🎬 فیلم و 📺 سریال | ✅ سانسور نشده | کیفیت/حجم/انکد مستقیم از متن لینک‌های دانلود خونده میشه |
-| **IPTV (M3U دلخواه)** | 📺 تلویزیون زنده | بستگی به لیست خودت داره | پیش‌فرض کاملاً خاموشه؛ لینک M3U و اسم دلخواه خودت رو بده تا فعال بشه |
 | **Anime Catalogs** 🧩 | 🎬 انیمه (کاتالوگ) | — | فقط مرور/پوستر — پخش هنوز وصل نیست (پایین توضیح داده شده) |
 
 > وضعیت سانسور هر پروایدر، آخرین خط توضیحات هر استریم هم داخل خود اپ Stremio نشون داده میشه.
@@ -139,12 +138,11 @@ pnpm start
 | `DIGIMOVIE_PASSWORD` | همراه DigiMovie | پسورد اکانت شخصی (Secret) |
 | `ZARDFILM_BASEURL` | فقط اگه ZardFilm می‌خوای | معمولاً `https://zardfilm.in` (نیاز به IP ایران) |
 | `DONYAYESERIAL_BASEURL` | فقط اگه DonyayeSerial می‌خوای | معمولاً `https://donyayeserial.com` |
-| `IPTV_M3U_URL` | اختیاری | لینک M3U دلخواه خودت — اگه خالی باشه، این پروایدر کلاً غیرفعاله |
-| `IPTV_NAME` | اختیاری | اسم کاتالوگ تلویزیون زنده (پیش‌فرض: `IPTV`) |
 | `CATALOG101_MANIFEST_URL` | اختیاری | لینک منیفست شخصی‌سازی‌شده‌ت از [101Catalogs](https://config.101catalogs.xyz/) |
-| `CATALOG_ANIME_MANIFEST_URL` | اختیاری | لینک منیفست شخصی‌سازی‌شده‌ت از [Anime Catalogs](https://1fe84bc728af-stremio-anime-catalogs.baby-beamup.club/configure) |
+| `CATALOG_TMDB_MANIFEST_URL` | اختیاری | لینک منیفست شخصی‌سازی‌شده‌ت از [The Movie Database Addon](https://94c8cb9f702d-tmdb-addon.baby-beamup.club/configure) — بعد از ۱۰۱Catalogs نشون داده میشه |
+| `CATALOG_ANIME_MANIFEST_URL` | اختیاری | لینک منیفست شخصی‌سازی‌شده‌ت از [Anime Catalogs](https://1fe84bc728af-stremio-anime-catalogs.baby-beamup.club/configure) — بعد از TMDB نشون داده میشه |
+| `CATALOG_IPTVBRIDGE_MANIFEST_URL` | اختیاری | لینک منیفست شخصی‌سازی‌شده‌ت از [IPTV Bridge](https://iptvbridge.vercel.app/configure) — بعد از Anime Catalogs نشون داده میشه |
 | `SUBSOURCE_MANIFEST_URL` | اختیاری | لینک منیفست شخصی‌سازی‌شده‌ت از [SubSource](https://subsource.net/) — اگه خالی باشه، زیرنویس از OpenSubtitles میاد |
-| `CATALOG_TMDB_MANIFEST_URL` | اختیاری | لینک منیفست شخصی‌سازی‌شده‌ت از [The Movie Database Addon](https://94c8cb9f702d-tmdb-addon.baby-beamup.club/configure) — قبل از Anime Catalogs نشون داده میشه |
 | `TMDB_API_KEY` | اختیاری | بهبود تشخیص IMDb ID + پوستر/توضیحات/ژانر فارسی برای فیلم و سریال (Secret) |
 | `PROXY_ENABLE` | اختیاری | `true`/`false` — فقط لازم اگه سرور خودت داخل ایرانه |
 | `LOG_LEVEL` | اختیاری | `error` / `warn` / `info` / `debug` |
@@ -224,6 +222,11 @@ cinemagraphy/
 **نسخه‌ی ۱.۵:**
 - پروایدر جدید **DonyayeSerial** اضافه شد — بدون سانسور؛ کیفیت/حجم/انکد مستقیم از متن خودتوضیح‌ده‌ی لینک‌های دانلود سایت خونده میشه (نه حدس، نه Fallback)
 - پشتیبانی کامل از **Vercel** به‌عنوان روش چهارم دیپلوی (`api/index.js` + `vercel.json`) — بدون تغییری تو Cloudflare Workers یا نسخه‌ی محلی
+
+**نسخه‌ی ۱.۶:**
+- سیستم قدیمی IPTV داخلی (M3U دستی) کامل حذف شد — کد مرده‌ای ازش باقی نموند
+- به‌جاش **IPTV Bridge** اضافه شد، دقیقاً مثل بقیه‌ی کاتالوگ‌های خارجی (۱۰۱Catalogs، TMDB، Anime Catalogs) — لینک منیفست شخصی‌سازی‌شده‌ی خودتو بده، بعد از Anime Catalogs نمایش داده میشه
+- کاتالوگ‌ها و ژانرهای IPTV Bridge کامل فارسی شدن (مثلاً «IPTV Live Channels» → «پخش زنده ماهواره»)
 
 ---
 
