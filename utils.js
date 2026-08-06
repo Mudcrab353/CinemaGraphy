@@ -163,7 +163,7 @@ export async function getTMDBMetaFa(type, imdbId, httpClient = axios, apiKey, lo
 
 const CATALOG_BRAND_STRIP_RE = /\b(myanimelist|anidb|anilist|anisearch|livechart(\.me)?|notify\.moe|kitsu|rpdb)\b/gi
 
-const CATALOG_TYPE_WORD = {movie: 'فیلم', series: 'سریال', tv: 'تلویزیونی'}
+const CATALOG_TYPE_WORD = {movie: 'فیلم', series: 'سریال', tv: 'کانال'}
 
 // High-priority exact-phrase overrides (checked before the generic word-by-word
 // pass) for names we know the wording of ahead of time.
@@ -172,9 +172,20 @@ const CATALOG_EXACT_PHRASES = [
     [/currently[\s-]*airing/i, 'انیمه‌های در حال پخش'],
     [/top[\s-]*all[\s-]*time/i, 'برترین انیمه‌های همه‌ی دوران'],
     [/all[\s-]*time[\s-]*top/i, 'برترین انیمه‌های همه‌ی دوران'],
+
+    // IPTV Bridge — branded as "ماهواره" (satellite) rather than a literal
+    // translation of "IPTV", per how Iranian audiences refer to this kind
+    // of live-channel service.
+    [/iptv\s*live\s*channels?/i, 'پخش زنده ماهواره'],
+    [/iptv\s*movies?/i, 'فیلم‌های ماهواره'],
+    [/iptv\s*series/i, 'سریال‌های ماهواره'],
+    [/iptv\s*tv\s*shows?/i, 'سریال‌های ماهواره'],
+    [/\biptv\b/i, 'ماهواره'],
 ]
 
 const CATALOG_NAME_PHRASES = [
+    [/\bnews\b/i, 'اخبار'],
+    [/\bentertainment\b/i, 'سرگرمی'],
     [/now\s*playing/i, 'در حال اکران'],
     [/new\s*releases?/i, 'تازه‌ها'],
     [/coming\s*soon/i, 'به‌زودی'],
@@ -527,8 +538,12 @@ const EXTERNAL_CATALOGS_TTL_MS = 60 * 60 * 1_000 // 1 hour
 let externalCatalogsCache = null // {timestamp, sources}
 
 function externalManifestUrls(env) {
-    return [env.CATALOG101_MANIFEST_URL, env.CATALOG_TMDB_MANIFEST_URL, env.CATALOG_ANIME_MANIFEST_URL]
-        .filter(Boolean)
+    return [
+        env.CATALOG101_MANIFEST_URL,
+        env.CATALOG_TMDB_MANIFEST_URL,
+        env.CATALOG_ANIME_MANIFEST_URL,
+        env.CATALOG_IPTVBRIDGE_MANIFEST_URL,
+    ].filter(Boolean)
 }
 
 export async function getExternalCatalogSources(env = {}, httpClient = axios, logger = console) {
