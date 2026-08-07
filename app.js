@@ -12,10 +12,10 @@ import F2Media from './sources/f2media.js'
 import Peepboxtv from './sources/peepboxtv.js'
 import Serialblog from './sources/serialblog.js'
 import {ID_SEPARATOR, METADATA_SOURCE} from './sources/source.js'
-import {findExternalMetaSource, findExternalStreamSource, formatStreamTitle, getCinemeta, getExternalCatalogSources, getKitsuTitle, getSubtitle, getTMDBMetaFa, getTMDBTitle, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxyExternalStream, proxySubtitles, translateCatalogName} from './utils.js'
+import {findExternalMetaSource, findExternalStreamSource, formatStreamTitle, getCinemeta, getExternalCatalogSources, getKitsuTitle, getSubtitle, getTMDBMetaFa, getTMDBTitle, getTorrentStreams, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxyExternalStream, proxySubtitles, translateCatalogName} from './utils.js'
 
 export const ADDON_PREFIX = 'ip'
-export const ADDON_VERSION = '1.6.1'
+export const ADDON_VERSION = '1.7.0'
 
 const CATALOGS = [
     {key: 'f2media', name: 'F2Media', catalogType: 'movies'},
@@ -209,19 +209,24 @@ async function streamsByTitle(title, type, season, episode, providers) {
     )
 }
 
-async function imdbStreamResponse(type, id, providers, services, logger) {
+async function appendTorrentStreams(streams, type, id, env, httpClient, logger) {
+    const torrentStreams = await getTorrentStreams(type, id, env, httpClient, logger)
+    // Iranian providers always come first — torrent results are appended,
+    // never prepended, regardless of whether Iranian results exist.
+    return [...streams, ...torrentStreams]
+}
+
+async function imdbStreamResponse(type, id, providers, services, env, httpClient, logger) {
     const parsed = parseImdbId(id)
     if (!parsed) {
-        return {streams: []}
+        return {streams: await appendTorrentStreams([], type, id, env, httpClient, logger)}
     }
 
     const title = await getCinemetaName(type, parsed.imdbId, services)
-    if (!title) {
-        return {streams: []}
-    }
-
-    const streams = await streamsByTitle(title, type, parsed.season, parsed.episode, providers)
-    return {streams}
+    const streams = title
+        ? await streamsByTitle(title, type, parsed.season, parsed.episode, providers)
+        : []
+    return {streams: await appendTorrentStreams(streams, type, id, env, httpClient, logger)}
 }
 
 function parseKitsuId(value) {
@@ -232,20 +237,18 @@ function parseKitsuId(value) {
     return {kitsuId: `kitsu:${match[1]}`, episode: match[2] ? Number(match[2]) : null}
 }
 
-async function kitsuStreamResponse(type, id, providers, httpClient, logger) {
+async function kitsuStreamResponse(type, id, providers, env, httpClient, logger) {
     const parsed = parseKitsuId(id)
     if (!parsed) {
-        return {streams: []}
+        return {streams: await appendTorrentStreams([], type, id, env, httpClient, logger)}
     }
 
     const title = await getKitsuTitle(parsed.kitsuId, httpClient, logger)
-    if (!title) {
-        return {streams: []}
-    }
-
     // Most anime addons treat everything as a single season.
-    const streams = await streamsByTitle(title, 'series', parsed.episode ? 1 : null, parsed.episode, providers)
-    return {streams}
+    const streams = title
+        ? await streamsByTitle(title, 'series', parsed.episode ? 1 : null, parsed.episode, providers)
+        : []
+    return {streams: await appendTorrentStreams(streams, type, id, env, httpClient, logger)}
 }
 
 function parseTmdbId(value) {
@@ -260,19 +263,17 @@ function parseTmdbId(value) {
     }
 }
 
-async function tmdbStreamResponse(type, id, providers, httpClient, apiKey, logger) {
+async function tmdbStreamResponse(type, id, providers, httpClient, apiKey, env, logger) {
     const parsed = parseTmdbId(id)
     if (!parsed) {
-        return {streams: []}
+        return {streams: await appendTorrentStreams([], type, id, env, httpClient, logger)}
     }
 
     const title = await getTMDBTitle(type, parsed.tmdbId, httpClient, apiKey, logger)
-    if (!title) {
-        return {streams: []}
-    }
-
-    const streams = await streamsByTitle(title, type, parsed.season, parsed.episode, providers)
-    return {streams}
+    const streams = title
+        ? await streamsByTitle(title, type, parsed.season, parsed.episode, providers)
+        : []
+    return {streams: await appendTorrentStreams(streams, type, id, env, httpClient, logger)}
 }
 
 async function getProviderMetadata(provider, type, itemId, movieData, services) {
@@ -479,12 +480,12 @@ export function createAddon({
             }
 
             if (id.startsWith('tmdb:')) {
-                const result = await tmdbStreamResponse(type, id, providers, axios, env.TMDB_API_KEY, logger)
+                const result = await tmdbStreamResponse(type, id, providers, axios, env.TMDB_API_KEY, env, logger)
                 return res.json(result)
             }
 
             if (id.startsWith('kitsu:')) {
-                const result = await kitsuStreamResponse(type, id, providers, axios, logger)
+                const result = await kitsuStreamResponse(type, id, providers, env, axios, logger)
                 return res.json(result)
             }
 
@@ -492,7 +493,7 @@ export function createAddon({
                 return res.json({streams: []})
             }
 
-            const result = await imdbStreamResponse(type, id, providers, services, logger)
+            const result = await imdbStreamResponse(type, id, providers, services, env, axios, logger)
             return res.json(result)
         } catch (error) {
             logResourceError(logger, 'Stream', error)

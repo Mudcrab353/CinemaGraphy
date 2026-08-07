@@ -338,6 +338,7 @@ export const PROVIDER_LABELS = {
     avamovie: 'AvaMovie',
     zardfilm: 'ZardFilm',
     donyayeserial: 'DonyayeSerial',
+    torrent: 'سینماگرافی [P2P]',
 }
 
 // Whether each provider is known to censor content (based on the site's own
@@ -357,6 +358,7 @@ const PROVIDER_EMOJI = {
     digimovie: '🎥',
     avamovie: '🍿',
     donyayeserial: '🌍',
+    torrent: '🧲',
 }
 
 const RESOLUTION_PATTERNS = [
@@ -484,18 +486,25 @@ function filenameTextFromUrl(url) {
     }
 }
 
-export function formatStreamTitle({providerKey, quality, size, audioType, extraText, url} = {}) {
+export function formatStreamTitle({providerKey, quality, size, audioType, extraText, url, seeders, peers} = {}) {
     const providerLabel = PROVIDER_LABELS[providerKey] || providerKey || 'Unknown'
     const emoji = PROVIDER_EMOJI[providerKey] || '📡'
     const combinedText = [quality, extraText, filenameTextFromUrl(url)].filter(Boolean).join(' ')
     const isCensored = PROVIDER_CENSORED[providerKey] === true
-    const statusLine = isCensored ? '⚠️ وضعیت: سانسور شده' : '✅ وضعیت: سانسور نشده'
+    const statusLine = providerKey === 'torrent'
+        ? null
+        : (isCensored ? '⚠️ وضعیت: سانسور شده' : '✅ وضعیت: سانسور نشده')
+    const healthLine = (seeders != null || peers != null)
+        ? ltr([seeders != null ? `🌱 سیدر: ${seeders}` : null, peers != null ? `👤 پیر: ${peers}` : null]
+            .filter(Boolean).join(' • '))
+        : null
 
     if (isAudioOnlyFile(combinedText)) {
         const lines = [
             `${emoji} منبع: ${ltr(providerLabel)}`,
             '🎧 فقط فایل صوتی: دوبله فارسی (بدون تصویر)',
             size ? `💾 حجم: ${ltr(size)}` : null,
+            healthLine,
             statusLine,
         ].filter(Boolean)
         return lines.join('\n')
@@ -518,6 +527,7 @@ export function formatStreamTitle({providerKey, quality, size, audioType, extraT
         encodeLine ? `⚙️ انکد: ${ltr(encodeLine)}` : null,
         audio,
         size ? `💾 حجم: ${ltr(size)}` : null,
+        healthLine,
         statusLine,
     ].filter(Boolean)
 
@@ -643,6 +653,96 @@ export async function proxyExternalStream(source, type, id, extraPath, httpClien
     } catch (error) {
         logAxiosError(error, logger, 'External stream proxy failed')
         return {streams: []}
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Torrent provider (Meteor for the Weebs, or any similar manifest-based
+// torrent/debrid addon) — appended AFTER Iranian provider streams, never
+// before. We only touch the display text (title/name); url, infoHash,
+// fileIdx, sources, and behaviorHints (all of which Stremio's torrent/debrid
+// engine actually needs to play the stream) are passed through untouched.
+// ---------------------------------------------------------------------------
+
+const TORRENT_SOURCE_TTL_MS = 60 * 60 * 1_000
+let torrentSourceCache = null
+
+async function getTorrentSource(env, httpClient, logger) {
+    const manifestUrl = env.TORRENT_METEOR_MANIFEST_URL
+    if (!manifestUrl) {
+        return null
+    }
+
+    const now = Date.now()
+    if (torrentSourceCache && now - torrentSourceCache.timestamp < TORRENT_SOURCE_TTL_MS) {
+        return torrentSourceCache.source
+    }
+
+    try {
+        const response = await httpClient.get(manifestUrl, {timeout: REQUEST_TIMEOUT_MS})
+        const manifest = response.data ?? {}
+        const baseUrl = manifestUrl.replace(/\/manifest\.json.*$/, '')
+        const source = {baseUrl, idPrefixes: Array.isArray(manifest.idPrefixes) ? manifest.idPrefixes : ['tt']}
+        torrentSourceCache = {timestamp: now, source}
+        return source
+    } catch (error) {
+        logAxiosError(error, logger, 'Meteor torrent manifest fetch failed')
+        return torrentSourceCache?.source ?? null
+    }
+}
+
+function extractSeeders(text) {
+    const match = text.match(/👤\s*(\d+)|🌱\s*(\d+)|seeds?:?\s*(\d+)/i)
+    const value = match?.[1] ?? match?.[2] ?? match?.[3]
+    return value != null ? Number(value) : null
+}
+
+function extractPeers(text) {
+    const match = text.match(/👥\s*(\d+)|peers?:?\s*(\d+)|leech(?:ers)?:?\s*(\d+)/i)
+    const value = match?.[1] ?? match?.[2] ?? match?.[3]
+    return value != null ? Number(value) : null
+}
+
+function extractTorrentSize(text) {
+    return text.match(/(\d+(?:\.\d+)?\s*(?:GB|MB))/i)?.[1] ?? null
+}
+
+// Fetches Meteor's raw streams for this id and re-renders them with
+// CinemaGraphy's own formatting/branding. Resilient by design: any failure
+// (bad manifest, timeout, unexpected shape) just yields an empty array —
+// the caller appends this to the Iranian providers' results, so a Meteor
+// outage never affects anything else.
+export async function getTorrentStreams(type, id, env = {}, httpClient = axios, logger = console) {
+    const source = await getTorrentSource(env, httpClient, logger)
+    if (!source) {
+        return []
+    }
+    if (source.idPrefixes.length && !source.idPrefixes.some((prefix) => id.startsWith(prefix))) {
+        return []
+    }
+
+    try {
+        const url = `${source.baseUrl}/stream/${type}/${encodeURIComponent(id)}.json`
+        const response = await httpClient.get(url, {timeout: REQUEST_TIMEOUT_MS})
+        const streams = Array.isArray(response.data?.streams) ? response.data.streams : []
+
+        return streams.map((raw) => {
+            const rawText = [raw.name, raw.title, raw.description].filter(Boolean).join(' ')
+            return {
+                ...raw,
+                name: PROVIDER_LABELS.torrent,
+                title: formatStreamTitle({
+                    providerKey: 'torrent',
+                    extraText: rawText,
+                    size: extractTorrentSize(rawText),
+                    seeders: extractSeeders(rawText),
+                    peers: extractPeers(rawText),
+                }),
+            }
+        })
+    } catch (error) {
+        logAxiosError(error, logger, 'Meteor torrent streams fetch failed')
+        return []
     }
 }
 
