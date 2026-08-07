@@ -6,12 +6,12 @@ import F2Media from '../sources/f2media.js'
 import Peepboxtv from '../sources/peepboxtv.js'
 import Serialblog from '../sources/serialblog.js'
 import {ID_SEPARATOR, METADATA_SOURCE} from '../sources/source.js'
-import {findExternalMetaSource, findExternalStreamSource, formatStreamTitle, getExternalCatalogSources, getKitsuTitle, getTMDBMetaFa, getTMDBTitle, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxyExternalStream, proxySubtitles, translateCatalogName} from '../utils.js'
+import {findExternalMetaSource, findExternalStreamSource, formatStreamTitle, getExternalCatalogSources, getKitsuTitle, getTMDBMetaFa, getTMDBTitle, getTorrentStreams, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxyExternalStream, proxySubtitles, translateCatalogName} from '../utils.js'
 import {createFetchHttpClient} from './http-client.js'
 import {createWorkerProxyConfig, handleProxyRequest} from './proxy.js'
 
 const ADDON_PREFIX = 'ip'
-const ADDON_VERSION = '1.6.1'
+const ADDON_VERSION = '1.7.0'
 
 const CATALOGS = [
     {key: 'f2media', name: 'F2Media', catalogType: 'movies'},
@@ -360,19 +360,24 @@ async function streamsByTitle(title, type, season, episode, providers) {
     )
 }
 
-async function imdbStreamResponse(type, id, providers, services, logger) {
+async function appendTorrentStreams(streams, type, id, env, httpClient, logger) {
+    const torrentStreams = await getTorrentStreams(type, id, env, httpClient, logger)
+    // Iranian providers always come first — torrent results are appended,
+    // never prepended, regardless of whether Iranian results exist.
+    return [...streams, ...torrentStreams]
+}
+
+async function imdbStreamResponse(type, id, providers, services, env, httpClient, logger) {
     const parsed = parseImdbId(id)
     if (!parsed) {
-        return json({streams: []})
+        return json({streams: await appendTorrentStreams([], type, id, env, httpClient, logger)})
     }
 
     const title = await getCinemetaName(type, parsed.imdbId, services)
-    if (!title) {
-        return json({streams: []})
-    }
-
-    const streams = await streamsByTitle(title, type, parsed.season, parsed.episode, providers)
-    return json({streams})
+    const streams = title
+        ? await streamsByTitle(title, type, parsed.season, parsed.episode, providers)
+        : []
+    return json({streams: await appendTorrentStreams(streams, type, id, env, httpClient, logger)})
 }
 
 function parseKitsuId(value) {
@@ -383,19 +388,17 @@ function parseKitsuId(value) {
     return {kitsuId: `kitsu:${match[1]}`, episode: match[2] ? Number(match[2]) : null}
 }
 
-async function kitsuStreamResponse(type, id, providers, httpClient, logger) {
+async function kitsuStreamResponse(type, id, providers, env, httpClient, logger) {
     const parsed = parseKitsuId(id)
     if (!parsed) {
-        return json({streams: []})
+        return json({streams: await appendTorrentStreams([], type, id, env, httpClient, logger)})
     }
 
     const title = await getKitsuTitle(parsed.kitsuId, httpClient, logger)
-    if (!title) {
-        return json({streams: []})
-    }
-
-    const streams = await streamsByTitle(title, 'series', parsed.episode ? 1 : null, parsed.episode, providers)
-    return json({streams})
+    const streams = title
+        ? await streamsByTitle(title, 'series', parsed.episode ? 1 : null, parsed.episode, providers)
+        : []
+    return json({streams: await appendTorrentStreams(streams, type, id, env, httpClient, logger)})
 }
 
 function parseTmdbId(value) {
@@ -410,19 +413,17 @@ function parseTmdbId(value) {
     }
 }
 
-async function tmdbStreamResponse(type, id, providers, httpClient, apiKey, logger) {
+async function tmdbStreamResponse(type, id, providers, httpClient, apiKey, env, logger) {
     const parsed = parseTmdbId(id)
     if (!parsed) {
-        return json({streams: []})
+        return json({streams: await appendTorrentStreams([], type, id, env, httpClient, logger)})
     }
 
     const title = await getTMDBTitle(type, parsed.tmdbId, httpClient, apiKey, logger)
-    if (!title) {
-        return json({streams: []})
-    }
-
-    const streams = await streamsByTitle(title, type, parsed.season, parsed.episode, providers)
-    return json({streams})
+    const streams = title
+        ? await streamsByTitle(title, type, parsed.season, parsed.episode, providers)
+        : []
+    return json({streams: await appendTorrentStreams(streams, type, id, env, httpClient, logger)})
 }
 
 async function streamResponse(route, providers, services, logger, httpClient, env) {
@@ -460,18 +461,18 @@ async function streamResponse(route, providers, services, logger, httpClient, en
         }
 
         if (route.id.startsWith('tmdb:')) {
-            return await tmdbStreamResponse(route.type, route.id, providers, httpClient, env.TMDB_API_KEY, logger)
+            return await tmdbStreamResponse(route.type, route.id, providers, httpClient, env.TMDB_API_KEY, env, logger)
         }
 
         if (route.id.startsWith('kitsu:')) {
-            return await kitsuStreamResponse(route.type, route.id, providers, httpClient, logger)
+            return await kitsuStreamResponse(route.type, route.id, providers, env, httpClient, logger)
         }
 
         if (!/^tt/.test(route.id)) {
             return json({streams: []})
         }
 
-        return await imdbStreamResponse(route.type, route.id, providers, services, logger)
+        return await imdbStreamResponse(route.type, route.id, providers, services, env, httpClient, logger)
     } catch (error) {
         logResourceError(logger, 'Stream', error)
         return json({streams: []})
