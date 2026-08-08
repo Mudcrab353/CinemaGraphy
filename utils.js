@@ -682,7 +682,15 @@ async function getTorrentSource(env, httpClient, logger) {
         const response = await httpClient.get(manifestUrl, {timeout: REQUEST_TIMEOUT_MS})
         const manifest = response.data ?? {}
         const baseUrl = manifestUrl.replace(/\/manifest\.json.*$/, '')
-        const source = {baseUrl, idPrefixes: Array.isArray(manifest.idPrefixes) ? manifest.idPrefixes : ['tt']}
+
+        // idPrefixes can be declared per-resource (on the "stream" entry) or
+        // manifest-wide — per-resource takes priority per the Stremio spec.
+        // Only filter by prefix if we actually found one; otherwise try every id
+        // rather than risk silently skipping valid results with a guessed default.
+        const streamResource = (manifest.resources ?? []).find((r) => r?.name === 'stream')
+        const idPrefixes = streamResource?.idPrefixes ?? manifest.idPrefixes ?? null
+
+        const source = {baseUrl, idPrefixes: Array.isArray(idPrefixes) ? idPrefixes : []}
         torrentSourceCache = {timestamp: now, source}
         return source
     } catch (error) {
@@ -715,9 +723,11 @@ function extractTorrentSize(text) {
 export async function getTorrentStreams(type, id, env = {}, httpClient = axios, logger = console) {
     const source = await getTorrentSource(env, httpClient, logger)
     if (!source) {
+        logger.debug('Torrent provider not configured or manifest unreachable')
         return []
     }
     if (source.idPrefixes.length && !source.idPrefixes.some((prefix) => id.startsWith(prefix))) {
+        logger.debug('Torrent provider skipped id (idPrefixes mismatch)', {id, idPrefixes: source.idPrefixes})
         return []
     }
 
@@ -725,6 +735,7 @@ export async function getTorrentStreams(type, id, env = {}, httpClient = axios, 
         const url = `${source.baseUrl}/stream/${type}/${encodeURIComponent(id)}.json`
         const response = await httpClient.get(url, {timeout: REQUEST_TIMEOUT_MS})
         const streams = Array.isArray(response.data?.streams) ? response.data.streams : []
+        logger.debug('Torrent provider response', {url, status: response.status, streamCount: streams.length})
 
         return streams.map((raw) => {
             const rawText = [raw.name, raw.title, raw.description].filter(Boolean).join(' ')
