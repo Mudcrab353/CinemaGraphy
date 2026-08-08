@@ -11,7 +11,7 @@ import {createFetchHttpClient} from './http-client.js'
 import {createWorkerProxyConfig, handleProxyRequest} from './proxy.js'
 
 const ADDON_PREFIX = 'ip'
-const ADDON_VERSION = '1.7.3'
+const ADDON_VERSION = '1.7.4'
 
 const CATALOGS = [
     {key: 'f2media', name: 'F2Media', catalogType: 'movies'},
@@ -67,6 +67,9 @@ export function createWorkerManifest(env = {}) {
             {name: 'subtitles', types: ['series', 'movie'], idPrefixes: [ADDON_PREFIX, 'tt', 'kitsu:', 'tmdb:']},
         ],
         types: ['movie', 'series', 'tv'],
+        // Torrent streams (infoHash-based) require the addon to explicitly
+        // declare P2P content, or clients hide them without warning.
+        behaviorHints: {p2p: Boolean(env.TORRENT_METEOR_MANIFEST_URL)},
     }
 }
 
