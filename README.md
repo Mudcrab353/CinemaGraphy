@@ -4,7 +4,7 @@
   <p>افزونه‌ی استریمیو من برای فیلم، سریال، انیمه و تلویزیون زنده — چند تا سایت ایرانی و چند تا کاتالوگ خارجی، همه با هم تو یه افزونه.</p>
 
   <p>
-    <img src="https://img.shields.io/badge/version-1.7.3-blue.svg" alt="Version" />
+    <img src="https://img.shields.io/badge/version-1.7.4-blue.svg" alt="Version" />
     <img src="https://img.shields.io/badge/node-%3E%3D24.18.0-green.svg" alt="Node >=24.18.0" />
     <img src="https://img.shields.io/badge/cloudflare-workers-orange.svg" alt="Cloudflare Workers" />
     <img src="https://img.shields.io/badge/vercel-ready-black.svg" alt="Vercel Ready" />
@@ -253,6 +253,11 @@ cinemagraphy/
 
 **نسخه‌ی ۱.۷.۳ (رفع باگ لاگ):**
 - لاگ‌های تشخیصی تورنت که تو ۱.۷.۲ اضافه شده بودن، اصلاً دیده نمی‌شدن — چون با سطح `debug` ثبت می‌شدن ولی سطح پیش‌فرض لاگ پروژه `info`ـه (که `debug` رو فیلتر می‌کنه). الان با سطح `info` ثبت میشن و همیشه قابل مشاهده‌ن — از جمله وقتی که اصلاً `TORRENT_METEOR_MANIFEST_URL` تنظیم نشده باشه
+
+**نسخه‌ی ۱.۷.۴ (رفع باگ اصلی تورنت):**
+- پیدا شد چرا استریم‌های تورنت با اینکه کاملاً درست تو پاسخ سرور بودن (تایید شد با چک‌کردن مستقیم JSON)، هیچ‌جا (وب، اندروید، دسکتاپ) نشون داده نمی‌شدن: طبق مستندات Stremio، افزونه باید صریحاً تو منیفستش اعلام کنه که محتوای P2P/تورنت داره (`behaviorHints.p2p`)، وگرنه Stremio استریم‌های infoHash-محور رو بدون هیچ هشداری مخفی می‌کنه
+- این پرچم الان اضافه شد (فقط وقتی `TORRENT_METEOR_MANIFEST_URL` تنظیم شده باشه)
+- ⚠️ **بعد از این آپدیت، افزونه رو تو Stremio حذف و دوباره نصب کن** (یا حداقل کامل ببند و باز کن) — چون Stremio معمولاً منیفست رو کش می‌کنه و تغییرش رو خودکار نمی‌بینه
 
 ---
 
