@@ -670,6 +670,7 @@ let torrentSourceCache = null
 async function getTorrentSource(env, httpClient, logger) {
     const manifestUrl = env.TORRENT_METEOR_MANIFEST_URL
     if (!manifestUrl) {
+        logger.info('Torrent provider: TORRENT_METEOR_MANIFEST_URL is not set')
         return null
     }
 
@@ -691,6 +692,11 @@ async function getTorrentSource(env, httpClient, logger) {
         const idPrefixes = streamResource?.idPrefixes ?? manifest.idPrefixes ?? null
 
         const source = {baseUrl, idPrefixes: Array.isArray(idPrefixes) ? idPrefixes : []}
+        logger.info('Torrent provider manifest resolved', {
+            baseUrl,
+            idPrefixes: source.idPrefixes,
+            resources: manifest.resources,
+        })
         torrentSourceCache = {timestamp: now, source}
         return source
     } catch (error) {
@@ -723,11 +729,11 @@ function extractTorrentSize(text) {
 export async function getTorrentStreams(type, id, env = {}, httpClient = axios, logger = console) {
     const source = await getTorrentSource(env, httpClient, logger)
     if (!source) {
-        logger.debug('Torrent provider not configured or manifest unreachable')
+        logger.info('Torrent provider not configured or manifest unreachable')
         return []
     }
     if (source.idPrefixes.length && !source.idPrefixes.some((prefix) => id.startsWith(prefix))) {
-        logger.debug('Torrent provider skipped id (idPrefixes mismatch)', {id, idPrefixes: source.idPrefixes})
+        logger.info('Torrent provider skipped id (idPrefixes mismatch)', {id, idPrefixes: source.idPrefixes})
         return []
     }
 
@@ -735,7 +741,7 @@ export async function getTorrentStreams(type, id, env = {}, httpClient = axios, 
         const url = `${source.baseUrl}/stream/${type}/${encodeURIComponent(id)}.json`
         const response = await httpClient.get(url, {timeout: REQUEST_TIMEOUT_MS})
         const streams = Array.isArray(response.data?.streams) ? response.data.streams : []
-        logger.debug('Torrent provider response', {url, status: response.status, streamCount: streams.length})
+        logger.info('Torrent provider response', {url, status: response.status, streamCount: streams.length})
 
         return streams.map((raw) => {
             const rawText = [raw.name, raw.title, raw.description].filter(Boolean).join(' ')

@@ -4,7 +4,7 @@
   <p>افزونه‌ی استریمیو من برای فیلم، سریال، انیمه و تلویزیون زنده — چند تا سایت ایرانی و چند تا کاتالوگ خارجی، همه با هم تو یه افزونه.</p>
 
   <p>
-    <img src="https://img.shields.io/badge/version-1.7.2-blue.svg" alt="Version" />
+    <img src="https://img.shields.io/badge/version-1.7.3-blue.svg" alt="Version" />
     <img src="https://img.shields.io/badge/node-%3E%3D24.18.0-green.svg" alt="Node >=24.18.0" />
     <img src="https://img.shields.io/badge/cloudflare-workers-orange.svg" alt="Cloudflare Workers" />
     <img src="https://img.shields.io/badge/vercel-ready-black.svg" alt="Vercel Ready" />
@@ -249,7 +249,10 @@ cinemagraphy/
 **نسخه‌ی ۱.۷.۲ (رفع باگ تورنت):**
 - رفع باگ: حتی با منیفست درست، استریم‌های تورنت نمایش داده نمی‌شدن — چون فقط idPrefixes سطح کل منیفست رو می‌خوندیم، نه idPrefixes مخصوص خود بخش «stream» (که طبق مستندات Stremio اولویت داره و بیشتر افزونه‌ها اونجا تعریفش می‌کنن)؛ در نتیجه فیلتر اشتباه همه‌چیز رو رد می‌کرد
 - الان اگه idPrefixes واقعی پیدا نشه، به‌جای حدس زدن، همه‌ی آیدی‌ها رو امتحان می‌کنه (به‌جای رد کردن سکوت‌آمیز نتایج درست)
-- چند خط لاگ تشخیصی اضافه شد (`logger.debug`) که تو Logs کلادفلر/Vercel قابل مشاهده‌ست، برای عیب‌یابی راحت‌تر دفعات بعد
+- چند خط لاگ تشخیصی اضافه شد که تو Logs کلادفلر/Vercel قابل مشاهده‌ست، برای عیب‌یابی راحت‌تر دفعات بعد
+
+**نسخه‌ی ۱.۷.۳ (رفع باگ لاگ):**
+- لاگ‌های تشخیصی تورنت که تو ۱.۷.۲ اضافه شده بودن، اصلاً دیده نمی‌شدن — چون با سطح `debug` ثبت می‌شدن ولی سطح پیش‌فرض لاگ پروژه `info`ـه (که `debug` رو فیلتر می‌کنه). الان با سطح `info` ثبت میشن و همیشه قابل مشاهده‌ن — از جمله وقتی که اصلاً `TORRENT_METEOR_MANIFEST_URL` تنظیم نشده باشه
 
 ---
 
