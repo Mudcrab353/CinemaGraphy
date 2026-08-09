@@ -743,20 +743,15 @@ export async function getTorrentStreams(type, id, env = {}, httpClient = axios, 
         const streams = Array.isArray(response.data?.streams) ? response.data.streams : []
         logger.info('Torrent provider response', {url, status: response.status, streamCount: streams.length})
 
-        return streams.map((raw) => {
-            const rawText = [raw.name, raw.title, raw.description].filter(Boolean).join(' ')
-            return {
-                ...raw,
-                name: PROVIDER_LABELS.torrent,
-                title: formatStreamTitle({
-                    providerKey: 'torrent',
-                    extraText: rawText,
-                    size: extractTorrentSize(rawText),
-                    seeders: extractSeeders(rawText),
-                    peers: extractPeers(rawText),
-                }),
-            }
-        })
+        return streams.map((raw) => ({
+            ...raw,
+            // Light-touch branding only — the original name/description (which
+            // Meteor already fills with quality/size/seeders/audio info) are left
+            // completely untouched. Earlier attempts to reformat them (adding a
+            // separate `title` field alongside Meteor's own name/description)
+            // caused Stremio to silently drop these streams in every client.
+            name: raw.name ? `سینماگرافی | ${raw.name}` : 'سینماگرافی [P2P]',
+        }))
     } catch (error) {
         logAxiosError(error, logger, 'Meteor torrent streams fetch failed')
         return []
