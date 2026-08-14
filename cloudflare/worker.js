@@ -7,13 +7,13 @@ import F2Media from '../sources/f2media.js'
 import Peepboxtv from '../sources/peepboxtv.js'
 import Serialblog from '../sources/serialblog.js'
 import {ID_SEPARATOR, METADATA_SOURCE} from '../sources/source.js'
-import {findExternalMetaSource, findExternalStreamSource, formatStreamTitle, getExternalCatalogSources, getKitsuTitle, getTMDBMetaFa, getTMDBTitle, getTorrentStreams, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxyExternalStream, proxySubtitles, translateCatalogName} from '../utils.js'
+import {findExternalMetaSource, findExternalStreamSource, formatStreamTitle, getExternalCatalogSources, getKitsuTitle, getTMDBMetaFa, getTMDBMetaByTmdbId, getTMDBDetails, getTMDBTitle, getTorrentStreams, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxyExternalStream, proxySubtitles, translateCatalogName} from '../utils.js'
 import {landingUrlsFromRequest, renderLandingPage} from '../landing.js'
 import {createFetchHttpClient} from './http-client.js'
 import {createWorkerProxyConfig, handleProxyRequest} from './proxy.js'
 
 const ADDON_PREFIX = 'ip'
-const ADDON_VERSION = '1.9.0'
+const ADDON_VERSION = '1.9.3'
 
 const CATALOGS = [
     {key: 'f2media', name: 'F2Media', catalogType: 'movies'},
@@ -65,7 +65,7 @@ export function createWorkerManifest(env = {}) {
         }),
         resources: [
             'catalog',
-            {name: 'meta', types: ['series', 'movie', 'tv'], idPrefixes: [ADDON_PREFIX, 'tt']},
+            {name: 'meta', types: ['series', 'movie', 'tv'], idPrefixes: [ADDON_PREFIX, 'tt', 'tmdb:', 'kitsu:']},
             {name: 'stream', types: ['series', 'movie', 'tv'], idPrefixes: [ADDON_PREFIX, 'tt', 'kitsu:', 'tmdb:']},
             {name: 'subtitles', types: ['series', 'movie'], idPrefixes: [ADDON_PREFIX, 'tt', 'kitsu:', 'tmdb:']},
         ],
@@ -253,6 +253,22 @@ async function metaResponse(route, providers, services, env, requestUrl, logger,
             return json({})
         }
 
+        if (route.id.startsWith('tmdb:') && env.TMDB_API_KEY) {
+            const tmdbNumeric = String(route.id).split(':')[1]
+            const meta = await getTMDBMetaByTmdbId(
+                route.type,
+                tmdbNumeric,
+                httpClient,
+                env.TMDB_API_KEY,
+                logger,
+                services.getCinemeta,
+            )
+            if (meta) {
+                return json({meta})
+            }
+            return json({})
+        }
+
         const externalSources = await getExternalCatalogSources(env, httpClient, logger)
         const metaSource = findExternalMetaSource(externalSources, route.id)
         if (metaSource) {
@@ -418,13 +434,19 @@ function parseTmdbId(value) {
 }
 
 async function tmdbStreamResponse(type, id, providers, httpClient, apiKey, env, logger) {
-    const torrentPromise = getTorrentStreams(type, id, env, httpClient, logger).catch(() => [])
     const parsed = parseTmdbId(id)
     if (!parsed) {
-        return json({streams: await torrentPromise})
+        return json({streams: await getTorrentStreams(type, id, env, httpClient, logger).catch(() => [])})
     }
-
-    const title = await getTMDBTitle(type, parsed.tmdbId, httpClient, apiKey, logger)
+    const details = await getTMDBDetails(type, parsed.tmdbId, httpClient, apiKey, logger)
+    const title = details?.title ?? null
+    const imdbId = details?.imdbId ?? null
+    const torrentId = imdbId
+        ? (parsed.season != null && parsed.episode != null
+            ? `${imdbId}:${parsed.season}:${parsed.episode}`
+            : imdbId)
+        : id
+    const torrentPromise = getTorrentStreams(type, torrentId, env, httpClient, logger).catch(() => [])
     const streams = title
         ? await streamsByTitle(title, type, parsed.season, parsed.episode, providers)
         : []
