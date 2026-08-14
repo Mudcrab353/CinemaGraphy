@@ -8,11 +8,12 @@ import Peepboxtv from '../sources/peepboxtv.js'
 import Serialblog from '../sources/serialblog.js'
 import {ID_SEPARATOR, METADATA_SOURCE} from '../sources/source.js'
 import {findExternalMetaSource, findExternalStreamSource, formatStreamTitle, getExternalCatalogSources, getKitsuTitle, getTMDBMetaFa, getTMDBTitle, getTorrentStreams, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxyExternalStream, proxySubtitles, translateCatalogName} from '../utils.js'
+import {landingUrlsFromRequest, renderLandingPage} from '../landing.js'
 import {createFetchHttpClient} from './http-client.js'
 import {createWorkerProxyConfig, handleProxyRequest} from './proxy.js'
 
 const ADDON_PREFIX = 'ip'
-const ADDON_VERSION = '1.8.0'
+const ADDON_VERSION = '1.9.0'
 
 const CATALOGS = [
     {key: 'f2media', name: 'F2Media', catalogType: 'movies'},
@@ -545,7 +546,24 @@ export function createWorkerHandler(options = {}) {
             const url = new URL(request.url)
             const headOnly = request.method === 'HEAD'
             let response
-            if (url.pathname === '/manifest.json') {
+            if (url.pathname === '/' || url.pathname === '') {
+                const urls = landingUrlsFromRequest(request, env)
+                response = new Response(renderLandingPage({
+                    ...urls,
+                    version: ADDON_VERSION,
+                }), {
+                    status: 200,
+                    headers: {
+                        'content-type': 'text/html; charset=utf-8',
+                        'cache-control': 'no-store',
+                    },
+                })
+            } else if (url.pathname === '/logo.png') {
+                response = Response.redirect(
+                    'https://raw.githubusercontent.com/TheNerdCow/CinemaGraphy/refs/heads/master/logo.png',
+                    302,
+                )
+            } else if (url.pathname === '/manifest.json') {
                 const httpClient = options.httpClient ?? createFetchHttpClient(options.fetcher ?? fetch)
                 const manifest = createWorkerManifest(env)
                 try {
