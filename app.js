@@ -321,14 +321,17 @@ export function createAddon({
     })
 
     addon.get('/', (req, res) => {
-        const urls = landingUrlsFromRequest(req, env)
-        res
-            .type('html')
-            .set('cache-control', 'no-store')
-            .send(renderLandingPage({
+        try {
+            const urls = landingUrlsFromRequest(req, env)
+            const html = renderLandingPage({
                 ...urls,
                 version: ADDON_VERSION,
-            }))
+            })
+            res.status(200).type('html').set('cache-control', 'no-store').send(html)
+        } catch (error) {
+            logger.error('Landing page failed', {message: error?.message ?? String(error)})
+            res.status(500).type('text/plain').send('Landing page error')
+        }
     })
 
     addon.get('/manifest.json', async (req, res) => {
@@ -573,3 +576,7 @@ export function createAddon({
     addon.use(createErrorHandler(logger))
     return addon
 }
+
+// Vercel Express framework expects a default-exported app instance.
+// Named exports (createAddon, …) remain for api/index.js, Docker, and Workers.
+export default createAddon({env: process.env})
