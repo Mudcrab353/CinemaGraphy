@@ -18,10 +18,10 @@ import F2Media from './sources/f2media.js'
 import Peepboxtv from './sources/peepboxtv.js'
 import Serialblog from './sources/serialblog.js'
 import {ID_SEPARATOR, METADATA_SOURCE} from './sources/source.js'
-import {findExternalMetaSource, findExternalStreamSource, formatStreamTitle, getCinemeta, getExternalCatalogSources, getKitsuTitle, getSubtitle, getTMDBMetaFa, getTMDBDetails, getTMDBTitle, getTorrentStreams, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxyExternalStream, proxySubtitles, translateCatalogName} from './utils.js'
+import {findExternalMetaSource, findExternalStreamSource, formatStreamTitle, getCinemeta, getExternalCatalogSources, getKitsuTitle, getSubtitle, getTMDBMetaFa, getTMDBMetaByTmdbId, getTMDBDetails, getTMDBTitle, getTorrentStreams, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxyExternalStream, proxySubtitles, translateCatalogName} from './utils.js'
 
 export const ADDON_PREFIX = 'ip'
-export const ADDON_VERSION = '1.9.2'
+export const ADDON_VERSION = '1.9.3'
 
 const CATALOGS = [
     {key: 'f2media', name: 'F2Media', catalogType: 'movies'},
@@ -62,7 +62,7 @@ export function createManifest(env = process.env) {
         }),
         resources: [
             'catalog',
-            {name: 'meta', types: ['series', 'movie', 'tv'], idPrefixes: [ADDON_PREFIX, 'tt']},
+            {name: 'meta', types: ['series', 'movie', 'tv'], idPrefixes: [ADDON_PREFIX, 'tt', 'tmdb:', 'kitsu:']},
             {name: 'stream', types: ['series', 'movie', 'tv'], idPrefixes: [ADDON_PREFIX, 'tt', 'kitsu:', 'tmdb:']},
             {name: 'subtitles', types: ['series', 'movie'], idPrefixes: [ADDON_PREFIX, 'tt', 'kitsu:', 'tmdb:']},
         ],
@@ -498,12 +498,31 @@ export function createAddon({
 
     addon.get('/meta/:type/:id.json', async (req, res) => {
         try {
+            // IMDb ids → Persian TMDB meta
             if (req.params.id.startsWith('tt') && env.TMDB_API_KEY) {
                 const tmdbMeta = await getTMDBMetaFa(
                     req.params.type, req.params.id, axios, env.TMDB_API_KEY, logger,
                 )
                 if (tmdbMeta) {
                     return res.json({meta: tmdbMeta})
+                }
+                return res.json({})
+            }
+
+            // 101 Catalogs popular/trending use tmdb:<id> — must return real meta
+            // or Stremio shows "no metadata / no streams" even when streams exist.
+            if (req.params.id.startsWith('tmdb:') && env.TMDB_API_KEY) {
+                const tmdbNumeric = String(req.params.id).split(':')[1]
+                const meta = await getTMDBMetaByTmdbId(
+                    req.params.type,
+                    tmdbNumeric,
+                    axios,
+                    env.TMDB_API_KEY,
+                    logger,
+                    services.getCinemeta,
+                )
+                if (meta) {
+                    return res.json({meta})
                 }
                 return res.json({})
             }

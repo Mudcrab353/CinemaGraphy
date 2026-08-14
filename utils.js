@@ -156,6 +156,89 @@ export async function getTMDBMetaFa(type, imdbId, httpClient = axios, apiKey, lo
     }
 }
 
+
+/**
+ * Build Stremio meta for a tmdb: id (used by 101 Catalogs popular/trending).
+ * Keeps meta.id as tmdb:<id> so the client requests streams with the same id.
+ * When an IMDb id is available, episode lists come from Cinemeta for series.
+ */
+export async function getTMDBMetaByTmdbId(
+    type,
+    tmdbId,
+    httpClient = axios,
+    apiKey,
+    logger = console,
+    getCinemetaFn = null,
+) {
+    if (!apiKey || !tmdbId) {
+        return null
+    }
+    const kind = type === 'series' ? 'tv' : 'movie'
+    try {
+        const response = await httpClient.get(`https://api.themoviedb.org/3/${kind}/${tmdbId}`, {
+            params: {
+                api_key: apiKey,
+                language: 'fa-IR',
+                append_to_response: 'external_ids',
+            },
+            timeout: REQUEST_TIMEOUT_MS,
+        })
+        const data = response.data ?? {}
+        const imdbId = data.external_ids?.imdb_id || data.imdb_id || null
+        const validImdb = imdbId && /^tt\d+$/.test(imdbId) ? imdbId : null
+        const name = data.title || data.name || data.original_title || data.original_name || null
+        const year = (data.release_date || data.first_air_date || '').slice(0, 4) || null
+        const genreMap = await getTMDBGenreMap(type, httpClient, apiKey, logger)
+        const genres = (data.genres ?? []).map((g) => g.name || genreMap.get(g.id)).filter(Boolean)
+
+        const meta = {
+            id: `tmdb:${tmdbId}`,
+            type,
+            name,
+            poster: data.poster_path ? `https://image.tmdb.org/t/p/w500${data.poster_path}` : null,
+            background: data.backdrop_path ? `https://image.tmdb.org/t/p/original${data.backdrop_path}` : null,
+            description: data.overview || null,
+            releaseInfo: year,
+            imdbRating: data.vote_average != null ? String(Math.round(data.vote_average * 10) / 10) : null,
+            genres: genres.length ? genres : undefined,
+            imdb_id: validImdb || undefined,
+        }
+
+        if (type === 'series' && validImdb && typeof getCinemetaFn === 'function') {
+            try {
+                const cin = await getCinemetaFn(type, validImdb)
+                const videos = cin?.meta?.videos
+                if (Array.isArray(videos) && videos.length) {
+                    meta.videos = videos
+                        .filter((v) => v && (v.season != null || v.episode != null || v.id))
+                        .map((v) => {
+                            const season = v.season
+                            const episode = v.episode
+                            let vid = v.id
+                            if (Number.isInteger(season) && Number.isInteger(episode)) {
+                                vid = `tmdb:${tmdbId}:${season}:${episode}`
+                            } else if (typeof vid === 'string' && validImdb && vid.startsWith(validImdb)) {
+                                vid = vid.replace(validImdb, `tmdb:${tmdbId}`)
+                            }
+                            return {...v, id: vid, season, episode}
+                        })
+                }
+            } catch (error) {
+                logAxiosError(error, logger, 'Cinemeta videos for TMDB series failed')
+            }
+        }
+
+        if (type === 'movie') {
+            meta.behaviorHints = {defaultVideoId: meta.id}
+        }
+
+        return meta
+    } catch (error) {
+        logAxiosError(error, logger, 'Unable to get TMDB meta by tmdb id')
+        return null
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Persian catalog-name translation for external aggregated catalogs
 // (101Catalogs, Anime Catalogs, ...). Pattern-based rather than a fixed
