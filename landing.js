@@ -170,11 +170,7 @@ footer{margin-top:12px;padding:32px 5vw 44px;border-top:1px solid rgba(255,255,2
 <a class="btn bp" href="${install}"><span class="lang-fa">نصب در Stremio</span><span class="lang-en">Install in Stremio</span></a>
 <button class="btn bp" id="manifestCopyBtn" type="button"><span class="lang-fa">لینک منیفست</span><span class="lang-en">Manifest link</span></button>
 </div>
-<div class="box glass">
-<label class="lang-fa">لینک منیفست — در استریمیو هم می‌توانید دستی اضافه کنید</label>
-<label class="lang-en">Manifest URL — you can also add it manually in Stremio</label>
-<div class="r"><input id="manifestUrl" readonly value="${m}"/><button class="copy" id="copyBtn" type="button"><span class="lang-fa">کپی</span><span class="lang-en">Copy</span></button></div>
-</div>
+<input type="hidden" id="manifestUrl" value="${m}"/>
 </div>
 <div class="vis"><div class="stage"><div class="gwrap glass"><img src="${logo}" alt="logo" onerror="this.src='${LOGO_FALLBACK}'"/></div></div></div>
 </div>
@@ -192,8 +188,8 @@ footer{margin-top:12px;padding:32px 5vw 44px;border-top:1px solid rgba(255,255,2
 </section>
 <section>
 <h2 class="lang-fa">افزونه‌های پیشنهادی</h2><h2 class="lang-en">Recommended addons</h2>
-<p class="sub lang-fa">بر اساس محبوبیت جامعه استریمیو — با آیکون و لینک نصب خودشان.</p>
-<p class="sub lang-en">Based on community popularity — with their own icons and install links.</p>
+<p class="sub lang-fa">بر اساس محبوبیت جامعه استریمیو.</p>
+<p class="sub lang-en">Based on community popularity.</p>
 <div class="pl">
 ${addonCards}
 </div>
@@ -216,27 +212,19 @@ let L=localStorage.getItem('cg-lang')||'fa';
 function al(l){r.lang=l;r.dir=l==='fa'?'rtl':'ltr';lb.textContent=l==='fa'?'EN':'FA';localStorage.setItem('cg-lang',l)}
 al(L);lb.onclick=()=>al(r.lang==='fa'?'en':'fa');
 const inp=document.getElementById('manifestUrl');
-async function copyManifest(btn, asPrimary){
+async function copyManifest(btn){
   if(!inp)return;
   const fa=r.lang==='fa';
+  const prev=btn.innerHTML;
   try{
     await navigator.clipboard.writeText(inp.value);
-    if(asPrimary){
-      const prev=btn.innerHTML;
-      btn.classList.add('ok');
-      btn.innerHTML=fa?'کپی شد ✓':'Copied ✓';
-      setTimeout(()=>{btn.classList.remove('ok');btn.innerHTML=prev},1800);
-    }else{
-      btn.classList.add('ok');
-      btn.textContent=fa?'کپی شد':'Copied';
-      setTimeout(()=>{btn.classList.remove('ok');btn.textContent=fa?'کپی':'Copy'},1800);
-    }
-  }catch{inp.select()}
+    btn.classList.add('ok');
+    btn.innerHTML=fa?'کپی شد ✓':'Copied ✓';
+    setTimeout(()=>{btn.classList.remove('ok');btn.innerHTML=prev},1800);
+  }catch{}
 }
-const cb=document.getElementById('copyBtn');
-if(cb)cb.onclick=()=>copyManifest(cb,false);
 const mb=document.getElementById('manifestCopyBtn');
-if(mb)mb.onclick=()=>copyManifest(mb,true);
+if(mb)mb.onclick=()=>copyManifest(mb);
 })();
 </script>
 </body></html>`
