@@ -13,7 +13,7 @@ import {createFetchHttpClient} from './http-client.js'
 import {createWorkerProxyConfig, handleProxyRequest} from './proxy.js'
 
 const ADDON_PREFIX = 'ip'
-const ADDON_VERSION = '1.9.3'
+const ADDON_VERSION = '1.9.4'
 
 const CATALOGS = [
     {key: 'f2media', name: 'F2Media', catalogType: 'movies'},
@@ -342,7 +342,7 @@ async function streamsByTitle(title, type, season, episode, providers) {
 
     const settled = await Promise.allSettled(
         providers.map(async (provider) => {
-            const results = await provider.search(cleanTitle)
+            const results = await provider.search(title)
             const match = results.find((r) => {
                 const cleanName = r.name.replace(/[؀-ۿݐ-ݿࢠ-ࣿﭐ-﷿ﹰ-﻿]/g, '').toLowerCase()
                 return (cleanName.includes(cleanTitle) || cleanTitle.includes(cleanName)) && r.type === type
