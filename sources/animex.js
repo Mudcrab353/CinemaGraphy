@@ -186,6 +186,7 @@ export default class Animex extends HtmlSource {
             })
 
             const links = []
+            const directoryJobs = []
             for (const token of downloadTokens) {
                 const groupLabel = [token.group_title, token.quality].filter(Boolean).join(' ')
                 if (isDirectVideoUrl(token.target)) {
@@ -193,8 +194,20 @@ export default class Animex extends HtmlSource {
                     continue
                 }
                 if (resolvedType === 'series') {
-                    const files = await this.fetchDirectoryFiles(token.target, groupLabel)
-                    links.push(...files)
+                    // Cap how many season/quality directory pages we hit so a
+                    // single series detail cannot burn the whole serverless
+                    // budget (each page used to run serially with a 15s timeout).
+                    if (directoryJobs.length < 4) {
+                        directoryJobs.push(this.fetchDirectoryFiles(token.target, groupLabel))
+                    }
+                }
+            }
+            if (directoryJobs.length) {
+                const settled = await Promise.allSettled(directoryJobs)
+                for (const result of settled) {
+                    if (result.status === 'fulfilled' && Array.isArray(result.value)) {
+                        links.push(...result.value)
+                    }
                 }
             }
 
