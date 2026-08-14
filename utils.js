@@ -337,6 +337,7 @@ export const PROVIDER_LABELS = {
     digimovie: 'Digimoviez',
     avamovie: 'AvaMovie',
     zardfilm: 'ZardFilm',
+    animex: 'Animex',
     donyayeserial: 'DonyayeSerial',
     torrent: 'سینماگرافی [P2P]',
 }
@@ -358,6 +359,7 @@ const PROVIDER_EMOJI = {
     digimovie: '🎥',
     avamovie: '🍿',
     donyayeserial: '🌍',
+    animex: '⛩️',
     torrent: '🧲',
 }
 

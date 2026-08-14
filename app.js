@@ -7,6 +7,7 @@ import {createErrorHandler} from './errorMiddleware.js'
 import Aslmoviez from './sources/aslmoviez.js'
 import Cinamatic from './sources/cinamatic.js'
 import Digimovie from './sources/digimovie.js'
+import Animex from './sources/animex.js'
 import Donyayeserial from './sources/donyayeserial.js'
 import F2Media from './sources/f2media.js'
 import Peepboxtv from './sources/peepboxtv.js'
@@ -15,7 +16,7 @@ import {ID_SEPARATOR, METADATA_SOURCE} from './sources/source.js'
 import {findExternalMetaSource, findExternalStreamSource, formatStreamTitle, getCinemeta, getExternalCatalogSources, getKitsuTitle, getSubtitle, getTMDBMetaFa, getTMDBTitle, getTorrentStreams, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxyExternalStream, proxySubtitles, translateCatalogName} from './utils.js'
 
 export const ADDON_PREFIX = 'ip'
-export const ADDON_VERSION = '1.7.5'
+export const ADDON_VERSION = '1.8.0'
 
 const CATALOGS = [
     {key: 'f2media', name: 'F2Media', catalogType: 'movies'},
@@ -25,6 +26,7 @@ const CATALOGS = [
     {key: 'serialblog', name: 'SerialBlog', catalogType: 'movies'},
     {key: 'digimovie', name: 'DigiMovie', catalogType: 'movies'},
     {key: 'donyayeserial', name: 'DonyayeSerial', catalogType: 'movies'},
+    {key: 'animex', name: 'Animex', catalogType: 'movies'},
 ]
 
 export function createLogger(env = process.env) {
@@ -75,6 +77,7 @@ export function createProviders({env = process.env, logger = console, httpClient
         new Serialblog(env.SERIALBLOG_BASEURL, logger, httpClient, env),
         new Digimovie(env.DIGIMOVIE_BASEURL, logger, httpClient, env),
         new Donyayeserial(env.DONYAYESERIAL_BASEURL, logger, httpClient),
+        new Animex(env.ANIMEX_BASEURL, logger, httpClient),
     ]
 }
 
