@@ -21,7 +21,7 @@ import {ID_SEPARATOR, METADATA_SOURCE} from './sources/source.js'
 import {findExternalMetaSource, findExternalStreamSource, formatStreamTitle, getCinemeta, getExternalCatalogSources, getKitsuTitle, getSubtitle, getTMDBMetaFa, getTMDBTitle, getTorrentStreams, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxyExternalStream, proxySubtitles, translateCatalogName} from './utils.js'
 
 export const ADDON_PREFIX = 'ip'
-export const ADDON_VERSION = '1.9.0'
+export const ADDON_VERSION = '1.9.1'
 
 const CATALOGS = [
     {key: 'f2media', name: 'F2Media', catalogType: 'movies'},
@@ -74,7 +74,9 @@ export function createManifest(env = process.env) {
 }
 
 export function createProviders({env = process.env, logger = console, httpClient} = {}) {
-    return [
+    // Skip providers without a base URL so public instances don't waste time
+    // on PeepBoxTV (paid) or any unconfigured source.
+    const candidates = [
         new F2Media(env.F2MEDIA_BASEURL, logger, httpClient, env),
         new Peepboxtv(env.PEEPBOXTV_BASEURL, logger, httpClient, env),
         new Cinamatic(env.CINAMATIC_BASEURL, logger, httpClient, env),
@@ -84,6 +86,13 @@ export function createProviders({env = process.env, logger = console, httpClient
         new Donyayeserial(env.DONYAYESERIAL_BASEURL, logger, httpClient),
         new Animex(env.ANIMEX_BASEURL, logger, httpClient),
     ]
+    return candidates.filter((provider) => {
+        const ok = Boolean(provider?.baseUrl)
+        if (!ok) {
+            logger.info?.(`Provider ${provider?.key ?? '?'} skipped (no BASEURL)`)
+        }
+        return ok
+    })
 }
 
 export function parseAddonId(id, providers) {
@@ -183,31 +192,67 @@ function withTimeout(promise, ms, label = 'operation') {
     ])
 }
 
-async function streamsByTitle(title, type, season, episode, providers) {
-    const cleanTitle = title.replace(/[؀-ۿݐ-ݿࢠ-ࣿﭐ-﷿ﹰ-﻿]/g, '').trim().toLowerCase()
+// Short in-memory cache: concurrent users / repeated opens of the same title
+// skip re-hitting every Iranian site. Instance-local but helps a lot on spikes.
+const STREAM_CACHE_TTL_MS = 45_000
+const streamTitleCache = new Map()
 
-    // Each provider is capped so a slow site (e.g. Animex directory crawl)
-    // cannot hold the whole series response past the serverless budget.
-    const PROVIDER_BUDGET_MS = 12_000
+function streamCacheKey(title, type, season, episode) {
+    return `${type}|${season ?? ''}|${episode ?? ''}|${String(title).toLowerCase().trim()}`
+}
+
+function normalizeForMatch(value) {
+    return String(value ?? '')
+        .replace(/[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/g, '')
+        .replace(/[^\w\s]/g, ' ')
+        .replace(/\b(19|20)\d{2}\b/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .toLowerCase()
+}
+
+function titlesMatch(a, b) {
+    if (!a || !b) return false
+    if (a === b) return true
+    if (a.includes(b) || b.includes(a)) return true
+    const ta = a.split(' ').filter((t) => t.length > 2)
+    const tb = b.split(' ').filter((t) => t.length > 2)
+    if (!ta.length || !tb.length) return false
+    const setB = new Set(tb)
+    const hits = ta.filter((t) => setB.has(t)).length
+    return hits >= Math.min(2, ta.length, tb.length)
+}
+
+async function streamsByTitle(title, type, season, episode, providers) {
+    const cleanTitle = normalizeForMatch(title)
+    const cacheKey = streamCacheKey(cleanTitle, type, season, episode)
+    const cached = streamTitleCache.get(cacheKey)
+    if (cached && Date.now() - cached.at < STREAM_CACHE_TTL_MS) {
+        return cached.streams
+    }
+
+    // Tight per-provider budget so public Vercel stays responsive under load.
+    const PROVIDER_BUDGET_MS = Number(process.env.PROVIDER_TIMEOUT_MS) || 8_000
     const settled = await Promise.allSettled(
         providers.map(async (provider) => {
             const work = (async () => {
-                const results = await provider.search(cleanTitle)
-                const match = results.find((r) => {
-                    const cleanName = r.name.replace(/[؀-ۿݐ-ݿࢠ-ࣿﭐ-﷿ﹰ-﻿]/g, '').toLowerCase()
-                    return (cleanName.includes(cleanTitle) || cleanTitle.includes(cleanName)) && r.type === type
+                const results = await provider.search(cleanTitle || title)
+                const match = (Array.isArray(results) ? results : []).find((r) => {
+                    if (r.type && r.type !== type) return false
+                    const cleanName = normalizeForMatch(r.name)
+                    return titlesMatch(cleanName, cleanTitle)
                 })
                 if (!match) {
                     return {key: provider.key, streams: []}
                 }
 
-                const movieData = await provider.getMovieData(match.type, match.id)
+                const movieData = await provider.getMovieData(match.type || type, match.id)
                 if (!movieData) {
                     return {key: provider.key, streams: []}
                 }
 
                 const videoId = season && episode ? `${match.id}:${season}:${episode}` : null
-                const links = provider.getLinks(match.type, videoId, movieData)
+                const links = provider.getLinks(match.type || type, videoId, movieData)
 
                 return {
                     key: provider.key,
@@ -232,11 +277,17 @@ async function streamsByTitle(title, type, season, episode, providers) {
         }),
     )
 
-    return sortByQuality(
+    const streams = sortByQuality(
         settled
             .filter((r) => r.status === 'fulfilled')
             .flatMap((r) => r.value.streams),
     )
+    streamTitleCache.set(cacheKey, {at: Date.now(), streams})
+    if (streamTitleCache.size > 200) {
+        const oldest = streamTitleCache.keys().next().value
+        streamTitleCache.delete(oldest)
+    }
+    return streams
 }
 
 async function imdbStreamResponse(type, id, providers, services, env, httpClient, logger) {
