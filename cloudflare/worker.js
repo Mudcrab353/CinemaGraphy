@@ -1,7 +1,6 @@
 import Aslmoviez from '../sources/aslmoviez.js'
 import Cinamatic from '../sources/cinamatic.js'
 import Digimovie from '../sources/digimovie.js'
-import Animex from '../sources/animex.js'
 import Donyayeserial from '../sources/donyayeserial.js'
 import F2Media from '../sources/f2media.js'
 import Peepboxtv from '../sources/peepboxtv.js'
@@ -12,7 +11,7 @@ import {createFetchHttpClient} from './http-client.js'
 import {createWorkerProxyConfig, handleProxyRequest} from './proxy.js'
 
 const ADDON_PREFIX = 'ip'
-const ADDON_VERSION = '1.8.0'
+const ADDON_VERSION = '1.7.5'
 
 const CATALOGS = [
     {key: 'f2media', name: 'F2Media', catalogType: 'movies'},
@@ -22,7 +21,6 @@ const CATALOGS = [
     {key: 'serialblog', name: 'SerialBlog', catalogType: 'movies'},
     {key: 'digimovie', name: 'DigiMovie', catalogType: 'movies'},
     {key: 'donyayeserial', name: 'DonyayeSerial', catalogType: 'movies'},
-    {key: 'animex', name: 'Animex', catalogType: 'movies'},
 ]
 const CORS_HEADERS = {
     'access-control-allow-headers': 'Content-Type',
@@ -84,7 +82,6 @@ export function createWorkerProviders({env = {}, logger = console, httpClient} =
         new Serialblog(env.SERIALBLOG_BASEURL, logger, httpClient, env),
         new Digimovie(env.DIGIMOVIE_BASEURL, logger, httpClient, env),
         new Donyayeserial(env.DONYAYESERIAL_BASEURL, logger, httpClient),
-        new Animex(env.ANIMEX_BASEURL, logger, httpClient),
     ]
 }
 
