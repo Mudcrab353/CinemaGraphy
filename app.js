@@ -3,7 +3,12 @@ import cors from 'cors'
 import express from 'express'
 import winston from 'winston'
 
+import {readFileSync} from 'node:fs'
+import {dirname, join} from 'node:path'
+import {fileURLToPath} from 'node:url'
+
 import {createErrorHandler} from './errorMiddleware.js'
+import {landingUrlsFromRequest, renderLandingPage} from './landing.js'
 import Aslmoviez from './sources/aslmoviez.js'
 import Cinamatic from './sources/cinamatic.js'
 import Digimovie from './sources/digimovie.js'
@@ -16,7 +21,7 @@ import {ID_SEPARATOR, METADATA_SOURCE} from './sources/source.js'
 import {findExternalMetaSource, findExternalStreamSource, formatStreamTitle, getCinemeta, getExternalCatalogSources, getKitsuTitle, getSubtitle, getTMDBMetaFa, getTMDBTitle, getTorrentStreams, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxyExternalStream, proxySubtitles, translateCatalogName} from './utils.js'
 
 export const ADDON_PREFIX = 'ip'
-export const ADDON_VERSION = '1.8.0'
+export const ADDON_VERSION = '1.9.0'
 
 const CATALOGS = [
     {key: 'f2media', name: 'F2Media', catalogType: 'movies'},
@@ -299,6 +304,32 @@ export function createAddon({
     const addon = express()
     addon.disable('x-powered-by')
     addon.use(cors())
+
+    const rootDir = dirname(fileURLToPath(import.meta.url))
+    let logoBytes = null
+    try {
+        logoBytes = readFileSync(join(rootDir, 'logo.png'))
+    } catch {
+        logoBytes = null
+    }
+
+    addon.get('/logo.png', (req, res) => {
+        if (!logoBytes) {
+            return res.status(404).type('text/plain').send('logo not found')
+        }
+        res.type('png').set('cache-control', 'public, max-age=86400').send(logoBytes)
+    })
+
+    addon.get('/', (req, res) => {
+        const urls = landingUrlsFromRequest(req, env)
+        res
+            .type('html')
+            .set('cache-control', 'no-store')
+            .send(renderLandingPage({
+                ...urls,
+                version: ADDON_VERSION,
+            }))
+    })
 
     addon.get('/manifest.json', async (req, res) => {
         const manifest = createManifest(env)

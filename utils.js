@@ -1,4 +1,5 @@
 import axios from 'axios'
+import {cleanSize, detectSize} from './size-helpers.js'
 
 export const REQUEST_TIMEOUT_MS = 15_000
 
@@ -492,6 +493,7 @@ export function formatStreamTitle({providerKey, quality, size, audioType, extraT
     const providerLabel = PROVIDER_LABELS[providerKey] || providerKey || 'Unknown'
     const emoji = PROVIDER_EMOJI[providerKey] || '📡'
     const combinedText = [quality, extraText, filenameTextFromUrl(url)].filter(Boolean).join(' ')
+    const displaySize = cleanSize(size) || detectSize(combinedText)
     const isCensored = PROVIDER_CENSORED[providerKey] === true
     const statusLine = providerKey === 'torrent'
         ? null
@@ -505,7 +507,7 @@ export function formatStreamTitle({providerKey, quality, size, audioType, extraT
         const lines = [
             `${emoji} منبع: ${ltr(providerLabel)}`,
             '🎧 فقط فایل صوتی: دوبله فارسی (بدون تصویر)',
-            size ? `💾 حجم: ${ltr(size)}` : null,
+            displaySize ? `💾 حجم: ${ltr(displaySize)}` : null,
             healthLine,
             statusLine,
         ].filter(Boolean)
@@ -528,7 +530,7 @@ export function formatStreamTitle({providerKey, quality, size, audioType, extraT
         qualityLine ? `🎞️ کیفیت: ${ltr(qualityLine)}` : null,
         encodeLine ? `⚙️ انکد: ${ltr(encodeLine)}` : null,
         audio,
-        size ? `💾 حجم: ${ltr(size)}` : null,
+        displaySize ? `💾 حجم: ${ltr(displaySize)}` : null,
         healthLine,
         statusLine,
     ].filter(Boolean)
