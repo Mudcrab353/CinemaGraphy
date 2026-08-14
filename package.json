@@ -1,6 +1,6 @@
 {
   "name": "cinemagraphy",
-  "version": "1.9.4",
+  "version": "1.9.5",
   "packageManager": "pnpm@11.11.0",
   "main": "index.js",
   "type": "module",

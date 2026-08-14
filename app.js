@@ -21,7 +21,7 @@ import {ID_SEPARATOR, METADATA_SOURCE} from './sources/source.js'
 import {findExternalMetaSource, findExternalStreamSource, formatStreamTitle, getCinemeta, getExternalCatalogSources, getKitsuTitle, getSubtitle, getTMDBMetaFa, getTMDBMetaByTmdbId, getTMDBDetails, getTMDBTitle, getTorrentStreams, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxyExternalStream, proxySubtitles, translateCatalogName} from './utils.js'
 
 export const ADDON_PREFIX = 'ip'
-export const ADDON_VERSION = '1.9.4'
+export const ADDON_VERSION = '1.9.5'
 
 const CATALOGS = [
     {key: 'f2media', name: 'F2Media', catalogType: 'movies'},
@@ -218,12 +218,17 @@ function titlesMatch(a, b) {
     if (!a || !b) return false
     if (a === b) return true
     if (a.includes(b) || b.includes(a)) return true
+    // compact form: "grandblue" vs "grand blue"
+    const ca = a.replace(/\s+/g, '')
+    const cb = b.replace(/\s+/g, '')
+    if (ca.length > 3 && cb.length > 3 && (ca.includes(cb) || cb.includes(ca))) return true
     const ta = a.split(' ').filter((t) => t.length > 2)
     const tb = b.split(' ').filter((t) => t.length > 2)
     if (!ta.length || !tb.length) return false
     const setB = new Set(tb)
     const hits = ta.filter((t) => setB.has(t)).length
-    return hits >= Math.min(2, ta.length, tb.length)
+    const need = Math.min(2, ta.length, tb.length)
+    return hits >= Math.max(1, need === 2 && Math.min(ta.length, tb.length) === 1 ? 1 : need)
 }
 
 function searchQueryVariants(title) {
@@ -369,10 +374,18 @@ async function kitsuStreamResponse(type, id, providers, env, httpClient, logger)
     }
 
     const title = await getKitsuTitle(parsed.kitsuId, httpClient, logger)
-    // Most anime addons treat everything as a single season.
-    const streams = title
-        ? await streamsByTitle(title, 'series', parsed.episode ? 1 : null, parsed.episode, providers)
-        : []
+    // Anime catalogs use kitsu: ids. Animex stores anime under /anime/ as type series.
+    // Prefer season 1 when only episode is present (common for continuous anime).
+    let streams = []
+    if (title) {
+        const season = parsed.episode ? 1 : null
+        const episode = parsed.episode ?? null
+        streams = await streamsByTitle(title, 'series', season, episode, providers)
+        // Retry without season/episode filter if detail page has flat episode lists
+        if (!streams.length && episode) {
+            streams = await streamsByTitle(title, 'series', null, null, providers)
+        }
+    }
     return {streams: [...streams, ...await torrentPromise]}
 }
 
