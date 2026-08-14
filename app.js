@@ -21,7 +21,7 @@ import {ID_SEPARATOR, METADATA_SOURCE} from './sources/source.js'
 import {findExternalMetaSource, findExternalStreamSource, formatStreamTitle, getCinemeta, getExternalCatalogSources, getKitsuTitle, getSubtitle, getTMDBMetaFa, getTMDBMetaByTmdbId, getTMDBDetails, getTMDBTitle, getTorrentStreams, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxyExternalStream, proxySubtitles, translateCatalogName} from './utils.js'
 
 export const ADDON_PREFIX = 'ip'
-export const ADDON_VERSION = '1.9.3'
+export const ADDON_VERSION = '1.9.4'
 
 const CATALOGS = [
     {key: 'f2media', name: 'F2Media', catalogType: 'movies'},
@@ -226,6 +226,48 @@ function titlesMatch(a, b) {
     return hits >= Math.min(2, ta.length, tb.length)
 }
 
+function searchQueryVariants(title) {
+    const raw = String(title ?? '').trim()
+    if (!raw) return []
+    const variants = [raw]
+    // Providers like F2Media filter with name.includes(query) — keep punctuation
+    // in the primary query; also try softer forms for sites that strip "&".
+    const noAmp = raw.replace(/&/g, ' and ').replace(/\s+/g, ' ').trim()
+    if (noAmp !== raw) variants.push(noAmp)
+    const stripped = raw.replace(/[^\w\s]/g, ' ').replace(/\s+/g, ' ').trim()
+    if (stripped && !variants.some((v) => v.toLowerCase() === stripped.toLowerCase())) {
+        variants.push(stripped)
+    }
+    // de-dupe case-insensitively, keep order
+    const seen = new Set()
+    return variants.filter((v) => {
+        const k = v.toLowerCase()
+        if (seen.has(k)) return false
+        seen.add(k)
+        return true
+    })
+}
+
+function bestTitleMatch(results, type, cleanTitle) {
+    const candidates = (Array.isArray(results) ? results : []).filter((r) => {
+        if (r.type && r.type !== type) return false
+        return titlesMatch(normalizeForMatch(r.name), cleanTitle)
+    })
+    if (!candidates.length) return null
+    // Prefer exact-ish shorter names (avoid matching a longer unrelated pack)
+    candidates.sort((a, b) => {
+        const na = normalizeForMatch(a.name)
+        const nb = normalizeForMatch(b.name)
+        const score = (n) => {
+            if (n === cleanTitle) return 0
+            if (n.includes(cleanTitle) || cleanTitle.includes(n)) return 1
+            return 2
+        }
+        return score(na) - score(nb) || na.length - nb.length
+    })
+    return candidates[0]
+}
+
 async function streamsByTitle(title, type, season, episode, providers) {
     const cleanTitle = normalizeForMatch(title)
     const cacheKey = streamCacheKey(cleanTitle, type, season, episode)
@@ -234,17 +276,19 @@ async function streamsByTitle(title, type, season, episode, providers) {
         return cached.streams
     }
 
-    // Tight per-provider budget so public Vercel stays responsive under load.
-    const PROVIDER_BUDGET_MS = Number(process.env.PROVIDER_TIMEOUT_MS) || 8_000
+    // Enough budget for search + detail (F2Media may also hit REST fallback).
+    const PROVIDER_BUDGET_MS = Number(process.env.PROVIDER_TIMEOUT_MS) || 11_000
+    const queries = searchQueryVariants(title)
+
     const settled = await Promise.allSettled(
         providers.map(async (provider) => {
             const work = (async () => {
-                const results = await provider.search(cleanTitle || title)
-                const match = (Array.isArray(results) ? results : []).find((r) => {
-                    if (r.type && r.type !== type) return false
-                    const cleanName = normalizeForMatch(r.name)
-                    return titlesMatch(cleanName, cleanTitle)
-                })
+                let match = null
+                for (const q of queries) {
+                    const results = await provider.search(q)
+                    match = bestTitleMatch(results, type, cleanTitle)
+                    if (match) break
+                }
                 if (!match) {
                     return {key: provider.key, streams: []}
                 }
