@@ -275,21 +275,35 @@ export function translateCatalogName(name, type) {
     return working || typeWord || name
 }
 
-export async function getTMDBTitle(type, tmdbId, httpClient = axios, apiKey, logger = console) {
+export async function getTMDBDetails(type, tmdbId, httpClient = axios, apiKey, logger = console) {
     if (!apiKey || !tmdbId) {
         return null
     }
     const kind = type === 'series' ? 'tv' : 'movie'
     try {
         const response = await httpClient.get(`https://api.themoviedb.org/3/${kind}/${tmdbId}`, {
-            params: {api_key: apiKey},
+            params: {api_key: apiKey, append_to_response: 'external_ids'},
             timeout: REQUEST_TIMEOUT_MS,
         })
-        return response.data?.title || response.data?.name || null
+        const data = response.data ?? {}
+        const title = data.title || data.name || data.original_title || data.original_name || null
+        const imdbId = data.external_ids?.imdb_id
+            || data.imdb_id
+            || null
+        return {
+            title,
+            imdbId: imdbId && /^tt\d+$/.test(imdbId) ? imdbId : null,
+            year: (data.release_date || data.first_air_date || '').slice(0, 4) || null,
+        }
     } catch (error) {
-        logAxiosError(error, logger, 'Unable to get TMDB title')
+        logAxiosError(error, logger, 'Unable to get TMDB details')
         return null
     }
+}
+
+export async function getTMDBTitle(type, tmdbId, httpClient = axios, apiKey, logger = console) {
+    const details = await getTMDBDetails(type, tmdbId, httpClient, apiKey, logger)
+    return details?.title ?? null
 }
 
 export async function getKitsuTitle(kitsuId, httpClient = axios, logger = console) {

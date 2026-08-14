@@ -18,10 +18,10 @@ import F2Media from './sources/f2media.js'
 import Peepboxtv from './sources/peepboxtv.js'
 import Serialblog from './sources/serialblog.js'
 import {ID_SEPARATOR, METADATA_SOURCE} from './sources/source.js'
-import {findExternalMetaSource, findExternalStreamSource, formatStreamTitle, getCinemeta, getExternalCatalogSources, getKitsuTitle, getSubtitle, getTMDBMetaFa, getTMDBTitle, getTorrentStreams, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxyExternalStream, proxySubtitles, translateCatalogName} from './utils.js'
+import {findExternalMetaSource, findExternalStreamSource, formatStreamTitle, getCinemeta, getExternalCatalogSources, getKitsuTitle, getSubtitle, getTMDBMetaFa, getTMDBDetails, getTMDBTitle, getTorrentStreams, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxyExternalStream, proxySubtitles, translateCatalogName} from './utils.js'
 
 export const ADDON_PREFIX = 'ip'
-export const ADDON_VERSION = '1.9.1'
+export const ADDON_VERSION = '1.9.2'
 
 const CATALOGS = [
     {key: 'f2media', name: 'F2Media', catalogType: 'movies'},
@@ -204,6 +204,9 @@ function streamCacheKey(title, type, season, episode) {
 function normalizeForMatch(value) {
     return String(value ?? '')
         .replace(/[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/g, '')
+        .replace(/\b(season|series|s)\s*\d+\b/gi, ' ')
+        .replace(/\b(episode|ep|e)\s*\d+\b/gi, ' ')
+        .replace(/\bs\d{1,2}\s*e\d{1,3}\b/gi, ' ')
         .replace(/[^\w\s]/g, ' ')
         .replace(/\b(19|20)\d{2}\b/g, ' ')
         .replace(/\s+/g, ' ')
@@ -342,13 +345,25 @@ function parseTmdbId(value) {
 }
 
 async function tmdbStreamResponse(type, id, providers, httpClient, apiKey, env, logger) {
-    const torrentPromise = getTorrentStreams(type, id, env, httpClient, logger).catch(() => [])
     const parsed = parseTmdbId(id)
     if (!parsed) {
-        return {streams: await torrentPromise}
+        return {streams: await getTorrentStreams(type, id, env, httpClient, logger).catch(() => [])}
     }
 
-    const title = await getTMDBTitle(type, parsed.tmdbId, httpClient, apiKey, logger)
+    // 101 Catalogs (and similar) use tmdb: ids. Meteor/torrent addons usually
+    // only accept tt: IMDb ids — resolve both title and imdb_id via TMDB so
+    // Iranian providers + torrent both work for "پرطرفدار / ترند".
+    const details = await getTMDBDetails(type, parsed.tmdbId, httpClient, apiKey, logger)
+    const title = details?.title ?? null
+    const imdbId = details?.imdbId ?? null
+
+    const torrentId = imdbId
+        ? (parsed.season != null && parsed.episode != null
+            ? `${imdbId}:${parsed.season}:${parsed.episode}`
+            : imdbId)
+        : id
+    const torrentPromise = getTorrentStreams(type, torrentId, env, httpClient, logger).catch(() => [])
+
     const streams = title
         ? await streamsByTitle(title, type, parsed.season, parsed.episode, providers)
         : []
