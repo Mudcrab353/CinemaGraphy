@@ -174,41 +174,60 @@ async function getCinemetaName(type, imdbId, services) {
     return cinemeta?.meta?.name ?? null
 }
 
+function withTimeout(promise, ms, label = 'operation') {
+    return Promise.race([
+        promise,
+        new Promise((_, reject) => {
+            setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms)
+        }),
+    ])
+}
+
 async function streamsByTitle(title, type, season, episode, providers) {
     const cleanTitle = title.replace(/[؀-ۿݐ-ݿࢠ-ࣿﭐ-﷿ﹰ-﻿]/g, '').trim().toLowerCase()
 
+    // Each provider is capped so a slow site (e.g. Animex directory crawl)
+    // cannot hold the whole series response past the serverless budget.
+    const PROVIDER_BUDGET_MS = 12_000
     const settled = await Promise.allSettled(
         providers.map(async (provider) => {
-            const results = await provider.search(cleanTitle)
-            const match = results.find((r) => {
-                const cleanName = r.name.replace(/[؀-ۿݐ-ݿࢠ-ࣿﭐ-﷿ﹰ-﻿]/g, '').toLowerCase()
-                return (cleanName.includes(cleanTitle) || cleanTitle.includes(cleanName)) && r.type === type
-            })
-            if (!match) {
-                return {key: provider.key, streams: []}
-            }
+            const work = (async () => {
+                const results = await provider.search(cleanTitle)
+                const match = results.find((r) => {
+                    const cleanName = r.name.replace(/[؀-ۿݐ-ݿࢠ-ࣿﭐ-﷿ﹰ-﻿]/g, '').toLowerCase()
+                    return (cleanName.includes(cleanTitle) || cleanTitle.includes(cleanName)) && r.type === type
+                })
+                if (!match) {
+                    return {key: provider.key, streams: []}
+                }
 
-            const movieData = await provider.getMovieData(match.type, match.id)
-            if (!movieData) {
-                return {key: provider.key, streams: []}
-            }
+                const movieData = await provider.getMovieData(match.type, match.id)
+                if (!movieData) {
+                    return {key: provider.key, streams: []}
+                }
 
-            const videoId = season && episode ? `${match.id}:${season}:${episode}` : null
-            const links = provider.getLinks(match.type, videoId, movieData)
+                const videoId = season && episode ? `${match.id}:${season}:${episode}` : null
+                const links = provider.getLinks(match.type, videoId, movieData)
 
-            return {
-                key: provider.key,
-                streams: (Array.isArray(links) ? links : []).map((link) => ({
-                    url: link.url,
-                    title: formatStreamTitle({
-                        providerKey: provider.key,
-                        quality: link.quality,
-                        size: link.size,
-                        audioType: link.audioType,
-                        extraText: link.title,
+                return {
+                    key: provider.key,
+                    streams: (Array.isArray(links) ? links : []).map((link) => ({
                         url: link.url,
-                    }),
-                })),
+                        title: formatStreamTitle({
+                            providerKey: provider.key,
+                            quality: link.quality,
+                            size: link.size,
+                            audioType: link.audioType,
+                            extraText: link.title,
+                            url: link.url,
+                        }),
+                    })),
+                }
+            })()
+            try {
+                return await withTimeout(work, PROVIDER_BUDGET_MS, provider.key)
+            } catch {
+                return {key: provider.key, streams: []}
             }
         }),
     )
