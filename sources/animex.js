@@ -86,7 +86,13 @@ export default class Animex extends HtmlSource {
             }
 
             const results = []
-            const lcQuery = query.toLowerCase()
+            // Normalize query for anime titles like "Grand Blue" vs "GrandBlue Season 1"
+            const lcQuery = query.toLowerCase().replace(/\s+/g, ' ').trim()
+            const compactQuery = lcQuery.replace(/\s+/g, '')
+            const queryCore = lcQuery
+                .replace(/\b(season|series|s)\s*\d+\b/gi, ' ')
+                .replace(/\s+/g, ' ')
+                .trim()
 
             $('a[href]').each((_, anchor) => {
                 const href = $(anchor).attr('href')
@@ -102,7 +108,20 @@ export default class Animex extends HtmlSource {
                         || $(anchor).find('img').attr('alt')
                         || '',
                 )
-                if (!id || !name || !name.toLowerCase().includes(lcQuery)) {
+                if (!id || !name) {
+                    return
+                }
+                const lcName = name.toLowerCase().replace(/\s+/g, ' ').trim()
+                const compactName = lcName.replace(/\s+/g, '')
+                const nameCore = lcName
+                    .replace(/\b(season|series|s)\s*\d+\b/gi, ' ')
+                    .replace(/\s+/g, ' ')
+                    .trim()
+                const matched = lcName.includes(lcQuery)
+                    || compactName.includes(compactQuery)
+                    || (queryCore && nameCore.includes(queryCore))
+                    || (queryCore && nameCore.replace(/\s+/g, '').includes(queryCore.replace(/\s+/g, '')))
+                if (!matched) {
                     return
                 }
 
