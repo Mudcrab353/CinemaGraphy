@@ -651,10 +651,52 @@ const EXTERNAL_CATALOG_FAST_MS = 20_000
 const EXTERNAL_CATALOG_ANIME_MS = 35_000
 /** Soft budget on the critical path so a slow anime host does not delay the whole manifest */
 const EXTERNAL_CATALOG_SOFT_WAIT_MS = 4_000
+
+/**
+ * AIOCatalogs (and similar) put a JSON blob in the path.
+ * Vercel env may store it decoded; axios may mangle braces or double-encode %.
+ * Decode path segments fully, then encode once.
+ */
+export function normalizeExternalManifestUrl(raw) {
+    let cleaned = String(raw || '').trim()
+    if (
+        (cleaned.startsWith('"') && cleaned.endsWith('"'))
+        || (cleaned.startsWith("'") && cleaned.endsWith("'"))
+    ) {
+        cleaned = cleaned.slice(1, -1).trim()
+    }
+    if (!cleaned) return ''
+    try {
+        const u = new URL(cleaned)
+        const parts = u.pathname.split('/').map((seg) => {
+            if (!seg) return ''
+            let decoded = seg
+            for (let i = 0; i < 4; i++) {
+                try {
+                    const next = decodeURIComponent(decoded)
+                    if (next === decoded) break
+                    decoded = next
+                } catch {
+                    break
+                }
+            }
+            // Encode the whole segment (JSON blob, uuid, "manifest.json", …)
+            return encodeURIComponent(decoded)
+        })
+        u.pathname = parts.join('/')
+        u.hash = ''
+        return u.toString()
+    } catch {
+        return cleaned
+    }
+}
+
 /** @type {{timestamp:number, key:string, sources:any[], failed:string[]} | null} */
 let externalCatalogsCache = null
 /** In-flight anime (or other slow) fetches so concurrent requests share one promise */
 const externalInflight = new Map()
+/** @type {Map<string, string>} */
+const externalCatalogLastError = new Map()
 
 function externalManifestUrls(env) {
     // Order is intentional and must not be reshuffled:
@@ -674,14 +716,7 @@ function externalManifestUrls(env) {
     const seen = new Set()
     const out = []
     for (const url of [...dedicated, ...extra]) {
-        let cleaned = String(url || '').trim()
-        if (!cleaned) continue
-        if (
-            (cleaned.startsWith('"') && cleaned.endsWith('"'))
-            || (cleaned.startsWith("'") && cleaned.endsWith("'"))
-        ) {
-            cleaned = cleaned.slice(1, -1).trim()
-        }
+        const cleaned = normalizeExternalManifestUrl(url)
         if (!cleaned || seen.has(cleaned)) continue
         seen.add(cleaned)
         out.push(cleaned)
@@ -704,7 +739,7 @@ function isSlowExternalCatalogUrl(manifestUrl, env = {}) {
 
 function catalogBaseUrl(manifestUrl) {
     try {
-        const u = new URL(manifestUrl)
+        const u = new URL(normalizeExternalManifestUrl(manifestUrl) || manifestUrl)
         u.hash = ''
         u.search = ''
         let path = u.pathname.replace(/\/manifest\.json$/i, '')
@@ -721,14 +756,49 @@ function sleep(ms) {
 }
 
 async function fetchOneExternalCatalog(manifestUrl, httpClient, logger, timeoutMs) {
-    const response = await httpClient.get(manifestUrl, {
-        timeout: timeoutMs,
-        validateStatus: (s) => s >= 200 && s < 300,
-    })
-    const manifest = response.data ?? {}
+    const url = normalizeExternalManifestUrl(manifestUrl)
+    let manifest
+    // Prefer global fetch: safer with JSON path segments (AIOCatalogs userId blob).
+    if (typeof fetch === 'function') {
+        const ctrl = new AbortController()
+        const timer = setTimeout(() => ctrl.abort(), timeoutMs)
+        try {
+            const response = await fetch(url, {
+                signal: ctrl.signal,
+                headers: {
+                    Accept: 'application/json,text/plain,*/*',
+                    'User-Agent': 'Cinemagraphy-Addon/2.1.11',
+                },
+                redirect: 'follow',
+            })
+            if (!response.ok) {
+                const err = new Error(`HTTP ${response.status}`)
+                err.response = {status: response.status}
+                throw err
+            }
+            manifest = await response.json()
+        } finally {
+            clearTimeout(timer)
+        }
+    } else {
+        const response = await httpClient.get(url, {
+            timeout: timeoutMs,
+            headers: {
+                Accept: 'application/json,text/plain,*/*',
+                'User-Agent': 'Cinemagraphy-Addon/2.1.11',
+            },
+            validateStatus: (s) => s >= 200 && s < 300,
+            // Do not transform the already-normalized URL
+            maxRedirects: 5,
+        })
+        manifest = response.data ?? {}
+    }
+    if (!manifest || typeof manifest !== 'object') {
+        throw new Error('External catalog manifest is not JSON')
+    }
     const catalogs = Array.isArray(manifest.catalogs) ? manifest.catalogs : []
     if (!catalogs.length) {
-        logger.warn?.('External catalog manifest has no catalogs', {manifestUrl})
+        logger.warn?.('External catalog manifest has no catalogs', {manifestUrl: url})
     }
     const metaResource = (manifest.resources ?? []).find((r) => (
         r === 'meta' || r?.name === 'meta'
@@ -737,13 +807,13 @@ async function fetchOneExternalCatalog(manifestUrl, httpClient, logger, timeoutM
         r === 'stream' || r?.name === 'stream'
     ))
     return {
-        baseUrl: catalogBaseUrl(manifestUrl),
+        baseUrl: catalogBaseUrl(url),
         catalogIds: new Set(catalogs.map((catalog) => catalog.id)),
         catalogs,
         idPrefixes: manifest.idPrefixes ?? [],
         hasMeta: Boolean(metaResource),
         hasStream: Boolean(streamResource),
-        manifestUrl,
+        manifestUrl: url,
     }
 }
 
@@ -794,8 +864,11 @@ export async function getExternalCatalogSources(env = {}, httpClient = axios, lo
                     const source = await fetchOneExternalCatalog(
                         manifestUrl, httpClient, logger, EXTERNAL_CATALOG_FAST_MS,
                     )
+                    externalCatalogLastError.delete(manifestUrl)
                     return {ok: true, manifestUrl, source}
                 } catch (error) {
+                    const msg = error?.message || String(error)
+                    externalCatalogLastError.set(manifestUrl, msg)
                     logAxiosError(error, logger, `External catalog manifest fetch failed (${manifestUrl})`)
                     return {ok: false, manifestUrl}
                 }
@@ -818,6 +891,7 @@ export async function getExternalCatalogSources(env = {}, httpClient = axios, lo
                     return source
                 })
                 .catch((error) => {
+                    externalCatalogLastError.set(manifestUrl, error?.message || String(error))
                     logAxiosError(error, logger, `External catalog manifest fetch failed (${manifestUrl})`)
                     return null
                 })
@@ -860,12 +934,14 @@ export function getExternalCatalogStatus(env = {}) {
         let host = url
         try { host = new URL(url).host } catch { /* keep */ }
         const src = byUrl.get(url)
+        const err = externalCatalogLastError.get(url)
         return {
             host,
             ok: Boolean(src),
             catalogs: src ? (src.catalogs?.length || 0) : 0,
             pending: externalInflight.has(url),
-            failed: failed.has(url) && !src,
+            failed: (failed.has(url) || Boolean(err)) && !src,
+            error: src ? null : (err || null),
         }
     })
 }
