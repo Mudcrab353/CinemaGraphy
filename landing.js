@@ -59,14 +59,14 @@ export function renderLandingPage({
   manifestUrl = PUBLIC_INSTALL,
   installUrl,
   logoUrl = '/logo.png',
-  version = '2.0.2',
+  version = '2.0.3',
 } = {}) {
   const m = escapeHtml(manifestUrl || PUBLIC_INSTALL)
   const install = escapeHtml(
     installUrl || `stremio://${String(manifestUrl || PUBLIC_INSTALL).replace(/^https?:\/\//i, '')}`,
   )
   const logo = escapeHtml(logoUrl || LOGO_FALLBACK)
-  const ver = escapeHtml(String(version || '2.0.2'))
+  const ver = escapeHtml(String(version || '2.0.3'))
 
   const addonCards = RECOMMENDED.map(
     (a) => `
@@ -173,10 +173,16 @@ footer{margin-top:12px;padding:32px 5vw 44px;border-top:1px solid rgba(255,255,2
 .tile img{width:120px;height:180px;object-fit:cover;border-radius:12px;background:rgba(255,255,255,.06);display:block}
 .tile .cap{margin-top:6px;font-size:.78rem;font-weight:700;line-height:1.3;max-height:2.6em;overflow:hidden}
 .tile .sub2{font-size:.7rem;color:var(--m);margin-top:2px}
-.tr-tile{flex:0 0 220px}
-.tr-tile .thumb{position:relative;border-radius:12px;overflow:hidden;aspect-ratio:16/9;background:#111}
+.tr-tile{flex:0 0 168px;max-width:168px}
+.tr-tile .thumb{position:relative;border-radius:12px;overflow:hidden;height:94px;background:#111;display:block}
 .tr-tile .thumb img{width:100%;height:100%;object-fit:cover;display:block;opacity:.9}
-.tr-tile .play{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.35);font-size:1.8rem}
+.tr-tile .play{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.35);font-size:1.25rem;pointer-events:none}
+.tr-tile .cap{margin-top:6px;font-size:.72rem;font-weight:700;line-height:1.25;max-height:2.5em;overflow:hidden}
+.tr-tile .actions{display:flex;gap:4px;margin-top:4px}
+.tr-tile .actions a{flex:1;font-size:.62rem;font-weight:800;padding:5px 4px;border-radius:8px;text-decoration:none;text-align:center}
+.tr-tile .actions .s{background:linear-gradient(135deg,#e8a04a,#d4783a);color:#1a0f05}
+.tr-tile .actions .y{background:rgba(255,255,255,.12);color:#fff}
+.rail{scrollbar-width:thin;overscroll-behavior-x:contain}
 .modal{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.75);padding:16px}
 .modal.open{display:flex}
 .modal .inner{width:min(900px,100%);aspect-ratio:16/9;background:#000;border-radius:12px;overflow:hidden;position:relative}
@@ -377,20 +383,22 @@ function fillTrailers(items){
   if(!items||!items.length){el.innerHTML='<p class="sub">—</p>';return;}
   var fa=document.documentElement.lang==='fa';
   el.innerHTML=items.map(function(item){
-    var title=esc(item.title||'');
+    var title=esc(item.title||item.originalTitle||'');
     var bg=item.backdrop||item.poster||'';
     var key=item.trailer&&item.trailer.key;
     var yt=key?('https://www.youtube.com/watch?v='+encodeURIComponent(key)):'#';
     var mt=item.mediaType==='tv'?'series':'movie';
     var stremio='stremio://detail/'+mt+'/tmdb:'+encodeURIComponent(item.id);
     return '<div class="tile tr-tile">'+
-      '<a class="thumb" href="'+esc(yt)+'" target="_blank" rel="noopener" title="'+(fa?'پخش در یوتیوب':'Watch on YouTube')+'">'+
+      '<a class="thumb" href="'+esc(yt)+'" target="_blank" rel="noopener" title="YouTube">'+
         (bg?'<img src="'+esc(bg)+'" alt="" loading="lazy"/>':'')+
         '<div class="play">▶</div>'+
-        '<div class="hov" style="pointer-events:none"><span style="font-size:.7rem;font-weight:700;color:#fff">'+(fa?'یوتیوب':'YouTube')+'</span></div>'+
       '</a>'+
-      '<div class="cap">'+title+'</div>'+
-      '<a class="sub2" href="'+esc(stremio)+'" style="color:var(--a);text-decoration:none;font-weight:700">'+(fa?'استریمیو':'Stremio')+'</a>'+
+      '<div class="cap" title="'+title+'">'+title+'</div>'+
+      '<div class="actions">'+
+        '<a class="s" href="'+esc(stremio)+'">'+(fa?'استریمیو':'Stremio')+'</a>'+
+        '<a class="y" href="'+esc(yt)+'" target="_blank" rel="noopener">YT</a>'+
+      '</div>'+
     '</div>';
   }).join('');
 }
@@ -418,6 +426,19 @@ async function loadTmdb(){
   }
 }
 loadTmdb();
+
+function bindRailWheel(){
+  document.querySelectorAll('.rail').forEach(function(rail){
+    rail.addEventListener('wheel', function(e){
+      if(Math.abs(e.deltaY) < Math.abs(e.deltaX)) return;
+      if(rail.scrollWidth <= rail.clientWidth + 4) return;
+      e.preventDefault();
+      rail.scrollLeft += e.deltaY;
+    }, {passive:false});
+  });
+}
+bindRailWheel();
+
 
 
 })();

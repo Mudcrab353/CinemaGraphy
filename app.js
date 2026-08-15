@@ -21,7 +21,7 @@ import {ID_SEPARATOR, METADATA_SOURCE} from './sources/source.js'
 import {findExternalMetaSource, findExternalStreamSource, formatStreamTitle, getCinemeta, getExternalCatalogSources, getKitsuTitle, getSubtitle, getTMDBMetaFa, getTMDBMetaByTmdbId, getTMDBDetails, getTMDBTitle, getLandingTmdbCatalogs, getTorrentStreams, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxyExternalStream, proxySubtitles, translateCatalogName} from './utils.js'
 
 export const ADDON_PREFIX = 'ip'
-export const ADDON_VERSION = '2.0.2'
+export const ADDON_VERSION = '2.0.3'
 
 const CATALOGS = [
     {key: 'f2media', name: 'F2Media', catalogType: 'movies'},
@@ -649,17 +649,31 @@ export function createAddon({
             }
 
             const results = await provider.search(search)
-            const metas = (Array.isArray(results) ? results : [])
-                .filter((item) => item?.id != null && item.type === req.params.type)
-                .map((item) => ({
-                    ...item,
-                    id: `${ADDON_PREFIX}${provider.providerID}${item.id}`,
-                }))
-            logger.debug('Catalog search completed', {
+            const list = Array.isArray(results) ? results : []
+            let filtered = list.filter((item) => item?.id != null && item.type === req.params.type)
+            // If the catalog type filter wipes everything but the provider did find
+            // rows (common when a series query hits a movie page first), keep
+            // same-type when possible; otherwise surface provider hits so the
+            // user is not stuck with an empty board.
+            if (!filtered.length && list.length) {
+                filtered = list.filter((item) => item?.id != null)
+                logger.info('Catalog type filter empty; returning untyped hits', {
+                    provider: provider.key,
+                    type: req.params.type,
+                    query: search,
+                    resultCount: list.length,
+                })
+            }
+            const metas = filtered.map((item) => ({
+                ...item,
+                type: item.type === 'series' || item.type === 'movie' ? item.type : req.params.type,
+                id: `${ADDON_PREFIX}${provider.providerID}${item.id}`,
+            }))
+            logger.info('Catalog search completed', {
                 provider: provider.key,
                 type: req.params.type,
                 query: search,
-                resultCount: Array.isArray(results) ? results.length : 0,
+                resultCount: list.length,
                 metaCount: metas.length,
             })
             return res.json({metas})
