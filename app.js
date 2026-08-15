@@ -21,7 +21,7 @@ import {ID_SEPARATOR, METADATA_SOURCE} from './sources/source.js'
 import {findExternalMetaSource, findExternalStreamSource, formatStreamTitle, getCinemeta, getExternalCatalogSources, getKitsuTitle, getSubtitle, getTMDBMetaFa, getTMDBMetaByTmdbId, getTMDBDetails, getTMDBTitle, getTorrentStreams, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxyExternalStream, proxySubtitles, translateCatalogName} from './utils.js'
 
 export const ADDON_PREFIX = 'ip'
-export const ADDON_VERSION = '1.9.5'
+export const ADDON_VERSION = '2.0.0'
 
 const CATALOGS = [
     {key: 'f2media', name: 'F2Media', catalogType: 'movies'},
@@ -93,6 +93,107 @@ export function createProviders({env = process.env, logger = console, httpClient
         }
         return ok
     })
+}
+
+
+/** Full registry for landing status — includes providers even if BASEURL missing. */
+export const PROVIDER_REGISTRY = [
+    {key: 'f2media', name: 'F2Media', envKey: 'F2MEDIA_BASEURL'},
+    {key: 'peepboxtv', name: 'PeepBoxTv', envKey: 'PEEPBOXTV_BASEURL'},
+    {key: 'cinamatic', name: 'Cinamatic', envKey: 'CINAMATIC_BASEURL'},
+    {key: 'aslmoviez', name: 'AslMoviez', envKey: 'ASLMOVIEZ_BASEURL'},
+    {key: 'serialblog', name: 'SerialBlog', envKey: 'SERIALBLOG_BASEURL'},
+    {key: 'digimovie', name: 'DigiMovie', envKey: 'DIGIMOVIE_BASEURL'},
+    {key: 'donyayeserial', name: 'DonyayeSerial', envKey: 'DONYAYESERIAL_BASEURL'},
+    {key: 'animex', name: 'Animex', envKey: 'ANIMEX_BASEURL'},
+]
+
+const PROVIDER_STATUS_TTL_MS = 5 * 60 * 1000
+const PROVIDER_PROBE_TIMEOUT_MS = 4_000
+let providerStatusCache = null
+
+async function probeProviderUrl(url, httpClient) {
+    const started = Date.now()
+    try {
+        const response = await httpClient.get(url, {
+            timeout: PROVIDER_PROBE_TIMEOUT_MS,
+            maxRedirects: 5,
+            validateStatus: (status) => status > 0 && status < 500,
+            headers: {
+                'User-Agent': 'Cinemagraphy/2.0 (provider-status)',
+                Accept: 'text/html,application/json,*/*',
+            },
+        })
+        return {
+            online: Boolean(response),
+            latencyMs: Date.now() - started,
+        }
+    } catch {
+        return {online: false, latencyMs: Date.now() - started}
+    }
+}
+
+/**
+ * Cached provider status for the landing page.
+ * Never throws — individual probe failures mark that provider offline only.
+ */
+export async function getProvidersStatus(env = process.env, httpClient = axios) {
+    if (providerStatusCache && Date.now() - providerStatusCache.at < PROVIDER_STATUS_TTL_MS) {
+        return providerStatusCache.payload
+    }
+
+    const items = await Promise.all(
+        PROVIDER_REGISTRY.map(async (entry) => {
+            const baseUrl = String(env[entry.envKey] ?? '').trim()
+            if (!baseUrl) {
+                return {
+                    key: entry.key,
+                    name: entry.name,
+                    configured: false,
+                    online: false,
+                    latencyMs: null,
+                }
+            }
+            const probe = await probeProviderUrl(baseUrl, httpClient)
+            return {
+                key: entry.key,
+                name: entry.name,
+                configured: true,
+                online: probe.online,
+                latencyMs: probe.latencyMs,
+            }
+        }),
+    )
+
+    // Optional torrent companion (not an Iranian HTML provider)
+    const torrentUrl = String(env.TORRENT_METEOR_MANIFEST_URL ?? '').trim()
+    if (torrentUrl) {
+        const probe = await probeProviderUrl(torrentUrl, httpClient)
+        items.push({
+            key: 'torrent',
+            name: 'Torrent (Meteor)',
+            configured: true,
+            online: probe.online,
+            latencyMs: probe.latencyMs,
+        })
+    } else {
+        items.push({
+            key: 'torrent',
+            name: 'Torrent (Meteor)',
+            configured: false,
+            online: false,
+            latencyMs: null,
+        })
+    }
+
+    const payload = {
+        version: ADDON_VERSION,
+        checkedAt: new Date().toISOString(),
+        cacheTtlMs: PROVIDER_STATUS_TTL_MS,
+        providers: items,
+    }
+    providerStatusCache = {at: Date.now(), payload}
+    return payload
 }
 
 export function parseAddonId(id, providers) {
@@ -732,6 +833,30 @@ export function createAddon({
     }
     addon.get('/subtitles/:type/:id/:extraArgs.json', subtitleHandler)
     addon.get('/subtitles/:type/:id.json', subtitleHandler)
+
+    addon.get('/providers.json', async (req, res) => {
+        try {
+            const data = await getProvidersStatus(env, axios)
+            res.status(200)
+                .type('json')
+                .set('cache-control', 'public, max-age=60, s-maxage=120')
+                .json(data)
+        } catch (error) {
+            logger.error('providers.json failed', {message: error?.message ?? String(error)})
+            res.status(200).type('json').json({
+                version: ADDON_VERSION,
+                checkedAt: new Date().toISOString(),
+                cacheTtlMs: PROVIDER_STATUS_TTL_MS,
+                providers: PROVIDER_REGISTRY.map((entry) => ({
+                    key: entry.key,
+                    name: entry.name,
+                    configured: Boolean(String(env[entry.envKey] ?? '').trim()),
+                    online: false,
+                    latencyMs: null,
+                })),
+            })
+        }
+    })
 
     addon.get('/health', (req, res) => res.type('text/plain').send('ok'))
     addon.use(createErrorHandler(logger))

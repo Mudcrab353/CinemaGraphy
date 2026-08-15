@@ -57,14 +57,14 @@ export function renderLandingPage({
   manifestUrl = PUBLIC_INSTALL,
   installUrl,
   logoUrl = '/logo.png',
-  version = '1.9.5',
+  version = '2.0.0',
 } = {}) {
   const m = escapeHtml(manifestUrl || PUBLIC_INSTALL)
   const install = escapeHtml(
     installUrl || `stremio://${String(manifestUrl || PUBLIC_INSTALL).replace(/^https?:\/\//i, '')}`,
   )
   const logo = escapeHtml(logoUrl || LOGO_FALLBACK)
-  const ver = escapeHtml(String(version || '1.9.5'))
+  const ver = escapeHtml(String(version || '2.0.0'))
 
   const addonCards = RECOMMENDED.map(
     (a) => `
@@ -149,6 +149,19 @@ footer{margin-top:12px;padding:32px 5vw 44px;border-top:1px solid rgba(255,255,2
 .gh svg{width:22px;height:22px;flex-shrink:0}
 .gh .label{display:flex;flex-direction:column;align-items:flex-start;gap:2px}
 .gh .label small{color:var(--m);font-weight:600;font-size:.8rem}
+
+.prov{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
+.prov .card{display:flex;flex-direction:column;gap:8px;padding:14px 12px;border-radius:16px;transition:transform .2s,border-color .2s}
+.prov .card:hover{transform:translateY(-2px)}
+.prov .top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.prov .name{font-weight:800;font-size:.9rem}
+.prov .dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;box-shadow:0 0 8px currentColor}
+.prov .dot.on{background:#5dcea0;color:#5dcea0}
+.prov .dot.off{background:#e07070;color:#e07070}
+.prov .dot.na{background:#6a6570;color:#6a6570}
+.prov .meta{font-size:.72rem;color:var(--m)}
+.prov .sk{height:72px;border-radius:16px;background:linear-gradient(90deg,rgba(255,255,255,.04),rgba(255,255,255,.1),rgba(255,255,255,.04));background-size:200% 100%;animation:sh 1.2s ease-in-out infinite}
+@keyframes sh{0%{background-position:200% 0}100%{background-position:-200% 0}}
 </style>
 </head>
 <body>
@@ -186,6 +199,16 @@ footer{margin-top:12px;padding:32px 5vw 44px;border-top:1px solid rgba(255,255,2
 <a class="p glass" href="https://apps.apple.com/app/stremio/id1297124690" target="_blank" rel="noopener">iOS / tvOS</a>
 </div>
 </section>
+
+<section>
+<h2 class="lang-fa">منابع و پروایدرها</h2><h2 class="lang-en">Providers</h2>
+<p class="sub lang-fa">وضعیت زنده منابع این نمونه — به‌روزرسانی خودکار با کش کوتاه.</p>
+<p class="sub lang-en">Live status of sources on this instance — short-lived cache.</p>
+<div class="prov" id="providerGrid" aria-live="polite">
+<div class="sk glass"></div><div class="sk glass"></div><div class="sk glass"></div><div class="sk glass"></div>
+</div>
+</section>
+
 <section>
 <h2 class="lang-fa">افزونه‌های پیشنهادی</h2><h2 class="lang-en">Recommended addons</h2>
 <p class="sub lang-fa">بر اساس محبوبیت جامعه استریمیو.</p>
@@ -225,6 +248,42 @@ async function copyManifest(btn){
 }
 const mb=document.getElementById('manifestCopyBtn');
 if(mb)mb.onclick=()=>copyManifest(mb);
+
+async function loadProviders(){
+  const grid=document.getElementById('providerGrid');
+  if(!grid)return;
+  const fa=document.documentElement.lang==='fa';
+  try{
+    const res=await fetch('/providers.json',{credentials:'omit'});
+    if(!res.ok)throw new Error('bad status');
+    const data=await res.json();
+    const list=Array.isArray(data.providers)?data.providers:[];
+    if(!list.length){
+      grid.innerHTML='<p class="sub">'+(fa?'منبعی پیکربندی نشده.':'No providers configured.')+'</p>';
+      return;
+    }
+    grid.innerHTML=list.map(function(p){
+      var status, cls, label;
+      if(!p.configured){
+        cls='na'; status=fa?'پیکربندی نشده':'Not configured'; label=fa?'غیرفعال':'Off';
+      }else if(p.online){
+        cls='on'; status=fa?'آنلاین':'Online'; label=fa?'آنلاین':'Online';
+      }else{
+        cls='off'; status=fa?'آفلاین':'Offline'; label=fa?'آفلاین':'Offline';
+      }
+      var lat=(p.online && p.latencyMs!=null)?(' · '+p.latencyMs+'ms'):'';
+      return '<div class="card glass">'+
+        '<div class="top"><span class="name">'+esc(p.name||p.key)+'</span><span class="dot '+cls+'" title="'+esc(status)+'"></span></div>'+
+        '<div class="meta">'+esc(label)+lat+'</div>'+
+      '</div>';
+    }).join('');
+  }catch(e){
+    grid.innerHTML='<p class="sub">'+(fa?'دریافت وضعیت ممکن نشد.':'Could not load provider status.')+'</p>';
+  }
+}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+loadProviders();
+
 })();
 </script>
 </body></html>`

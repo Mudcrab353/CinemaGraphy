@@ -13,7 +13,7 @@ import {createFetchHttpClient} from './http-client.js'
 import {createWorkerProxyConfig, handleProxyRequest} from './proxy.js'
 
 const ADDON_PREFIX = 'ip'
-const ADDON_VERSION = '1.9.5'
+const ADDON_VERSION = '2.0.0'
 
 const CATALOGS = [
     {key: 'f2media', name: 'F2Media', catalogType: 'movies'},
@@ -616,6 +616,42 @@ export function createWorkerHandler(options = {}) {
                     logResourceError(logger, 'External catalogs unavailable, serving own catalogs only', error)
                 }
                 response = json(manifest)
+            } else if (url.pathname === '/providers.json') {
+                const REG = [
+                    {key:'f2media',name:'F2Media',envKey:'F2MEDIA_BASEURL'},
+                    {key:'peepboxtv',name:'PeepBoxTv',envKey:'PEEPBOXTV_BASEURL'},
+                    {key:'cinamatic',name:'Cinamatic',envKey:'CINAMATIC_BASEURL'},
+                    {key:'aslmoviez',name:'AslMoviez',envKey:'ASLMOVIEZ_BASEURL'},
+                    {key:'serialblog',name:'SerialBlog',envKey:'SERIALBLOG_BASEURL'},
+                    {key:'digimovie',name:'DigiMovie',envKey:'DIGIMOVIE_BASEURL'},
+                    {key:'donyayeserial',name:'DonyayeSerial',envKey:'DONYAYESERIAL_BASEURL'},
+                    {key:'animex',name:'Animex',envKey:'ANIMEX_BASEURL'},
+                ]
+                const httpClient = options.httpClient ?? createFetchHttpClient(options.fetcher ?? fetch)
+                const providers = await Promise.all(REG.map(async (entry) => {
+                    const baseUrl = String(env[entry.envKey] ?? '').trim()
+                    if (!baseUrl) return {key:entry.key,name:entry.name,configured:false,online:false,latencyMs:null}
+                    const t0 = Date.now()
+                    try {
+                        await httpClient.get(baseUrl, {timeout: 4000, validateStatus: (s) => s > 0 && s < 500})
+                        return {key:entry.key,name:entry.name,configured:true,online:true,latencyMs:Date.now()-t0}
+                    } catch {
+                        return {key:entry.key,name:entry.name,configured:true,online:false,latencyMs:Date.now()-t0}
+                    }
+                }))
+                const torrentUrl = String(env.TORRENT_METEOR_MANIFEST_URL ?? '').trim()
+                if (torrentUrl) {
+                    const t0 = Date.now()
+                    try {
+                        await httpClient.get(torrentUrl, {timeout: 4000, validateStatus: (s) => s > 0 && s < 500})
+                        providers.push({key:'torrent',name:'Torrent (Meteor)',configured:true,online:true,latencyMs:Date.now()-t0})
+                    } catch {
+                        providers.push({key:'torrent',name:'Torrent (Meteor)',configured:true,online:false,latencyMs:Date.now()-t0})
+                    }
+                } else {
+                    providers.push({key:'torrent',name:'Torrent (Meteor)',configured:false,online:false,latencyMs:null})
+                }
+                response = json({version: ADDON_VERSION, checkedAt: new Date().toISOString(), cacheTtlMs: 300000, providers})
             } else if (url.pathname === '/health') {
                 response = new Response('ok', {headers: {'content-type': 'text/plain; charset=utf-8'}})
             } else if (url.pathname === `/${createWorkerProxyConfig(env).path}`) {
