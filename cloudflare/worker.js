@@ -13,7 +13,7 @@ import {createFetchHttpClient} from './http-client.js'
 import {createWorkerProxyConfig, handleProxyRequest} from './proxy.js'
 
 const ADDON_PREFIX = 'ip'
-const ADDON_VERSION = '2.0.2'
+const ADDON_VERSION = '2.0.3'
 
 const CATALOGS = [
     {key: 'f2media', name: 'F2Media', catalogType: 'movies'},
