@@ -7,13 +7,13 @@ import F2Media from '../sources/f2media.js'
 import Peepboxtv from '../sources/peepboxtv.js'
 import Serialblog from '../sources/serialblog.js'
 import {ID_SEPARATOR, METADATA_SOURCE} from '../sources/source.js'
-import {findExternalMetaSource, findExternalStreamSource, formatStreamTitle, getExternalCatalogSources, getKitsuTitle, getTMDBMetaFa, getTMDBMetaByTmdbId, getTMDBDetails, getTMDBTitle, getTorrentStreams, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxyExternalStream, proxySubtitles, translateCatalogName} from '../utils.js'
+import {findExternalMetaSource, findExternalStreamSource, formatStreamTitle, getExternalCatalogSources, getKitsuTitle, getTMDBMetaFa, getTMDBMetaByTmdbId, getTMDBDetails, getTMDBTitle, getLandingTmdbCatalogs, getTorrentStreams, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxyExternalStream, proxySubtitles, translateCatalogName} from '../utils.js'
 import {landingUrlsFromRequest, renderLandingPage} from '../landing.js'
 import {createFetchHttpClient} from './http-client.js'
 import {createWorkerProxyConfig, handleProxyRequest} from './proxy.js'
 
 const ADDON_PREFIX = 'ip'
-const ADDON_VERSION = '2.0.0'
+const ADDON_VERSION = '2.0.1'
 
 const CATALOGS = [
     {key: 'f2media', name: 'F2Media', catalogType: 'movies'},
@@ -616,6 +616,10 @@ export function createWorkerHandler(options = {}) {
                     logResourceError(logger, 'External catalogs unavailable, serving own catalogs only', error)
                 }
                 response = json(manifest)
+            } else if (url.pathname === '/tmdb/landing.json') {
+                const httpClient = options.httpClient ?? createFetchHttpClient(options.fetcher ?? fetch)
+                const data = await getLandingTmdbCatalogs(httpClient, env.TMDB_API_KEY, logger)
+                response = json(data)
             } else if (url.pathname === '/providers.json') {
                 const REG = [
                     {key:'f2media',name:'F2Media',envKey:'F2MEDIA_BASEURL'},
