@@ -21,7 +21,7 @@ import {ID_SEPARATOR, METADATA_SOURCE} from './sources/source.js'
 import {findExternalMetaSource, findExternalStreamSource, formatStreamTitle, getCinemeta, getExternalCatalogSources, getExternalCatalogStatus, getKitsuTitle, getSubtitle, getTMDBMetaFa, getTMDBMetaByTmdbId, getTMDBDetails, getTMDBTitle, getLandingTmdbCatalogs, getTorrentStreams, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxyExternalStream, proxySubtitles, translateCatalogName} from './utils.js'
 
 export const ADDON_PREFIX = 'ip'
-export const ADDON_VERSION = '2.1.9'
+export const ADDON_VERSION = '2.1.10'
 
 
 const PROVIDER_BASEURL_KEYS = [
@@ -314,12 +314,23 @@ export async function getProvidersStatus(env = process.env, httpClient = axios) 
         }
     }
 
+    // Which catalog env keys are present (boolean only — never leak URL values)
+    const externalCatalogEnv = {
+        CATALOG101_MANIFEST_URL: Boolean(String(env.CATALOG101_MANIFEST_URL || '').trim()),
+        CATALOG_AIO_MANIFEST_URL: Boolean(String(env.CATALOG_AIO_MANIFEST_URL || env.CATALOG_AIOCATALOGS_MANIFEST_URL || '').trim()),
+        CATALOG_TMDB_MANIFEST_URL: Boolean(String(env.CATALOG_TMDB_MANIFEST_URL || '').trim()),
+        CATALOG_ANIME_MANIFEST_URL: Boolean(String(env.CATALOG_ANIME_MANIFEST_URL || '').trim()),
+        CATALOG_IPTVBRIDGE_MANIFEST_URL: Boolean(String(env.CATALOG_IPTVBRIDGE_MANIFEST_URL || '').trim()),
+        EXTERNAL_CATALOG_MANIFEST_URLS: Boolean(String(env.EXTERNAL_CATALOG_MANIFEST_URLS || '').trim()),
+    }
+
     const payload = {
         version: ADDON_VERSION,
         checkedAt: new Date().toISOString(),
         cacheTtlMs: PROVIDER_STATUS_TTL_MS,
         providers: items,
         externalCatalogs,
+        externalCatalogEnv,
     }
     providerStatusCache = {at: Date.now(), payload}
     return payload
