@@ -8,7 +8,7 @@
     <a href="https://cinemagraphy.vercel.app/manifest.json"><img src="https://img.shields.io/badge/manifest-install-blue?style=for-the-badge" alt="Manifest" /></a>
   </p>
   <p>
-    <img src="https://img.shields.io/badge/version-1.9.0-blue.svg" alt="1.9.0" />
+    <img src="https://img.shields.io/badge/version-2.0.1-blue.svg" alt="2.0.1" />
     <img src="https://img.shields.io/badge/vercel-ready-black.svg" alt="Vercel" />
     <img src="https://img.shields.io/badge/cloudflare-workers-orange.svg" alt="Workers" />
     <img src="https://img.shields.io/badge/license-ISC-lightgrey.svg" alt="ISC" />
@@ -23,7 +23,7 @@
 
 `https://cinemagraphy.vercel.app/manifest.json`
 
-یا از [صفحهٔ اصلی](https://cinemagraphy.vercel.app/) دکمهٔ **نصب در Stremio** را بزنید.
+یا از [صفحهٔ اصلی](https://cinemagraphy.vercel.app/) دکمهٔ **نصب در Stremio** / **لینک منیفست** را بزنید.
 
 ### 🇬🇧 Quick install
 1. Install [Stremio](https://www.stremio.com/downloads)  
@@ -35,10 +35,12 @@
 
 | | |
 |---|---|
-| 🔍 | جستجوی همزمان / Parallel search |
-| 📊 | کیفیت، حجم، صدا، سانسور |
-| 🇮🇷 | متادیتای فارسی (TMDB) |
-| ☁️ | Vercel · Workers · Docker · VPS |
+| 🔍 | جستجوی موازی با timeout و کش کوتاه |
+| 📊 | کیفیت، حجم، صدا، وضعیت سانسور |
+| 🇮🇷 | متادیتای فارسی (TMDB) برای `tt` و `tmdb:` |
+| 🧩 | کاتالوگ ۱۰۱ / انیمه / IPTV از env |
+| 🌐 | لندینگ Liquid Glass + وضعیت منابع + ویترین TMDB |
+| ☁️ | Vercel · Cloudflare Workers · VPS / لوکال |
 
 ---
 
@@ -47,13 +49,22 @@
 
 ---
 
-### نسخه‌ی ۱.۹.۰
-- لندینگ نتفلیکسی (تم روشن/تاریک، لوگو متحرک)
-- رفع دوبل «حجم» در استریم‌ها
-- لینک عمومی نصب روی Vercel
-- README دوزبانه
+### نسخه ۲.۰.۱
+- لیست منابع روی لندینگ (`/providers.json`) با Online/Offline
+- ویترین TMDB فقط برای سایت (محبوب امروز/هفته، سالن، تریلر) — **بدون** اضافه شدن به منیفست استریمیو
+- بهبود match عنوان برای **DonyayeSerial**
+- متای `tmdb:` برای کاتالوگ‌های ۱۰۱
+- سرعت و کش استریم (از سری ۱.۹.x)
 
-جزئیات: [`RELEASE_NOTES_1.9.0.md`](./RELEASE_NOTES_1.9.0.md)
+### متغیرهای مهم
+| Env | نقش |
+|-----|-----|
+| `TMDB_API_KEY` | متای فارسی + ویترین لندینگ |
+| `F2MEDIA_BASEURL` و سایر `*_BASEURL` | فعال‌سازی هر پروایدر |
+| `DONYAYESERIAL_BASEURL` | دنیای سریال |
+| `TORRENT_METEOR_MANIFEST_URL` | تورنت |
+| `EXTERNAL_CATALOG_MANIFEST_URLS` | ۱۰۱ و مشابه |
+| `PROVIDER_TIMEOUT_MS` | بودجه هر پروایدر (پیش‌فرض ۱۱۰۰۰) |
 
 ---
 
@@ -61,9 +72,15 @@
 ```sh
 git clone https://github.com/TheNerdCow/CinemaGraphy.git
 cd CinemaGraphy && corepack enable && pnpm install
-cp .env.example .env   # fill providers you need
-pnpm start             # or Vercel / pnpm worker:deploy
+cp .env.example .env
+pnpm start
 ```
+
+Endpoints:
+- `/manifest.json` — نصب استریمیو
+- `/providers.json` — وضعیت منابع
+- `/tmdb/landing.json` — ویترین سایت
+- `/health` — healthcheck
 
 ---
 

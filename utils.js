@@ -878,3 +878,124 @@ export function modifyUrls(value, prepend, seen = new WeakSet()) {
     }
     return result
 }
+
+
+// ---------------------------------------------------------------------------
+// Landing-only TMDB catalogs (NOT added to Stremio manifest)
+// ---------------------------------------------------------------------------
+
+const LANDING_TMDB_TTL_MS = 60 * 60 * 1000 // 1 hour
+let landingTmdbCache = null
+
+function mapTmdbListItem(item, mediaTypeHint = null) {
+    const mediaType = item.media_type || mediaTypeHint || (item.title ? 'movie' : 'tv')
+    const titleFa = item.title || item.name || null
+    const original = item.original_title || item.original_name || null
+    const year = (item.release_date || item.first_air_date || '').slice(0, 4) || null
+    return {
+        id: item.id,
+        mediaType: mediaType === 'tv' ? 'tv' : 'movie',
+        title: titleFa,
+        originalTitle: original && original !== titleFa ? original : null,
+        overview: item.overview || null,
+        rating: item.vote_average != null ? Math.round(item.vote_average * 10) / 10 : null,
+        year,
+        poster: item.poster_path ? `https://image.tmdb.org/t/p/w342${item.poster_path}` : null,
+        backdrop: item.backdrop_path ? `https://image.tmdb.org/t/p/w780${item.backdrop_path}` : null,
+    }
+}
+
+async function tmdbList(path, params, httpClient, apiKey) {
+    const response = await httpClient.get(`https://api.themoviedb.org/3/${path}`, {
+        params: {api_key: apiKey, language: 'fa-IR', ...params},
+        timeout: REQUEST_TIMEOUT_MS,
+    })
+    return Array.isArray(response.data?.results) ? response.data.results : []
+}
+
+async function tmdbVideos(mediaType, id, httpClient, apiKey) {
+    try {
+        const kind = mediaType === 'tv' ? 'tv' : 'movie'
+        const response = await httpClient.get(`https://api.themoviedb.org/3/${kind}/${id}/videos`, {
+            params: {api_key: apiKey, language: 'en-US'},
+            timeout: REQUEST_TIMEOUT_MS,
+        })
+        const results = Array.isArray(response.data?.results) ? response.data.results : []
+        const trailer = results.find((v) => v.site === 'YouTube' && /trailer/i.test(v.type))
+            || results.find((v) => v.site === 'YouTube')
+        return trailer ? {key: trailer.key, name: trailer.name, site: trailer.site} : null
+    } catch {
+        return null
+    }
+}
+
+/**
+ * Cached TMDB showcase data for the landing page only.
+ * Never throws a hard failure — returns empty sections on error.
+ */
+export async function getLandingTmdbCatalogs(httpClient = axios, apiKey = process.env.TMDB_API_KEY, logger = console) {
+    if (!apiKey) {
+        return {
+            ok: false,
+            reason: 'TMDB_API_KEY missing',
+            checkedAt: new Date().toISOString(),
+            trendingDay: [],
+            trendingWeek: [],
+            nowPlaying: [],
+            trailers: [],
+        }
+    }
+
+    if (landingTmdbCache && Date.now() - landingTmdbCache.at < LANDING_TMDB_TTL_MS) {
+        return landingTmdbCache.payload
+    }
+
+    try {
+        const [dayRaw, weekRaw, nowRaw] = await Promise.all([
+            tmdbList('trending/all/day', {page: 1}, httpClient, apiKey),
+            tmdbList('trending/all/week', {page: 1}, httpClient, apiKey),
+            tmdbList('movie/now_playing', {page: 1, region: 'US'}, httpClient, apiKey),
+        ])
+
+        const trendingDay = dayRaw.slice(0, 12).map((item) => mapTmdbListItem(item))
+        const trendingWeek = weekRaw.slice(0, 12).map((item) => mapTmdbListItem(item))
+        const nowPlaying = nowRaw.slice(0, 12).map((item) => mapTmdbListItem(item, 'movie'))
+
+        // Trailers from top trending day items (limit concurrent video lookups)
+        const trailerSource = trendingDay.slice(0, 8)
+        const trailerSettled = await Promise.all(
+            trailerSource.map(async (item) => {
+                const video = await tmdbVideos(item.mediaType, item.id, httpClient, apiKey)
+                if (!video?.key) return null
+                return {...item, trailer: video}
+            }),
+        )
+        const trailers = trailerSettled.filter(Boolean).slice(0, 6)
+
+        const payload = {
+            ok: true,
+            checkedAt: new Date().toISOString(),
+            cacheTtlMs: LANDING_TMDB_TTL_MS,
+            trendingDay,
+            trendingWeek,
+            nowPlaying,
+            trailers,
+        }
+        landingTmdbCache = {at: Date.now(), payload}
+        return payload
+    } catch (error) {
+        logAxiosError(error, logger, 'Landing TMDB catalogs failed')
+        if (landingTmdbCache?.payload) {
+            return {...landingTmdbCache.payload, stale: true}
+        }
+        return {
+            ok: false,
+            reason: error?.message ?? 'tmdb error',
+            checkedAt: new Date().toISOString(),
+            trendingDay: [],
+            trendingWeek: [],
+            nowPlaying: [],
+            trailers: [],
+        }
+    }
+}

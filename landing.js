@@ -57,14 +57,14 @@ export function renderLandingPage({
   manifestUrl = PUBLIC_INSTALL,
   installUrl,
   logoUrl = '/logo.png',
-  version = '2.0.0',
+  version = '2.0.1',
 } = {}) {
   const m = escapeHtml(manifestUrl || PUBLIC_INSTALL)
   const install = escapeHtml(
     installUrl || `stremio://${String(manifestUrl || PUBLIC_INSTALL).replace(/^https?:\/\//i, '')}`,
   )
   const logo = escapeHtml(logoUrl || LOGO_FALLBACK)
-  const ver = escapeHtml(String(version || '2.0.0'))
+  const ver = escapeHtml(String(version || '2.0.1'))
 
   const addonCards = RECOMMENDED.map(
     (a) => `
@@ -162,6 +162,24 @@ footer{margin-top:12px;padding:32px 5vw 44px;border-top:1px solid rgba(255,255,2
 .prov .meta{font-size:.72rem;color:var(--m)}
 .prov .sk{height:72px;border-radius:16px;background:linear-gradient(90deg,rgba(255,255,255,.04),rgba(255,255,255,.1),rgba(255,255,255,.04));background-size:200% 100%;animation:sh 1.2s ease-in-out infinite}
 @keyframes sh{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+.rail{display:flex;gap:12px;overflow-x:auto;padding:4px 2px 12px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch}
+.rail::-webkit-scrollbar{height:6px}
+.rail::-webkit-scrollbar-thumb{background:rgba(255,255,255,.15);border-radius:99px}
+.tile{flex:0 0 120px;scroll-snap-align:start;text-decoration:none;color:var(--t);transition:transform .2s}
+.tile:hover{transform:translateY(-3px)}
+.tile img{width:120px;height:180px;object-fit:cover;border-radius:12px;background:rgba(255,255,255,.06);display:block}
+.tile .cap{margin-top:6px;font-size:.78rem;font-weight:700;line-height:1.3;max-height:2.6em;overflow:hidden}
+.tile .sub2{font-size:.7rem;color:var(--m);margin-top:2px}
+.tr-tile{flex:0 0 220px}
+.tr-tile .thumb{position:relative;border-radius:12px;overflow:hidden;aspect-ratio:16/9;background:#111}
+.tr-tile .thumb img{width:100%;height:100%;object-fit:cover;display:block;opacity:.9}
+.tr-tile .play{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.35);font-size:1.8rem}
+.modal{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.75);padding:16px}
+.modal.open{display:flex}
+.modal .inner{width:min(900px,100%);aspect-ratio:16/9;background:#000;border-radius:12px;overflow:hidden;position:relative}
+.modal iframe{width:100%;height:100%;border:0}
+.modal .x{position:absolute;top:-36px;inset-inline-end:0;background:transparent;border:0;color:#fff;font-size:1.4rem;font-weight:700}
 </style>
 </head>
 <body>
@@ -200,10 +218,31 @@ footer{margin-top:12px;padding:32px 5vw 44px;border-top:1px solid rgba(255,255,2
 </div>
 </section>
 
+
+<section id="sec-trend-day">
+<h2 class="lang-fa">🔥 محبوب امروز</h2><h2 class="lang-en">🔥 Trending today</h2>
+<div class="rail" id="railDay"><div class="sk glass" style="min-width:120px;height:180px"></div></div>
+</section>
+<section id="sec-trend-week">
+<h2 class="lang-fa">🔥 محبوب این هفته</h2><h2 class="lang-en">🔥 Trending this week</h2>
+<div class="rail" id="railWeek"><div class="sk glass" style="min-width:120px;height:180px"></div></div>
+</section>
+<section id="sec-now">
+<h2 class="lang-fa">🎬 در سالن نمایش</h2><h2 class="lang-en">🎬 Now playing</h2>
+<div class="rail" id="railNow"><div class="sk glass" style="min-width:120px;height:180px"></div></div>
+</section>
+<section id="sec-trailers">
+<h2 class="lang-fa">▶️ آخرین تریلرها</h2><h2 class="lang-en">▶️ Latest trailers</h2>
+<div class="rail" id="railTrailers"><div class="sk glass" style="min-width:220px;height:124px"></div></div>
+</section>
+<div class="modal" id="trailerModal" role="dialog" aria-modal="true">
+  <div class="inner">
+    <button class="x" type="button" id="trailerClose" aria-label="Close">×</button>
+    <iframe id="trailerFrame" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+  </div>
+</div>
 <section>
-<h2 class="lang-fa">منابع و پروایدرها</h2><h2 class="lang-en">Providers</h2>
-<p class="sub lang-fa">وضعیت زنده منابع این نمونه — به‌روزرسانی خودکار با کش کوتاه.</p>
-<p class="sub lang-en">Live status of sources on this instance — short-lived cache.</p>
+<h2 class="lang-fa">منابع</h2><h2 class="lang-en">Sources</h2>
 <div class="prov" id="providerGrid" aria-live="polite">
 <div class="sk glass"></div><div class="sk glass"></div><div class="sk glass"></div><div class="sk glass"></div>
 </div>
@@ -283,6 +322,67 @@ async function loadProviders(){
 }
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 loadProviders();
+
+function tileHtml(item){
+  var title=esc(item.title||item.originalTitle||'');
+  var sub=[item.year,item.rating!=null?('★ '+item.rating):''].filter(Boolean).join(' · ');
+  var img=item.poster?('<img src="'+esc(item.poster)+'" alt="" loading="lazy"/>'):'<div style="width:120px;height:180px;border-radius:12px;background:rgba(255,255,255,.06)"></div>';
+  return '<div class="tile">'+img+'<div class="cap">'+title+'</div>'+(sub?'<div class="sub2">'+esc(sub)+'</div>':'')+'</div>';
+}
+function fillRail(id, items){
+  var el=document.getElementById(id);
+  if(!el)return;
+  if(!items||!items.length){el.innerHTML='<p class="sub">—</p>';return;}
+  el.innerHTML=items.map(tileHtml).join('');
+}
+function fillTrailers(items){
+  var el=document.getElementById('railTrailers');
+  if(!el)return;
+  if(!items||!items.length){el.innerHTML='<p class="sub">—</p>';return;}
+  el.innerHTML=items.map(function(item){
+    var title=esc(item.title||'');
+    var bg=item.backdrop||item.poster||'';
+    var key=item.trailer&&item.trailer.key;
+    return '<button type="button" class="tile tr-tile" data-yt="'+esc(key||'')+'" style="background:none;border:0;padding:0;text-align:start;font:inherit;color:inherit">'+
+      '<div class="thumb">'+(bg?'<img src="'+esc(bg)+'" alt="" loading="lazy"/>':'')+'<div class="play">▶</div></div>'+
+      '<div class="cap">'+title+'</div></button>';
+  }).join('');
+  el.querySelectorAll('[data-yt]').forEach(function(btn){
+    btn.onclick=function(){
+      var k=btn.getAttribute('data-yt');
+      if(!k)return;
+      var modal=document.getElementById('trailerModal');
+      var frame=document.getElementById('trailerFrame');
+      if(frame)frame.src='https://www.youtube.com/embed/'+encodeURIComponent(k)+'?autoplay=1';
+      if(modal)modal.classList.add('open');
+    };
+  });
+}
+(function(){
+  var modal=document.getElementById('trailerModal');
+  var frame=document.getElementById('trailerFrame');
+  var close=document.getElementById('trailerClose');
+  function shut(){if(modal)modal.classList.remove('open');if(frame)frame.src='';}
+  if(close)close.onclick=shut;
+  if(modal)modal.addEventListener('click',function(e){if(e.target===modal)shut();});
+})();
+async function loadTmdb(){
+  try{
+    var res=await fetch('/tmdb/landing.json',{credentials:'omit'});
+    if(!res.ok)throw new Error('bad');
+    var data=await res.json();
+    fillRail('railDay', data.trendingDay);
+    fillRail('railWeek', data.trendingWeek);
+    fillRail('railNow', data.nowPlaying);
+    fillTrailers(data.trailers);
+  }catch(e){
+    ['railDay','railWeek','railNow','railTrailers'].forEach(function(id){
+      var el=document.getElementById(id); if(el) el.innerHTML='';
+    });
+  }
+}
+loadTmdb();
+
 
 })();
 </script>
