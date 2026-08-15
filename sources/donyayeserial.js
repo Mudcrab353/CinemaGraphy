@@ -190,19 +190,8 @@ export default class Donyayeserial extends HtmlSource {
             }
 
             const results = []
-            const lcQuery = query.toLowerCase()
-            const tokens = lcQuery.split(/\s+/).filter((tok) => tok.length > 2)
-
-            function nameMatchesQuery(name) {
-                const n = String(name ?? '').toLowerCase()
-                if (!n) return false
-                if (n.includes(lcQuery) || lcQuery.includes(n)) return true
-                // English vs Persian titles: require enough token hits, not full-string includes
-                if (!tokens.length) return false
-                const hits = tokens.filter((tok) => n.includes(tok)).length
-                return hits >= Math.min(2, tokens.length)
-            }
-
+            // WordPress ?s= already ranks relevance. Titles are often Persian-only
+            // while Stremio searches with English — do not require Latin tokens in name.
             $('article.postItems').each((_, article) => {
                 const anchor = $(article).find('.post-title h2 a[href]').first()
                 const href = anchor.attr('href')
@@ -218,7 +207,7 @@ export default class Donyayeserial extends HtmlSource {
 
                 const id = this.pageId(path)
                 const name = normalizeText(anchor.text())
-                if (!id || !name || !nameMatchesQuery(name)) {
+                if (!id || !name) {
                     return
                 }
 
@@ -226,7 +215,7 @@ export default class Donyayeserial extends HtmlSource {
                 results.push({id, name, poster, type, genres: []})
             })
 
-            return results
+            return results.slice(0, 12)
         } catch (error) {
             logAxiosError(error, this.logger, 'DonyayeSerial search failed')
             return []
