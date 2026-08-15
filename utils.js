@@ -649,12 +649,25 @@ const EXTERNAL_CATALOGS_TTL_MS = 60 * 60 * 1_000 // 1 hour
 let externalCatalogsCache = null // {timestamp, sources}
 
 function externalManifestUrls(env) {
-    return [
+    const dedicated = [
         env.CATALOG101_MANIFEST_URL,
         env.CATALOG_TMDB_MANIFEST_URL,
         env.CATALOG_ANIME_MANIFEST_URL,
         env.CATALOG_IPTVBRIDGE_MANIFEST_URL,
-    ].filter(Boolean)
+    ]
+    const extra = String(env.EXTERNAL_CATALOG_MANIFEST_URLS || '')
+        .split(/[,\n]/)
+        .map((s) => s.trim())
+        .filter(Boolean)
+    // de-dupe while preserving order
+    const seen = new Set()
+    const out = []
+    for (const url of [...dedicated, ...extra]) {
+        if (!url || seen.has(url)) continue
+        seen.add(url)
+        out.push(url)
+    }
+    return out
 }
 
 export async function getExternalCatalogSources(env = {}, httpClient = axios, logger = console) {

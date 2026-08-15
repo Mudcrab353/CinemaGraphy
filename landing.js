@@ -59,14 +59,14 @@ export function renderLandingPage({
   manifestUrl = PUBLIC_INSTALL,
   installUrl,
   logoUrl = '/logo.png',
-  version = '2.1.3',
+  version = '2.1.4',
 } = {}) {
   const m = escapeHtml(manifestUrl || PUBLIC_INSTALL)
   const install = escapeHtml(
     installUrl || `stremio://${String(manifestUrl || PUBLIC_INSTALL).replace(/^https?:\/\//i, '')}`,
   )
   const logo = escapeHtml(logoUrl || LOGO_FALLBACK)
-  const ver = escapeHtml(String(version || '2.1.3'))
+  const ver = escapeHtml(String(version || '2.1.4'))
 
   const addonCards = RECOMMENDED.map(
     (a) => `
@@ -355,14 +355,25 @@ async function loadProviders(){
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 loadProviders();
 
+function detailId(item){
+  if(item.imdbId) return String(item.imdbId);
+  return 'tmdb:'+item.id;
+}
+function stremioDetailLinks(item){
+  var mt=item.mediaType==='tv'?'series':'movie';
+  var id=detailId(item);
+  // web.stremio.com opens the title board (not the install flow)
+  var webApp='https://web.stremio.com/#/detail/'+mt+'/'+encodeURIComponent(id);
+  var app='stremio://detail/'+mt+'/'+id;
+  var tmdb=item.mediaType==='tv'
+    ?('https://www.themoviedb.org/tv/'+item.id+'?language=fa-IR')
+    :('https://www.themoviedb.org/movie/'+item.id+'?language=fa-IR');
+  return {mt:mt,id:id,webApp:webApp,app:app,tmdb:tmdb};
+}
 function tileHtml(item){
   var title=esc(item.title||item.originalTitle||'');
   var sub=[item.year,item.rating!=null?('★ '+item.rating):''].filter(Boolean).join(' · ');
-  var mt=item.mediaType==='tv'?'series':'movie';
-  var stremio='stremio://detail/'+mt+'/tmdb:'+encodeURIComponent(item.id);
-  var web=item.mediaType==='tv'
-    ?('https://www.themoviedb.org/tv/'+item.id+'?language=fa-IR')
-    :('https://www.themoviedb.org/movie/'+item.id+'?language=fa-IR');
+  var L=stremioDetailLinks(item);
   var img=item.poster
     ?('<img src="'+esc(item.poster)+'" alt="" loading="lazy"/>')
     :'<div style="width:100%;height:100%;background:rgba(255,255,255,.06)"></div>';
@@ -370,8 +381,8 @@ function tileHtml(item){
   return '<div class="tile">'+
     '<div class="poster-wrap">'+img+
       '<div class="hov">'+
-        '<a class="s" href="'+esc(stremio)+'">'+(fa?'باز کردن در استریمیو':'Open in Stremio')+'</a>'+
-        '<a class="w" href="'+esc(web)+'" target="_blank" rel="noopener">'+(fa?'صفحه فیلم (وب)':'Open on web')+'</a>'+
+        '<a class="s" href="'+esc(L.webApp)+'" target="_blank" rel="noopener">'+(fa?'باز در استریمیو':'Open in Stremio')+'</a>'+
+        '<a class="w" href="'+esc(L.tmdb)+'" target="_blank" rel="noopener">'+(fa?'TMDB':'TMDB')+'</a>'+
       '</div>'+
     '</div>'+
     '<div class="cap">'+title+'</div>'+(sub?'<div class="sub2">'+esc(sub)+'</div>':'')+
@@ -393,8 +404,7 @@ function fillTrailers(items){
     var bg=item.backdrop||item.poster||'';
     var key=item.trailer&&item.trailer.key;
     var yt=key?('https://www.youtube.com/watch?v='+encodeURIComponent(key)):'#';
-    var mt=item.mediaType==='tv'?'series':'movie';
-    var stremio='stremio://detail/'+mt+'/tmdb:'+encodeURIComponent(item.id);
+    var L=stremioDetailLinks(item);
     return '<div class="tile tr-tile">'+
       '<a class="thumb" href="'+esc(yt)+'" target="_blank" rel="noopener" title="YouTube">'+
         (bg?'<img src="'+esc(bg)+'" alt="" loading="lazy"/>':'')+
@@ -402,7 +412,7 @@ function fillTrailers(items){
       '</a>'+
       '<div class="cap" title="'+title+'">'+title+'</div>'+
       '<div class="actions">'+
-        '<a class="s" href="'+esc(stremio)+'">'+(fa?'استریمیو':'Stremio')+'</a>'+
+        '<a class="s" href="'+esc(L.webApp)+'" target="_blank" rel="noopener">'+(fa?'استریمیو':'Stremio')+'</a>'+
         '<a class="y" href="'+esc(yt)+'" target="_blank" rel="noopener">YT</a>'+
       '</div>'+
     '</div>';
@@ -534,11 +544,11 @@ h2{font-size:1.15rem;margin:26px 0 10px}
 
 export function renderConfigurePage({
   logoUrl = '/logo.png',
-  version = '2.1.3',
+  version = '2.1.4',
   origin = PUBLIC_SITE,
 } = {}) {
   const logo = escapeHtml(logoUrl || LOGO_FALLBACK)
-  const ver = escapeHtml(String(version || '2.1.3'))
+  const ver = escapeHtml(String(version || '2.1.4'))
   const originClean = String(origin || PUBLIC_SITE).replace(/\/$/, '')
   const base = escapeHtml(originClean)
   const baseJson = JSON.stringify(originClean)
@@ -554,6 +564,8 @@ export function renderConfigurePage({
 .prov-grid label{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:12px;background:rgba(0,0,0,.22);border:1px solid var(--gb);cursor:pointer;font-weight:700;user-select:none}
 .prov-grid label:has(input:checked){border-color:rgba(232,160,74,.55);background:rgba(232,160,74,.12)}
 .prov-grid input{width:18px;height:18px;accent-color:#e8a04a}
+.prov-grid label.locked{filter:blur(1.2px);opacity:.45;pointer-events:none;cursor:not-allowed;position:relative}
+.prov-grid label.locked::after{content:'';position:absolute;inset:0;border-radius:12px;background:rgba(0,0,0,.15)}
 .sel-row{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px}
 </style>
 </head>
@@ -586,8 +598,8 @@ export function renderConfigurePage({
 <label><input type="checkbox" data-prov="serialblog"/> SerialBlog</label>
 <label><input type="checkbox" data-prov="donyayeserial"/> DonyayeSerial</label>
 <label><input type="checkbox" data-prov="animex"/> Animex</label>
-<label><input type="checkbox" data-prov="peepboxtv"/> PeepBoxTv <span class="diff h">!</span></label>
-<label><input type="checkbox" data-prov="digimovie"/> DigiMovie <span class="diff h">!</span></label>
+<label class="locked" title="به زودی"><input type="checkbox" disabled/> PeepBoxTv <span class="diff h"><span class="lang-fa">به‌زودی</span><span class="lang-en">Soon</span></span></label>
+<label class="locked" title="به زودی"><input type="checkbox" disabled/> DigiMovie <span class="diff h"><span class="lang-fa">به‌زودی</span><span class="lang-en">Soon</span></span></label>
 </div>
 
 <h2 class="lang-fa">تنظیمات اختیاری</h2>
@@ -681,11 +693,11 @@ export function renderConfigurePage({
   var btnAll = document.getElementById('btnAll');
   var btnNone = document.getElementById('btnNone');
   if (btnAll) btnAll.onclick = function () {
-    document.querySelectorAll('[data-prov]').forEach(function (cb) { cb.checked = true; });
+    document.querySelectorAll('[data-prov]:not(:disabled)').forEach(function (cb) { cb.checked = true; });
     refresh();
   };
   if (btnNone) btnNone.onclick = function () {
-    document.querySelectorAll('[data-prov]').forEach(function (cb) { cb.checked = false; });
+    document.querySelectorAll('[data-prov]:not(:disabled)').forEach(function (cb) { cb.checked = false; });
     refresh();
   };
   var btnCopy = document.getElementById('btnCopy');
@@ -707,11 +719,11 @@ export function renderConfigurePage({
 
 export function renderGuidePage({
   logoUrl = '/logo.png',
-  version = '2.1.3',
+  version = '2.1.4',
   manifestUrl = PUBLIC_INSTALL,
 } = {}) {
   const logo = escapeHtml(logoUrl || LOGO_FALLBACK)
-  const ver = escapeHtml(String(version || '2.1.3'))
+  const ver = escapeHtml(String(version || '2.1.4'))
   const m = escapeHtml(manifestUrl || PUBLIC_INSTALL)
   const install = escapeHtml('stremio://' + String(manifestUrl || PUBLIC_INSTALL).replace(/^https?:\/\//i, ''))
   return `<!DOCTYPE html>
