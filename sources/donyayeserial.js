@@ -191,6 +191,17 @@ export default class Donyayeserial extends HtmlSource {
 
             const results = []
             const lcQuery = query.toLowerCase()
+            const tokens = lcQuery.split(/\s+/).filter((tok) => tok.length > 2)
+
+            function nameMatchesQuery(name) {
+                const n = String(name ?? '').toLowerCase()
+                if (!n) return false
+                if (n.includes(lcQuery) || lcQuery.includes(n)) return true
+                // English vs Persian titles: require enough token hits, not full-string includes
+                if (!tokens.length) return false
+                const hits = tokens.filter((tok) => n.includes(tok)).length
+                return hits >= Math.min(2, tokens.length)
+            }
 
             $('article.postItems').each((_, article) => {
                 const anchor = $(article).find('.post-title h2 a[href]').first()
@@ -207,7 +218,7 @@ export default class Donyayeserial extends HtmlSource {
 
                 const id = this.pageId(path)
                 const name = normalizeText(anchor.text())
-                if (!id || !name || !name.toLowerCase().includes(lcQuery)) {
+                if (!id || !name || !nameMatchesQuery(name)) {
                     return
                 }
 
