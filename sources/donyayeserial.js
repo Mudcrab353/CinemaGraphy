@@ -183,17 +183,22 @@ export default class Donyayeserial extends HtmlSource {
             return []
         }
 
-        try {
-            const $ = await this.fetchDocument('/', {params: {s: query}})
-            if (!$) {
-                return []
-            }
-
+        const collect = ($) => {
             const results = []
-            // WordPress ?s= already ranks relevance. Titles are often Persian-only
-            // while Stremio searches with English — do not require Latin tokens in name.
-            $('article.postItems').each((_, article) => {
-                const anchor = $(article).find('.post-title h2 a[href]').first()
+            const seen = new Set()
+            // Site markup varies; try several common WP/theme selectors.
+            const cards = $(
+                'article.postItems, article.post, article, .postItems, .search-item, .result-item, .movie-item',
+            )
+            cards.each((_, article) => {
+                const $a = $(article)
+                const anchor = $a
+                    .find('.post-title h2 a[href], .post-title a[href], h2 a[href], h3 a[href], a.stretched-link[href], a[href]')
+                    .filter((_, el) => {
+                        const href = $(el).attr('href') || ''
+                        return Boolean(this.pagePath(href))
+                    })
+                    .first()
                 const href = anchor.attr('href')
                 const path = this.pagePath(href)
                 if (!path) {
@@ -206,16 +211,34 @@ export default class Donyayeserial extends HtmlSource {
                 }
 
                 const id = this.pageId(path)
-                const name = normalizeText(anchor.text())
-                if (!id || !name) {
+                let name = normalizeText(anchor.text())
+                if (!name) {
+                    name = normalizeText($a.find('h2, h3, .title, .post-title').first().text())
+                }
+                if (!id || !name || seen.has(id)) {
                     return
                 }
+                seen.add(id)
 
-                const poster = $(article).find('.imgWrapper img').first().attr('src') ?? null
+                const poster =
+                    $a.find('.imgWrapper img, img').first().attr('src')
+                    || $a.find('img').first().attr('data-src')
+                    || null
                 results.push({id, name, poster, type, genres: []})
             })
+            return results
+        }
 
-            return results.slice(0, 12)
+        try {
+            // Primary: home search
+            let $ = await this.fetchDocument('/', {params: {s: query}})
+            let results = $ ? collect($) : []
+            // Fallback path used by some WP themes
+            if (!results.length) {
+                $ = await this.fetchDocument('/', {params: {s: query, post_type: 'post'}})
+                results = $ ? collect($) : []
+            }
+            return results.slice(0, 16)
         } catch (error) {
             logAxiosError(error, this.logger, 'DonyayeSerial search failed')
             return []
