@@ -59,14 +59,14 @@ export function renderLandingPage({
   manifestUrl = PUBLIC_INSTALL,
   installUrl,
   logoUrl = '/logo.png',
-  version = '2.1.7',
+  version = '2.1.8',
 } = {}) {
   const m = escapeHtml(manifestUrl || PUBLIC_INSTALL)
   const install = escapeHtml(
     installUrl || `stremio://${String(manifestUrl || PUBLIC_INSTALL).replace(/^https?:\/\//i, '')}`,
   )
   const logo = escapeHtml(logoUrl || LOGO_FALLBACK)
-  const ver = escapeHtml(String(version || '2.1.7'))
+  const ver = escapeHtml(String(version || '2.1.8'))
 
   const addonCards = RECOMMENDED.map(
     (a) => `
@@ -201,6 +201,19 @@ overscroll-behavior-x:contain;scrollbar-width:none!important;-ms-overflow-style:
 .tr-tile:hover .hov{opacity:1}
 .foot{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;align-items:center}
 .foot .gh{margin:0}
+
+.feat-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin:8px 0 20px}
+.feat-card{padding:16px 14px;text-align:center;transition:transform .2s,border-color .2s}
+.feat-card:hover{transform:translateY(-3px);border-color:rgba(232,160,74,.35)}
+.feat-card .ico{width:36px;height:36px;margin:0 auto 8px;border-radius:12px;display:grid;place-items:center;background:rgba(232,160,74,.12);color:var(--a)}
+.feat-card .ico svg{width:20px;height:20px;fill:currentColor}
+.feat-card b{display:block;font-size:.88rem;margin-bottom:4px}
+.feat-card span{font-size:.75rem;color:var(--m);line-height:1.35}
+.sec-h{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.sec-h .ico{width:32px;height:32px;border-radius:10px;display:grid;place-items:center;background:rgba(255,255,255,.06);color:var(--a2);flex-shrink:0}
+.sec-h .ico svg{width:16px;height:16px;fill:currentColor}
+.prov .card{transition:transform .18s,border-color .18s}
+.prov .card:hover{transform:translateY(-2px);border-color:rgba(232,160,74,.3)}
 </style>
 </head>
 <body>
@@ -231,6 +244,15 @@ overscroll-behavior-x:contain;scrollbar-width:none!important;-ms-overflow-style:
 </div>
 <div class="vis"><div class="stage"><div class="gwrap glass"><img src="${logo}" alt="logo" onerror="this.src='${LOGO_FALLBACK}'"/></div></div></div>
 </div>
+
+<section>
+<div class="feat-row">
+<div class="feat-card glass"><div class="ico"><svg viewBox="0 0 24 24"><path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h10v2H4z"/></svg></div><b class="lang-fa">منابع ایرانی</b><b class="lang-en">Iran sources</b><span class="lang-fa">چند پروایدر موازی</span><span class="lang-en">Parallel providers</span></div>
+<div class="feat-card glass"><div class="ico"><svg viewBox="0 0 24 24"><path d="M12 3v12.5l4-4 1.4 1.4L12 19.3l-5.4-6.4L8 11.5l4 4V3z"/></svg></div><b class="lang-fa">متای فارسی</b><b class="lang-en">Persian meta</b><span class="lang-fa">TMDB fa-IR</span><span class="lang-en">TMDB fa-IR</span></div>
+<div class="feat-card glass"><div class="ico"><svg viewBox="0 0 24 24"><path d="M12 1a9 9 0 0 0-9 9c0 6 9 13 9 13s9-7 9-13a9 9 0 0 0-9-9zm0 12a3 3 0 1 1 0-6 3 3 0 0 1 0 6z"/></svg></div><b class="lang-fa">شخصی‌سازی</b><b class="lang-en">Configure</b><span class="lang-fa">منیفست اختصاصی</span><span class="lang-en">Custom manifest</span></div>
+<div class="feat-card glass"><div class="ico"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm1 15h-2v-2h2zm0-4h-2V7h2z"/></svg></div><b class="lang-fa">راهنما</b><b class="lang-en">Guide</b><span class="lang-fa">آموزش نصب</span><span class="lang-en">Setup help</span></div>
+</div>
+</section>
 <section>
 <h2 class="lang-fa">دانلود Stremio</h2><h2 class="lang-en">Download Stremio</h2>
 <p class="sub lang-fa">اول استریمیو را نصب کنید، بعد افزونه را اضافه کنید.</p>
@@ -544,11 +566,11 @@ h2{font-size:1.15rem;margin:26px 0 10px}
 
 export function renderConfigurePage({
   logoUrl = '/logo.png',
-  version = '2.1.7',
+  version = '2.1.8',
   origin = PUBLIC_SITE,
 } = {}) {
   const logo = escapeHtml(logoUrl || LOGO_FALLBACK)
-  const ver = escapeHtml(String(version || '2.1.7'))
+  const ver = escapeHtml(String(version || '2.1.8'))
   const originClean = String(origin || PUBLIC_SITE).replace(/\/$/, '')
   const base = escapeHtml(originClean)
   const baseJson = JSON.stringify(originClean)
@@ -615,8 +637,13 @@ export function renderConfigurePage({
 <input data-k="TORRENT_METEOR_MANIFEST_URL" placeholder="https://…/manifest.json" autocomplete="off"/>
 </div>
 <div class="cfg-item glass">
+<div class="top"><code>CATALOG_AIO_MANIFEST_URL</code><span class="diff m"><span class="lang-fa">متوسط</span><span class="lang-en">Medium</span></span></div>
+<div class="hint"><span class="lang-fa">منیفست AIOCatalogs (بعد از ۱۰۱، قبل از انیمه و ماهواره)</span><span class="lang-en">AIOCatalogs manifest (after 101, before anime &amp; IPTV)</span></div>
+<input data-k="CATALOG_AIO_MANIFEST_URL" placeholder="https://…/manifest.json" autocomplete="off"/>
+</div>
+<div class="cfg-item glass">
 <div class="top"><code>EXTERNAL_CATALOG_MANIFEST_URLS</code><span class="diff m"><span class="lang-fa">متوسط</span><span class="lang-en">Medium</span></span></div>
-<div class="hint"><span class="lang-fa">کاتالوگ‌های خارجی با ویرگول</span><span class="lang-en">External catalogs, comma-separated</span></div>
+<div class="hint"><span class="lang-fa">کاتالوگ‌های خارجی اضافه با ویرگول</span><span class="lang-en">Extra external catalogs, comma-separated</span></div>
 <input data-k="EXTERNAL_CATALOG_MANIFEST_URLS" placeholder="https://…/manifest.json" autocomplete="off"/>
 </div>
 <div class="cfg-item glass">
@@ -719,11 +746,11 @@ export function renderConfigurePage({
 
 export function renderGuidePage({
   logoUrl = '/logo.png',
-  version = '2.1.7',
+  version = '2.1.8',
   manifestUrl = PUBLIC_INSTALL,
 } = {}) {
   const logo = escapeHtml(logoUrl || LOGO_FALLBACK)
-  const ver = escapeHtml(String(version || '2.1.7'))
+  const ver = escapeHtml(String(version || '2.1.8'))
   const install = escapeHtml(
     'stremio://' + String(manifestUrl || PUBLIC_INSTALL).replace(/^https?:\/\//i, ''),
   )

@@ -8,7 +8,7 @@
     <a href="https://cinemagraphy.vercel.app/manifest.json"><img src="https://img.shields.io/badge/manifest-install-blue?style=for-the-badge" alt="Manifest" /></a>
   </p>
   <p>
-    <img src="https://img.shields.io/badge/version-2.1.7-blue.svg" alt="2.1.7" />
+    <img src="https://img.shields.io/badge/version-2.1.8-blue.svg" alt="2.1.8" />
     <img src="https://img.shields.io/badge/vercel-ready-black.svg" alt="Vercel" />
     <img src="https://img.shields.io/badge/cloudflare-workers-orange.svg" alt="Workers" />
     <img src="https://img.shields.io/badge/license-ISC-lightgrey.svg" alt="ISC" />
@@ -61,6 +61,7 @@ Add: `https://cinemagraphy.vercel.app/manifest.json`
 | `TMDB_API_KEY` | متای فارسی + ویترین |
 | `*_BASEURL` | F2Media، Cinamatic، AslMoviez، SerialBlog، DonyayeSerial، Animex، … |
 | `DONYAYESERIAL_BASEURL` | دامنهٔ به‌روز دنیای سریال |
+| `CATALOG_AIO_MANIFEST_URL` | منیفست AIOCatalogs (بعد از ۱۰۱، قبل انیمه/ماهواره) |
 | `CATALOG_ANIME_MANIFEST_URL` | کاتالوگ انیمه (می‌تواند کند باشد) |
 | `CATALOG101_MANIFEST_URL` | کاتالوگ ۱۰۱ / مشابه |
 | `CATALOG_IPTVBRIDGE_MANIFEST_URL` | IPTV |

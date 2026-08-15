@@ -21,7 +21,7 @@ import {ID_SEPARATOR, METADATA_SOURCE} from './sources/source.js'
 import {findExternalMetaSource, findExternalStreamSource, formatStreamTitle, getCinemeta, getExternalCatalogSources, getKitsuTitle, getSubtitle, getTMDBMetaFa, getTMDBMetaByTmdbId, getTMDBDetails, getTMDBTitle, getLandingTmdbCatalogs, getTorrentStreams, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxyExternalStream, proxySubtitles, translateCatalogName} from './utils.js'
 
 export const ADDON_PREFIX = 'ip'
-export const ADDON_VERSION = '2.1.7'
+export const ADDON_VERSION = '2.1.8'
 
 
 const PROVIDER_BASEURL_KEYS = [
@@ -51,6 +51,12 @@ const CONFIG_ALLOW = new Set([
     'ENABLED_PROVIDERS',
     'TORRENT_METEOR_MANIFEST_URL',
     'EXTERNAL_CATALOG_MANIFEST_URLS',
+    'CATALOG_AIO_MANIFEST_URL',
+    'CATALOG_AIOCATALOGS_MANIFEST_URL',
+    'CATALOG101_MANIFEST_URL',
+    'CATALOG_ANIME_MANIFEST_URL',
+    'CATALOG_IPTVBRIDGE_MANIFEST_URL',
+    'CATALOG_TMDB_MANIFEST_URL',
     'PROVIDER_TIMEOUT_MS',
     'DIGIMOVIE_USERNAME',
     'DIGIMOVIE_PASSWORD',

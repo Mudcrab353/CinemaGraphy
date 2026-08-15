@@ -657,8 +657,12 @@ let externalCatalogsCache = null
 const externalInflight = new Map()
 
 function externalManifestUrls(env) {
+    // Order is intentional and must not be reshuffled:
+    // 1) 101  2) AIOCatalogs  3) TMDB catalogs  4) Anime  5) IPTV/satellite
+    // If 101 is unset, AIO naturally takes the first slot among dedicated URLs.
     const dedicated = [
         env.CATALOG101_MANIFEST_URL,
+        env.CATALOG_AIO_MANIFEST_URL || env.CATALOG_AIOCATALOGS_MANIFEST_URL,
         env.CATALOG_TMDB_MANIFEST_URL,
         env.CATALOG_ANIME_MANIFEST_URL,
         env.CATALOG_IPTVBRIDGE_MANIFEST_URL,
