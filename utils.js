@@ -2,6 +2,7 @@ import axios from 'axios'
 import {cleanSize, detectSize} from './size-helpers.js'
 
 export const REQUEST_TIMEOUT_MS = 15_000
+export const EXTERNAL_CATALOG_TIMEOUT_MS = 30_000
 
 export function logAxiosError(error, logger = console, context = 'HTTP request failed') {
     const details = axios.isAxiosError(error)
@@ -645,8 +646,9 @@ export function formatStreamTitle({providerKey, quality, size, audioType, extraT
 // them automatically — nothing else needs to change for streams to work.
 // ---------------------------------------------------------------------------
 
-const EXTERNAL_CATALOGS_TTL_MS = 15 * 60 * 1_000 // 15 min
-let externalCatalogsCache = null // {timestamp, key, sources}
+const EXTERNAL_CATALOGS_TTL_MS = 10 * 60 * 1_000 // 10 min
+/** @type {{timestamp:number, key:string, sources:any[], failed:string[]} | null} */
+let externalCatalogsCache = null
 
 function externalManifestUrls(env) {
     const dedicated = [
@@ -662,7 +664,16 @@ function externalManifestUrls(env) {
     const seen = new Set()
     const out = []
     for (const url of [...dedicated, ...extra]) {
-        const cleaned = String(url || '').trim()
+        let cleaned = String(url || '').trim()
+        if (!cleaned) continue
+        // Vercel sometimes stores the JSON path segment already decoded; keep as-is.
+        // Strip accidental wrapping quotes from dashboard paste.
+        if (
+            (cleaned.startsWith('"') && cleaned.endsWith('"'))
+            || (cleaned.startsWith("'") && cleaned.endsWith("'"))
+        ) {
+            cleaned = cleaned.slice(1, -1).trim()
+        }
         if (!cleaned || seen.has(cleaned)) continue
         seen.add(cleaned)
         out.push(cleaned)
@@ -673,7 +684,6 @@ function externalManifestUrls(env) {
 function catalogBaseUrl(manifestUrl) {
     try {
         const u = new URL(manifestUrl)
-        // strip trailing /manifest.json and query/hash
         u.hash = ''
         u.search = ''
         let path = u.pathname.replace(/\/manifest\.json$/i, '')
@@ -685,6 +695,34 @@ function catalogBaseUrl(manifestUrl) {
     }
 }
 
+async function fetchOneExternalCatalog(manifestUrl, httpClient, logger) {
+    const response = await httpClient.get(manifestUrl, {
+        timeout: EXTERNAL_CATALOG_TIMEOUT_MS,
+        // anime catalogs host can be slow from Vercel regions
+        validateStatus: (s) => s >= 200 && s < 300,
+    })
+    const manifest = response.data ?? {}
+    const catalogs = Array.isArray(manifest.catalogs) ? manifest.catalogs : []
+    if (!catalogs.length) {
+        logger.warn?.('External catalog manifest has no catalogs', {manifestUrl})
+    }
+    const metaResource = (manifest.resources ?? []).find((r) => (
+        r === 'meta' || r?.name === 'meta'
+    ))
+    const streamResource = (manifest.resources ?? []).find((r) => (
+        r === 'stream' || r?.name === 'stream'
+    ))
+    return {
+        baseUrl: catalogBaseUrl(manifestUrl),
+        catalogIds: new Set(catalogs.map((catalog) => catalog.id)),
+        catalogs,
+        idPrefixes: manifest.idPrefixes ?? [],
+        hasMeta: Boolean(metaResource),
+        hasStream: Boolean(streamResource),
+        manifestUrl,
+    }
+}
+
 export async function getExternalCatalogSources(env = {}, httpClient = axios, logger = console) {
     const manifestUrls = externalManifestUrls(env)
     if (!manifestUrls.length) {
@@ -693,50 +731,57 @@ export async function getExternalCatalogSources(env = {}, httpClient = axios, lo
 
     const now = Date.now()
     const cacheKey = manifestUrls.join('|')
-    if (
+    const cacheFresh = (
         externalCatalogsCache
         && externalCatalogsCache.key === cacheKey
         && now - externalCatalogsCache.timestamp < EXTERNAL_CATALOGS_TTL_MS
-        && Array.isArray(externalCatalogsCache.sources)
-        && externalCatalogsCache.sources.length
-    ) {
-        return externalCatalogsCache.sources
+    )
+
+    // Retry URLs that previously failed even if other sources are cached
+    const cachedSources = cacheFresh ? (externalCatalogsCache.sources || []) : []
+    const cachedByUrl = new Map(cachedSources.map((s) => [s.manifestUrl, s]))
+    const failedBefore = new Set(cacheFresh ? (externalCatalogsCache.failed || []) : [])
+    const needFetch = manifestUrls.filter((url) => !cachedByUrl.has(url))
+
+    if (!needFetch.length) {
+        return manifestUrls.map((url) => cachedByUrl.get(url)).filter(Boolean)
     }
 
     const settled = await Promise.all(
-        manifestUrls.map(async (manifestUrl) => {
+        needFetch.map(async (manifestUrl) => {
             try {
-                const response = await httpClient.get(manifestUrl, {timeout: REQUEST_TIMEOUT_MS})
-                const manifest = response.data ?? {}
-                const catalogs = Array.isArray(manifest.catalogs) ? manifest.catalogs : []
-                if (!catalogs.length) {
-                    logger.warn?.('External catalog manifest has no catalogs', {manifestUrl})
-                }
-                const metaResource = (manifest.resources ?? []).find((r) => (
-                    r === 'meta' || r?.name === 'meta'
-                ))
-                const streamResource = (manifest.resources ?? []).find((r) => (
-                    r === 'stream' || r?.name === 'stream'
-                ))
-                return {
-                    baseUrl: catalogBaseUrl(manifestUrl),
-                    catalogIds: new Set(catalogs.map((catalog) => catalog.id)),
-                    catalogs,
-                    idPrefixes: manifest.idPrefixes ?? [],
-                    hasMeta: Boolean(metaResource),
-                    hasStream: Boolean(streamResource),
-                    manifestUrl,
-                }
+                const source = await fetchOneExternalCatalog(manifestUrl, httpClient, logger)
+                return {ok: true, manifestUrl, source}
             } catch (error) {
                 logAxiosError(error, logger, `External catalog manifest fetch failed (${manifestUrl})`)
-                return null
+                return {ok: false, manifestUrl}
             }
         }),
     )
 
-    const sources = settled.filter(Boolean)
-    if (sources.length) {
-        externalCatalogsCache = {timestamp: now, key: cacheKey, sources}
+    const failed = []
+    for (const row of settled) {
+        if (row.ok) {
+            cachedByUrl.set(row.manifestUrl, row.source)
+            failedBefore.delete(row.manifestUrl)
+        } else {
+            failed.push(row.manifestUrl)
+            failedBefore.add(row.manifestUrl)
+        }
+    }
+
+    const sources = manifestUrls.map((url) => cachedByUrl.get(url)).filter(Boolean)
+    externalCatalogsCache = {
+        timestamp: now,
+        key: cacheKey,
+        sources,
+        failed: [...failedBefore],
+    }
+    if (failed.length) {
+        logger.warn?.('Some external catalogs unavailable', {
+            failed,
+            ok: sources.map((s) => s.manifestUrl),
+        })
     }
     return sources
 }

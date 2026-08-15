@@ -21,7 +21,7 @@ import {ID_SEPARATOR, METADATA_SOURCE} from './sources/source.js'
 import {findExternalMetaSource, findExternalStreamSource, formatStreamTitle, getCinemeta, getExternalCatalogSources, getKitsuTitle, getSubtitle, getTMDBMetaFa, getTMDBMetaByTmdbId, getTMDBDetails, getTMDBTitle, getLandingTmdbCatalogs, getTorrentStreams, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxyExternalStream, proxySubtitles, translateCatalogName} from './utils.js'
 
 export const ADDON_PREFIX = 'ip'
-export const ADDON_VERSION = '2.1.5'
+export const ADDON_VERSION = '2.1.6'
 
 
 const PROVIDER_BASEURL_KEYS = [
@@ -505,7 +505,7 @@ async function streamsByTitle(title, type, season, episode, providers) {
     }
 
     // Enough budget for search + detail (F2Media may also hit REST fallback).
-    const PROVIDER_BUDGET_MS = Number(process.env.PROVIDER_TIMEOUT_MS) || 11_000
+    const PROVIDER_BUDGET_MS = Number(process.env.PROVIDER_TIMEOUT_MS) || 14_000
     const queries = searchQueryVariants(title)
 
     const settled = await Promise.allSettled(
@@ -803,7 +803,7 @@ export function createAddon({
 
             const extraArgs = parseExtraArgs(req.params.extraArgs)
             const search = extraArgs.search?.trim()
-            if (!search || !['movie', 'series'].includes(req.params.type)) {
+            if (!search || !['movie', 'series', 'anime', 'tv'].includes(req.params.type)) {
                 return res.json({metas: []})
             }
 

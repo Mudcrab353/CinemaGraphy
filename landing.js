@@ -59,14 +59,14 @@ export function renderLandingPage({
   manifestUrl = PUBLIC_INSTALL,
   installUrl,
   logoUrl = '/logo.png',
-  version = '2.1.5',
+  version = '2.1.6',
 } = {}) {
   const m = escapeHtml(manifestUrl || PUBLIC_INSTALL)
   const install = escapeHtml(
     installUrl || `stremio://${String(manifestUrl || PUBLIC_INSTALL).replace(/^https?:\/\//i, '')}`,
   )
   const logo = escapeHtml(logoUrl || LOGO_FALLBACK)
-  const ver = escapeHtml(String(version || '2.1.5'))
+  const ver = escapeHtml(String(version || '2.1.6'))
 
   const addonCards = RECOMMENDED.map(
     (a) => `
@@ -544,11 +544,11 @@ h2{font-size:1.15rem;margin:26px 0 10px}
 
 export function renderConfigurePage({
   logoUrl = '/logo.png',
-  version = '2.1.5',
+  version = '2.1.6',
   origin = PUBLIC_SITE,
 } = {}) {
   const logo = escapeHtml(logoUrl || LOGO_FALLBACK)
-  const ver = escapeHtml(String(version || '2.1.5'))
+  const ver = escapeHtml(String(version || '2.1.6'))
   const originClean = String(origin || PUBLIC_SITE).replace(/\/$/, '')
   const base = escapeHtml(originClean)
   const baseJson = JSON.stringify(originClean)
@@ -719,11 +719,11 @@ export function renderConfigurePage({
 
 export function renderGuidePage({
   logoUrl = '/logo.png',
-  version = '2.1.5',
+  version = '2.1.6',
   manifestUrl = PUBLIC_INSTALL,
 } = {}) {
   const logo = escapeHtml(logoUrl || LOGO_FALLBACK)
-  const ver = escapeHtml(String(version || '2.1.5'))
+  const ver = escapeHtml(String(version || '2.1.6'))
   const install = escapeHtml(
     'stremio://' + String(manifestUrl || PUBLIC_INSTALL).replace(/^https?:\/\//i, ''),
   )
@@ -817,7 +817,7 @@ export function renderGuidePage({
 <h2>FAQ</h2>
 <div class="faq">
 <details class="glass"><summary class="lang-fa">استریم خالی است؟</summary><summary class="lang-en">No streams?</summary><p class="lang-fa">ممکن است پروایدر آن عنوان را نداشته باشد یا موقتاً آفلاین باشد.</p><p class="lang-en">Provider may lack the title or be offline.</p></details>
-<details class="glass"><summary class="lang-fa">کاتالوگ انیمه / خارجی نیست؟</summary><summary class="lang-en">Missing anime/external catalog?</summary><p class="lang-fa">در Vercel باید <code>CATALOG_ANIME_MANIFEST_URL</code> (و سایر CATALOG_*) به آدرس معتبر <code>…/manifest.json</code> تنظیم شود. اگر منیفست آن سرویس قطع باشد، کاتالوگ در لیست نمی‌آید.</p><p class="lang-en">Set <code>CATALOG_ANIME_MANIFEST_URL</code> to a valid <code>…/manifest.json</code>. If that upstream is down, the catalog is omitted.</p></details>
+<details class="glass"><summary class="lang-fa">کاتالوگ انیمه / خارجی نیست؟</summary><summary class="lang-en">Missing anime/external catalog?</summary><p class="lang-fa">متغیر <code>CATALOG_ANIME_MANIFEST_URL</code> باید همان لینک کامل <code>…/manifest.json</code> باشد. سرویس انیمه گاهی کند است؛ افزونه تا ۳۰ ثانیه صبر می‌کند. اگر باز نبود، در لاگ Vercel عبارت External catalog را ببینید.</p><p class="lang-en">Set <code>CATALOG_ANIME_MANIFEST_URL</code> to a valid <code>…/manifest.json</code>. If that upstream is down, the catalog is omitted.</p></details>
 <details class="glass"><summary class="lang-fa">پشتیبانی</summary><summary class="lang-en">Support</summary><p><a href="https://t.me/nerdcow" target="_blank" rel="noopener">t.me/nerdcow</a> · <a href="https://t.me/cinemmagraphy" target="_blank" rel="noopener">channel</a></p></details>
 </div>
 </div>
