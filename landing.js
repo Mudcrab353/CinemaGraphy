@@ -59,14 +59,14 @@ export function renderLandingPage({
   manifestUrl = PUBLIC_INSTALL,
   installUrl,
   logoUrl = '/logo.png',
-  version = '2.1.4',
+  version = '2.1.5',
 } = {}) {
   const m = escapeHtml(manifestUrl || PUBLIC_INSTALL)
   const install = escapeHtml(
     installUrl || `stremio://${String(manifestUrl || PUBLIC_INSTALL).replace(/^https?:\/\//i, '')}`,
   )
   const logo = escapeHtml(logoUrl || LOGO_FALLBACK)
-  const ver = escapeHtml(String(version || '2.1.4'))
+  const ver = escapeHtml(String(version || '2.1.5'))
 
   const addonCards = RECOMMENDED.map(
     (a) => `
@@ -544,11 +544,11 @@ h2{font-size:1.15rem;margin:26px 0 10px}
 
 export function renderConfigurePage({
   logoUrl = '/logo.png',
-  version = '2.1.4',
+  version = '2.1.5',
   origin = PUBLIC_SITE,
 } = {}) {
   const logo = escapeHtml(logoUrl || LOGO_FALLBACK)
-  const ver = escapeHtml(String(version || '2.1.4'))
+  const ver = escapeHtml(String(version || '2.1.5'))
   const originClean = String(origin || PUBLIC_SITE).replace(/\/$/, '')
   const base = escapeHtml(originClean)
   const baseJson = JSON.stringify(originClean)
@@ -719,36 +719,49 @@ export function renderConfigurePage({
 
 export function renderGuidePage({
   logoUrl = '/logo.png',
-  version = '2.1.4',
+  version = '2.1.5',
   manifestUrl = PUBLIC_INSTALL,
 } = {}) {
   const logo = escapeHtml(logoUrl || LOGO_FALLBACK)
-  const ver = escapeHtml(String(version || '2.1.4'))
-  const m = escapeHtml(manifestUrl || PUBLIC_INSTALL)
-  const install = escapeHtml('stremio://' + String(manifestUrl || PUBLIC_INSTALL).replace(/^https?:\/\//i, ''))
+  const ver = escapeHtml(String(version || '2.1.5'))
+  const install = escapeHtml(
+    'stremio://' + String(manifestUrl || PUBLIC_INSTALL).replace(/^https?:\/\//i, ''),
+  )
   return `<!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
 <meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>راهنما — سینماگرافی</title>
 <link rel="icon" href="${logo}"/>
-<style>${shellStyle()}</style>
+<style>${shellStyle()}
+.gbox{padding:18px 18px 16px;margin-bottom:14px}
+.gbox h2{margin:0 0 10px;font-size:1.05rem}
+.gbox .row{margin-top:12px}
+.olist{display:grid;gap:8px;margin-top:8px}
+.olist .step{margin:0}
+.muted{color:var(--m);font-size:.9rem}
+</style>
 </head>
 <body>
 <div class="wrap">
 <header>
 <a class="brand" href="/"><img src="${logo}" alt=""/><span>سینماگرافی</span></a>
-<div style="display:flex;gap:8px">
+<div style="display:flex;gap:8px;flex-wrap:wrap">
 <button class="chip" type="button" id="langBtn">EN</button>
 <a class="chip" href="/configure"><span class="lang-fa">شخصی‌سازی</span><span class="lang-en">Configure</span></a>
 <a class="chip" href="/"><span class="lang-fa">خانه</span><span class="lang-en">Home</span></a>
 </div>
 </header>
+
 <p style="font-size:.75rem;color:var(--a)">v${ver}</p>
 <h1 class="lang-fa">📖 راهنما</h1>
 <h1 class="lang-en">📖 Guide</h1>
-<p class="sub lang-fa">استریمیو یک Media Center است؛ افزونه‌ها منبع و قابلیت اضافه می‌کنند. سینماگرافی منابع ایرانی، تورنت اختیاری، زیرنویس و متای فارسی را یکجا می‌آورد.</p>
-<p class="sub lang-en">Stremio is a media center; addons add sources. Cinemagraphy bundles Iranian sources, optional torrents, subs and Persian metadata.</p>
+
+<div class="gbox glass">
+<p class="lang-fa muted" style="margin:0">استریمیو یک Media Center است؛ افزونه‌ها منبع و قابلیت اضافه می‌کنند. سینماگرافی منابع ایرانی، تورنت اختیاری، زیرنویس و متای فارسی را یکجا می‌آورد.</p>
+<p class="lang-en muted" style="margin:0">Stremio is a media center; addons add sources. Cinemagraphy bundles Iranian sources, optional torrents, subtitles and Persian metadata.</p>
+</div>
+
 <div class="feat">
 <div class="c glass"><div>🎥</div><b class="lang-fa">منابع ایرانی</b><b class="lang-en">Iran sources</b></div>
 <div class="c glass"><div>🌱</div><b>Torrent</b></div>
@@ -756,32 +769,67 @@ export function renderGuidePage({
 <div class="c glass"><div>🇮🇷</div><b class="lang-fa">متای فارسی</b><b class="lang-en">FA meta</b></div>
 <div class="c glass"><div>🆓</div><b class="lang-fa">رایگان</b><b class="lang-en">Free</b></div>
 </div>
-<h2 class="lang-fa">نصب</h2>
-<h2 class="lang-en">Install</h2>
-<div class="step glass"><b>1</b> <span class="lang-fa">استریمیو را از stremio.com نصب کنید</span><span class="lang-en">Install Stremio</span></div>
-<div class="step glass"><b>2</b> <span class="lang-fa">منیفست را نصب کنید یا از صفحه شخصی‌سازی لینک بسازید</span><span class="lang-en">Install the manifest (or build a custom one)</span></div>
-<p class="row"><a class="btn bp" href="${install}"><span class="lang-fa">نصب پیش‌فرض</span><span class="lang-en">Default install</span></a>
-<a class="btn ghost" href="/configure"><span class="lang-fa">شخصی‌سازی</span><span class="lang-en">Configure</span></a></p>
-<p class="sub" style="direction:ltr">${m}</p>
-<h2 class="lang-fa">فارسی‌سازی استریمیو</h2>
-<p class="lang-fa">Settings → Interface → Language → فارسی</p>
-<p class="lang-en">Settings → Interface → Language</p>
-<div class="call glass">
-<p class="lang-fa"><b>IP:</b> درخواست به سایت‌های ایرانی از سرور انجام می‌شود؛ IP دیده‌شده معمولاً IP سرور است. جعل هدر انجام نمی‌شود.</p>
-<p class="lang-en"><b>IP:</b> Fetches are server-side; sites see the server IP. No header spoofing.</p>
+
+<div class="gbox glass">
+<h2 class="lang-fa">۱) نصب Stremio</h2>
+<h2 class="lang-en">1) Install Stremio</h2>
+<div class="olist">
+<div class="step glass"><b>1</b> <span class="lang-fa">از سایت رسمی دانلود و نصب کنید</span><span class="lang-en">Download from the official site</span></div>
+<div class="step glass"><b>2</b> <span class="lang-fa">یک‌بار برنامه را باز کنید</span><span class="lang-en">Open the app once</span></div>
 </div>
+<div class="row"><a class="btn ghost" href="https://www.stremio.com/downloads" target="_blank" rel="noopener"><span class="lang-fa">دانلود Stremio</span><span class="lang-en">Download Stremio</span></a></div>
+</div>
+
+<div class="gbox glass">
+<h2 class="lang-fa">۲) نصب سینماگرافی</h2>
+<h2 class="lang-en">2) Install Cinemagraphy</h2>
+<p class="muted lang-fa">منیفست پیش‌فرض همه منابع سرور را دارد. برای انتخاب پروایدر، از شخصی‌سازی لینک بسازید.</p>
+<p class="muted lang-en">Default manifest includes all server sources. Use Configure to pick providers.</p>
+<div class="row">
+<a class="btn bp" href="${install}"><span class="lang-fa">نصب پیش‌فرض</span><span class="lang-en">Default install</span></a>
+<a class="btn ghost" href="/configure"><span class="lang-fa">شخصی‌سازی</span><span class="lang-en">Configure</span></a>
+</div>
+</div>
+
+<div class="gbox glass">
+<h2 class="lang-fa">فارسی‌سازی استریمیو</h2>
+<h2 class="lang-en">Stremio language</h2>
+<p class="lang-fa muted" style="margin:0">Settings → Interface → Language → فارسی</p>
+<p class="lang-en muted" style="margin:0">Settings → Interface → Language</p>
+</div>
+
+<div class="gbox glass">
+<h2 class="lang-fa">استفاده</h2>
+<h2 class="lang-en">How to use</h2>
+<div class="olist">
+<div class="step glass"><b>1</b> <span class="lang-fa">عنوان را از کاتالوگ یا جستجو پیدا کنید</span><span class="lang-en">Find a title via catalog or search</span></div>
+<div class="step glass"><b>2</b> <span class="lang-fa">استریم را با کیفیت/حجم/منبع انتخاب کنید</span><span class="lang-en">Pick a stream (quality / size / source)</span></div>
+<div class="step glass"><b>3</b> <span class="lang-fa">در صورت نیاز زیرنویس را بزنید</span><span class="lang-en">Add subtitles if needed</span></div>
+</div>
+</div>
+
+<div class="gbox glass call">
+<p class="lang-fa" style="margin:0"><b>IP:</b> درخواست به سایت‌های ایرانی از سرور می‌رود؛ IP دیده‌شده معمولاً IP سرور است. جعل هدر انجام نمی‌شود.</p>
+<p class="lang-en" style="margin:0"><b>IP:</b> Fetches are server-side; sites see the server IP. No header spoofing.</p>
+</div>
+
+<div class="gbox glass">
 <h2>FAQ</h2>
 <div class="faq">
-<details class="glass"><summary class="lang-fa">استریم خالی است؟</summary><summary class="lang-en">No streams?</summary><p class="lang-fa">ممکن است پروایدر آن عنوان را نداشته باشد یا آفلاین باشد.</p><p class="lang-en">Provider may lack the title or be offline.</p></details>
+<details class="glass"><summary class="lang-fa">استریم خالی است؟</summary><summary class="lang-en">No streams?</summary><p class="lang-fa">ممکن است پروایدر آن عنوان را نداشته باشد یا موقتاً آفلاین باشد.</p><p class="lang-en">Provider may lack the title or be offline.</p></details>
+<details class="glass"><summary class="lang-fa">کاتالوگ انیمه / خارجی نیست؟</summary><summary class="lang-en">Missing anime/external catalog?</summary><p class="lang-fa">در Vercel باید <code>CATALOG_ANIME_MANIFEST_URL</code> (و سایر CATALOG_*) به آدرس معتبر <code>…/manifest.json</code> تنظیم شود. اگر منیفست آن سرویس قطع باشد، کاتالوگ در لیست نمی‌آید.</p><p class="lang-en">Set <code>CATALOG_ANIME_MANIFEST_URL</code> to a valid <code>…/manifest.json</code>. If that upstream is down, the catalog is omitted.</p></details>
 <details class="glass"><summary class="lang-fa">پشتیبانی</summary><summary class="lang-en">Support</summary><p><a href="https://t.me/nerdcow" target="_blank" rel="noopener">t.me/nerdcow</a> · <a href="https://t.me/cinemmagraphy" target="_blank" rel="noopener">channel</a></p></details>
 </div>
 </div>
+
+<p style="margin-top:18px"><a class="chip" href="/"><span class="lang-fa">🎬 بازگشت</span><span class="lang-en">🎬 Home</span></a></p>
+</div>
 <script>
 (function(){
-const r=document.documentElement,lb=document.getElementById('langBtn');
-function al(l){r.lang=l;r.dir=l==='fa'?'rtl':'ltr';lb.textContent=l==='fa'?'EN':'FA';localStorage.setItem('cg-lang',l)}
-al(localStorage.getItem('cg-lang')||'fa');
-lb.onclick=()=>al(r.lang==='fa'?'en':'fa');
+  var r=document.documentElement,lb=document.getElementById('langBtn');
+  function al(l){r.lang=l;r.dir=l==='fa'?'rtl':'ltr';if(lb)lb.textContent=l==='fa'?'EN':'FA';localStorage.setItem('cg-lang',l)}
+  al(localStorage.getItem('cg-lang')||'fa');
+  if(lb)lb.onclick=function(){al(r.lang==='fa'?'en':'fa')};
 })();
 </script>
 </body></html>`
