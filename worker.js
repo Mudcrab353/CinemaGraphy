@@ -13,7 +13,7 @@ import {createFetchHttpClient} from './http-client.js'
 import {createWorkerProxyConfig, handleProxyRequest} from './proxy.js'
 
 const ADDON_PREFIX = 'ip'
-const ADDON_VERSION = '2.0.1'
+const ADDON_VERSION = '2.0.2'
 
 const CATALOGS = [
     {key: 'f2media', name: 'F2Media', catalogType: 'movies'},
@@ -73,6 +73,10 @@ export function createWorkerManifest(env = {}) {
         // Torrent streams (infoHash-based) require the addon to explicitly
         // declare P2P content, or clients hide them without warning.
         behaviorHints: {p2p: Boolean(env.TORRENT_METEOR_MANIFEST_URL)},
+        stremioAddonsConfig: {
+            issuer: 'https://stremio-addons.net',
+            signature: 'eyJhbGciOiJkaXIiLCJlbmMiOiJBMTI4Q0JDLUhTMjU2In0..qYqYdUtntg-bF3wGDjsiww.IBIrE7RSO9aaALvNQROynW-pBh-OQLl3t-nFXqhEAO4AYl2qHvSGJWNP6WTwzU1yD8DjmYbnjDVdgkIDYw75MtInyH_cG0uEYr2VXEIGbHNZVlWlPH-C5go_8UyAMxCc.bM45Z1wp81dep2eCW5dt8A',
+        },
     }
 }
 

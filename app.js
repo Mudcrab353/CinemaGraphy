@@ -21,7 +21,7 @@ import {ID_SEPARATOR, METADATA_SOURCE} from './sources/source.js'
 import {findExternalMetaSource, findExternalStreamSource, formatStreamTitle, getCinemeta, getExternalCatalogSources, getKitsuTitle, getSubtitle, getTMDBMetaFa, getTMDBMetaByTmdbId, getTMDBDetails, getTMDBTitle, getLandingTmdbCatalogs, getTorrentStreams, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxyExternalStream, proxySubtitles, translateCatalogName} from './utils.js'
 
 export const ADDON_PREFIX = 'ip'
-export const ADDON_VERSION = '2.0.1'
+export const ADDON_VERSION = '2.0.2'
 
 const CATALOGS = [
     {key: 'f2media', name: 'F2Media', catalogType: 'movies'},
@@ -70,6 +70,10 @@ export function createManifest(env = process.env) {
         // Torrent streams (infoHash-based) require the addon to explicitly
         // declare P2P content, or clients hide them without warning.
         behaviorHints: {p2p: Boolean(env.TORRENT_METEOR_MANIFEST_URL)},
+        stremioAddonsConfig: {
+            issuer: 'https://stremio-addons.net',
+            signature: 'eyJhbGciOiJkaXIiLCJlbmMiOiJBMTI4Q0JDLUhTMjU2In0..qYqYdUtntg-bF3wGDjsiww.IBIrE7RSO9aaALvNQROynW-pBh-OQLl3t-nFXqhEAO4AYl2qHvSGJWNP6WTwzU1yD8DjmYbnjDVdgkIDYw75MtInyH_cG0uEYr2VXEIGbHNZVlWlPH-C5go_8UyAMxCc.bM45Z1wp81dep2eCW5dt8A',
+        },
     }
 }
 
@@ -355,23 +359,36 @@ function searchQueryVariants(title) {
 }
 
 function bestTitleMatch(results, type, cleanTitle) {
-    const candidates = (Array.isArray(results) ? results : []).filter((r) => {
-        if (r.type && r.type !== type) return false
-        return titlesMatch(normalizeForMatch(r.name), cleanTitle)
-    })
-    if (!candidates.length) return null
-    // Prefer exact-ish shorter names (avoid matching a longer unrelated pack)
-    candidates.sort((a, b) => {
-        const na = normalizeForMatch(a.name)
-        const nb = normalizeForMatch(b.name)
-        const score = (n) => {
-            if (n === cleanTitle) return 0
-            if (n.includes(cleanTitle) || cleanTitle.includes(n)) return 1
-            return 2
-        }
-        return score(na) - score(nb) || na.length - nb.length
-    })
-    return candidates[0]
+    const list = Array.isArray(results) ? results : []
+    const typed = list.filter((r) => !r.type || r.type === type)
+    const candidates = typed.filter((r) => titlesMatch(normalizeForMatch(r.name), cleanTitle))
+    if (candidates.length) {
+        candidates.sort((a, b) => {
+            const na = normalizeForMatch(a.name)
+            const nb = normalizeForMatch(b.name)
+            const score = (n) => {
+                if (n === cleanTitle) return 0
+                if (n.includes(cleanTitle) || cleanTitle.includes(n)) return 1
+                return 2
+            }
+            return score(na) - score(nb) || na.length - nb.length
+        })
+        return candidates[0]
+    }
+    // Iranian sites often return Persian-only titles. normalizeForMatch strips
+    // Persian script → empty → token match fails. If the provider's own search
+    // returned rows for our query, trust the first same-type hit.
+    if (typed.length === 1) return typed[0]
+    if (typed.length > 1 && cleanTitle) {
+        const latin = cleanTitle.split(' ').filter((t) => t.length > 2)
+        const soft = typed.find((r) => {
+            const raw = String(r.name ?? '').toLowerCase()
+            return latin.some((t) => raw.includes(t))
+        })
+        if (soft) return soft
+        return typed[0]
+    }
+    return null
 }
 
 async function streamsByTitle(title, type, season, episode, providers) {

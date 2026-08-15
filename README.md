@@ -8,7 +8,7 @@
     <a href="https://cinemagraphy.vercel.app/manifest.json"><img src="https://img.shields.io/badge/manifest-install-blue?style=for-the-badge" alt="Manifest" /></a>
   </p>
   <p>
-    <img src="https://img.shields.io/badge/version-2.0.1-blue.svg" alt="2.0.1" />
+    <img src="https://img.shields.io/badge/version-2.0.2-blue.svg" alt="2.0.2" />
     <img src="https://img.shields.io/badge/vercel-ready-black.svg" alt="Vercel" />
     <img src="https://img.shields.io/badge/cloudflare-workers-orange.svg" alt="Workers" />
     <img src="https://img.shields.io/badge/license-ISC-lightgrey.svg" alt="ISC" />
@@ -52,7 +52,10 @@
 ### نسخه ۲.۰.۱
 - لیست منابع روی لندینگ (`/providers.json`) با Online/Offline
 - ویترین TMDB فقط برای سایت (محبوب امروز/هفته، سالن، تریلر) — **بدون** اضافه شدن به منیفست استریمیو
-- بهبود match عنوان برای **DonyayeSerial**
+- بهبود match عنوان برای **DonyayeSerial** (عنوان فارسی + اعتماد به نتایج جستجوی سایت)
+- ویترین لندینگ: هاور استریمیو/وب، تریلر مستقیم یوتیوب
+- Claim افزونه در stremio-addons.net
+- فوتر: گیت‌هاب · کانال تلگرام · پشتیبانی
 - متای `tmdb:` برای کاتالوگ‌های ۱۰۱
 - سرعت و کش استریم (از سری ۱.۹.x)
 

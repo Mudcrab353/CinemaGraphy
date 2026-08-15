@@ -6,6 +6,8 @@ const LOGO_FALLBACK = 'https://raw.githubusercontent.com/TheNerdCow/CinemaGraphy
 const PUBLIC_INSTALL = 'https://cinemagraphy.vercel.app/manifest.json'
 const PUBLIC_SITE = 'https://cinemagraphy.vercel.app'
 const GITHUB_URL = 'https://github.com/TheNerdCow/CinemaGraphy'
+const TELEGRAM_CHANNEL = 'https://t.me/cinemmagraphy'
+const TELEGRAM_SUPPORT = 'https://t.me/nerdcow'
 
 // Popular companions (rough order from stremio-addons.net / community rankings 2026)
 const RECOMMENDED = [
@@ -57,14 +59,14 @@ export function renderLandingPage({
   manifestUrl = PUBLIC_INSTALL,
   installUrl,
   logoUrl = '/logo.png',
-  version = '2.0.1',
+  version = '2.0.2',
 } = {}) {
   const m = escapeHtml(manifestUrl || PUBLIC_INSTALL)
   const install = escapeHtml(
     installUrl || `stremio://${String(manifestUrl || PUBLIC_INSTALL).replace(/^https?:\/\//i, '')}`,
   )
   const logo = escapeHtml(logoUrl || LOGO_FALLBACK)
-  const ver = escapeHtml(String(version || '2.0.1'))
+  const ver = escapeHtml(String(version || '2.0.2'))
 
   const addonCards = RECOMMENDED.map(
     (a) => `
@@ -180,6 +182,18 @@ footer{margin-top:12px;padding:32px 5vw 44px;border-top:1px solid rgba(255,255,2
 .modal .inner{width:min(900px,100%);aspect-ratio:16/9;background:#000;border-radius:12px;overflow:hidden;position:relative}
 .modal iframe{width:100%;height:100%;border:0}
 .modal .x{position:absolute;top:-36px;inset-inline-end:0;background:transparent;border:0;color:#fff;font-size:1.4rem;font-weight:700}
+
+.tile{position:relative}
+.tile .hov{position:absolute;inset:0;border-radius:12px;background:linear-gradient(180deg,transparent 30%,rgba(0,0,0,.85));opacity:0;transition:opacity .2s;display:flex;flex-direction:column;justify-content:flex-end;padding:8px;gap:4px}
+.tile:hover .hov,.tile:focus-within .hov{opacity:1}
+.tile .hov a,.tile .hov button{font-size:.65rem;font-weight:700;padding:5px 6px;border-radius:8px;border:0;text-decoration:none;text-align:center;font-family:inherit;cursor:pointer}
+.tile .hov .s{background:linear-gradient(135deg,#e8a04a,#d4783a);color:#1a0f05}
+.tile .hov .w{background:rgba(255,255,255,.15);color:#fff;backdrop-filter:blur(6px)}
+.tile .poster-wrap{position:relative;width:120px;height:180px;border-radius:12px;overflow:hidden}
+.tr-tile .hov{opacity:0}
+.tr-tile:hover .hov{opacity:1}
+.foot{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;align-items:center}
+.foot .gh{margin:0}
 </style>
 </head>
 <body>
@@ -258,14 +272,20 @@ ${addonCards}
 </section>
 </main>
 <footer>
+<div class="foot">
 <a class="gh glass" href="${GITHUB_URL}" target="_blank" rel="noopener" aria-label="GitHub">
 <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.44 9.8 8.2 11.39.6.11.82-.26.82-.58 0-.28-.01-1.02-.02-2-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.33-1.76-1.33-1.76-1.09-.74.08-.73.08-.73 1.2.08 1.84 1.24 1.84 1.24 1.07 1.83 2.8 1.3 3.49 1 .11-.78.42-1.3.76-1.6-2.66-.3-5.46-1.33-5.46-5.93 0-1.31.47-2.38 1.24-3.22-.12-.3-.54-1.52.12-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 3-.4c1.02 0 2.05.14 3 .4 2.29-1.55 3.3-1.23 3.3-1.23.66 1.66.24 2.88.12 3.18.77.84 1.24 1.91 1.24 3.22 0 4.61-2.8 5.62-5.48 5.92.43.37.81 1.1.81 2.22 0 1.6-.01 2.89-.01 3.29 0 .32.22.7.83.58C20.56 21.8 24 17.3 24 12 24 5.37 18.63 0 12 0z"/></svg>
-<span class="label">
-<span class="lang-fa">گیت‌هاب</span>
-<span class="lang-en">GitHub</span>
-<small>github.com/TheNerdCow/CinemaGraphy</small>
-</span>
+<span class="label"><span class="lang-fa">گیت‌هاب</span><span class="lang-en">GitHub</span></span>
 </a>
+<a class="gh glass" href="${TELEGRAM_CHANNEL}" target="_blank" rel="noopener" aria-label="Telegram">
+<svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22" aria-hidden="true"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zm4.24 6.46-1.55 7.33c-.12.52-.43.65-.87.4l-2.4-1.77-1.16 1.12c-.13.13-.24.24-.49.24l.17-2.45 4.47-4.04c.19-.17-.04-.27-.3-.1l-5.53 3.48-2.38-.74c-.52-.16-.53-.52.11-.77l9.3-3.58c.43-.16.81.1.67.78z"/></svg>
+<span class="label"><span class="lang-fa">کانال</span><span class="lang-en">Channel</span></span>
+</a>
+<a class="gh glass" href="${TELEGRAM_SUPPORT}" target="_blank" rel="noopener" aria-label="Support">
+<svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22" aria-hidden="true"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.17L4 17.17V4h16v12zM7 9h2v2H7zm4 0h2v2h-2zm4 0h2v2h-2z"/></svg>
+<span class="label"><span class="lang-fa">پشتیبانی</span><span class="lang-en">Support</span></span>
+</a>
+</div>
 </footer>
 <script>
 (function(){
@@ -326,8 +346,24 @@ loadProviders();
 function tileHtml(item){
   var title=esc(item.title||item.originalTitle||'');
   var sub=[item.year,item.rating!=null?('★ '+item.rating):''].filter(Boolean).join(' · ');
-  var img=item.poster?('<img src="'+esc(item.poster)+'" alt="" loading="lazy"/>'):'<div style="width:120px;height:180px;border-radius:12px;background:rgba(255,255,255,.06)"></div>';
-  return '<div class="tile">'+img+'<div class="cap">'+title+'</div>'+(sub?'<div class="sub2">'+esc(sub)+'</div>':'')+'</div>';
+  var mt=item.mediaType==='tv'?'series':'movie';
+  var stremio='stremio://detail/'+mt+'/tmdb:'+encodeURIComponent(item.id);
+  var web=item.mediaType==='tv'
+    ?('https://www.themoviedb.org/tv/'+item.id+'?language=fa-IR')
+    :('https://www.themoviedb.org/movie/'+item.id+'?language=fa-IR');
+  var img=item.poster
+    ?('<img src="'+esc(item.poster)+'" alt="" loading="lazy"/>')
+    :'<div style="width:100%;height:100%;background:rgba(255,255,255,.06)"></div>';
+  var fa=document.documentElement.lang==='fa';
+  return '<div class="tile">'+
+    '<div class="poster-wrap">'+img+
+      '<div class="hov">'+
+        '<a class="s" href="'+esc(stremio)+'">'+(fa?'باز کردن در استریمیو':'Open in Stremio')+'</a>'+
+        '<a class="w" href="'+esc(web)+'" target="_blank" rel="noopener">'+(fa?'صفحه فیلم (وب)':'Open on web')+'</a>'+
+      '</div>'+
+    '</div>'+
+    '<div class="cap">'+title+'</div>'+(sub?'<div class="sub2">'+esc(sub)+'</div>':'')+
+  '</div>';
 }
 function fillRail(id, items){
   var el=document.getElementById(id);
@@ -339,24 +375,24 @@ function fillTrailers(items){
   var el=document.getElementById('railTrailers');
   if(!el)return;
   if(!items||!items.length){el.innerHTML='<p class="sub">—</p>';return;}
+  var fa=document.documentElement.lang==='fa';
   el.innerHTML=items.map(function(item){
     var title=esc(item.title||'');
     var bg=item.backdrop||item.poster||'';
     var key=item.trailer&&item.trailer.key;
-    return '<button type="button" class="tile tr-tile" data-yt="'+esc(key||'')+'" style="background:none;border:0;padding:0;text-align:start;font:inherit;color:inherit">'+
-      '<div class="thumb">'+(bg?'<img src="'+esc(bg)+'" alt="" loading="lazy"/>':'')+'<div class="play">▶</div></div>'+
-      '<div class="cap">'+title+'</div></button>';
+    var yt=key?('https://www.youtube.com/watch?v='+encodeURIComponent(key)):'#';
+    var mt=item.mediaType==='tv'?'series':'movie';
+    var stremio='stremio://detail/'+mt+'/tmdb:'+encodeURIComponent(item.id);
+    return '<div class="tile tr-tile">'+
+      '<a class="thumb" href="'+esc(yt)+'" target="_blank" rel="noopener" title="'+(fa?'پخش در یوتیوب':'Watch on YouTube')+'">'+
+        (bg?'<img src="'+esc(bg)+'" alt="" loading="lazy"/>':'')+
+        '<div class="play">▶</div>'+
+        '<div class="hov" style="pointer-events:none"><span style="font-size:.7rem;font-weight:700;color:#fff">'+(fa?'یوتیوب':'YouTube')+'</span></div>'+
+      '</a>'+
+      '<div class="cap">'+title+'</div>'+
+      '<a class="sub2" href="'+esc(stremio)+'" style="color:var(--a);text-decoration:none;font-weight:700">'+(fa?'استریمیو':'Stremio')+'</a>'+
+    '</div>';
   }).join('');
-  el.querySelectorAll('[data-yt]').forEach(function(btn){
-    btn.onclick=function(){
-      var k=btn.getAttribute('data-yt');
-      if(!k)return;
-      var modal=document.getElementById('trailerModal');
-      var frame=document.getElementById('trailerFrame');
-      if(frame)frame.src='https://www.youtube.com/embed/'+encodeURIComponent(k)+'?autoplay=1';
-      if(modal)modal.classList.add('open');
-    };
-  });
 }
 (function(){
   var modal=document.getElementById('trailerModal');
