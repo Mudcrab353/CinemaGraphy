@@ -59,14 +59,14 @@ export function renderLandingPage({
   manifestUrl = PUBLIC_INSTALL,
   installUrl,
   logoUrl = '/logo.png',
-  version = '2.1.8',
+  version = '2.1.9',
 } = {}) {
   const m = escapeHtml(manifestUrl || PUBLIC_INSTALL)
   const install = escapeHtml(
     installUrl || `stremio://${String(manifestUrl || PUBLIC_INSTALL).replace(/^https?:\/\//i, '')}`,
   )
   const logo = escapeHtml(logoUrl || LOGO_FALLBACK)
-  const ver = escapeHtml(String(version || '2.1.8'))
+  const ver = escapeHtml(String(version || '2.1.9'))
 
   const addonCards = RECOMMENDED.map(
     (a) => `
@@ -566,11 +566,11 @@ h2{font-size:1.15rem;margin:26px 0 10px}
 
 export function renderConfigurePage({
   logoUrl = '/logo.png',
-  version = '2.1.8',
+  version = '2.1.9',
   origin = PUBLIC_SITE,
 } = {}) {
   const logo = escapeHtml(logoUrl || LOGO_FALLBACK)
-  const ver = escapeHtml(String(version || '2.1.8'))
+  const ver = escapeHtml(String(version || '2.1.9'))
   const originClean = String(origin || PUBLIC_SITE).replace(/\/$/, '')
   const base = escapeHtml(originClean)
   const baseJson = JSON.stringify(originClean)
@@ -638,7 +638,7 @@ export function renderConfigurePage({
 </div>
 <div class="cfg-item glass">
 <div class="top"><code>CATALOG_AIO_MANIFEST_URL</code><span class="diff m"><span class="lang-fa">متوسط</span><span class="lang-en">Medium</span></span></div>
-<div class="hint"><span class="lang-fa">منیفست AIOCatalogs (بعد از ۱۰۱، قبل از انیمه و ماهواره)</span><span class="lang-en">AIOCatalogs manifest (after 101, before anime &amp; IPTV)</span></div>
+<div class="hint"><span class="lang-fa">لینک کامل manifest.json از صفحه Configure خود AIOCatalogs (نه صفحه /configure)</span><span class="lang-en">AIOCatalogs manifest (after 101, before anime &amp; IPTV)</span></div>
 <input data-k="CATALOG_AIO_MANIFEST_URL" placeholder="https://…/manifest.json" autocomplete="off"/>
 </div>
 <div class="cfg-item glass">
@@ -746,11 +746,11 @@ export function renderConfigurePage({
 
 export function renderGuidePage({
   logoUrl = '/logo.png',
-  version = '2.1.8',
+  version = '2.1.9',
   manifestUrl = PUBLIC_INSTALL,
 } = {}) {
   const logo = escapeHtml(logoUrl || LOGO_FALLBACK)
-  const ver = escapeHtml(String(version || '2.1.8'))
+  const ver = escapeHtml(String(version || '2.1.9'))
   const install = escapeHtml(
     'stremio://' + String(manifestUrl || PUBLIC_INSTALL).replace(/^https?:\/\//i, ''),
   )

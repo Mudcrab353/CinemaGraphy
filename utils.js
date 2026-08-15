@@ -647,7 +647,7 @@ export function formatStreamTitle({providerKey, quality, size, audioType, extraT
 // ---------------------------------------------------------------------------
 
 const EXTERNAL_CATALOGS_TTL_MS = 10 * 60 * 1_000 // 10 min
-const EXTERNAL_CATALOG_FAST_MS = 12_000
+const EXTERNAL_CATALOG_FAST_MS = 20_000
 const EXTERNAL_CATALOG_ANIME_MS = 35_000
 /** Soft budget on the critical path so a slow anime host does not delay the whole manifest */
 const EXTERNAL_CATALOG_SOFT_WAIT_MS = 4_000
@@ -690,13 +690,16 @@ function externalManifestUrls(env) {
 }
 
 function isSlowExternalCatalogUrl(manifestUrl, env = {}) {
+    // Only the dedicated anime catalog is soft-deferred. AIO / 101 / IPTV stay on the critical path.
     const anime = String(env.CATALOG_ANIME_MANIFEST_URL || '').trim()
     if (anime && manifestUrl === anime) return true
     try {
         const host = new URL(manifestUrl).hostname.toLowerCase()
-        if (host.includes('anime') || host.includes('beamup') || host.includes('kitsu')) return true
+        if (host.includes('anime-catalog') || host.includes('animecatalog')) return true
     } catch { /* ignore */ }
-    return /anime|myanimelist|mal/i.test(manifestUrl)
+    // path segment strongly indicates the community anime catalogs addon
+    if (/stremio-anime-catalogs|myanimelist_top/i.test(manifestUrl)) return true
+    return false
 }
 
 function catalogBaseUrl(manifestUrl) {
@@ -844,6 +847,27 @@ export async function getExternalCatalogSources(env = {}, httpClient = axios, lo
         failed,
     }
     return sources
+}
+
+
+/** Safe status snapshot for /providers.json (no secrets, host only). */
+export function getExternalCatalogStatus(env = {}) {
+    const urls = externalManifestUrls(env)
+    const cache = externalCatalogsCache
+    const byUrl = new Map((cache?.sources || []).map((s) => [s.manifestUrl, s]))
+    const failed = new Set(cache?.failed || [])
+    return urls.map((url) => {
+        let host = url
+        try { host = new URL(url).host } catch { /* keep */ }
+        const src = byUrl.get(url)
+        return {
+            host,
+            ok: Boolean(src),
+            catalogs: src ? (src.catalogs?.length || 0) : 0,
+            pending: externalInflight.has(url),
+            failed: failed.has(url) && !src,
+        }
+    })
 }
 
 export async function proxyExternalCatalog(source, type, id, extraPath, httpClient = axios, logger = console) {

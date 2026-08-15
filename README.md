@@ -8,7 +8,7 @@
     <a href="https://cinemagraphy.vercel.app/manifest.json"><img src="https://img.shields.io/badge/manifest-install-blue?style=for-the-badge" alt="Manifest" /></a>
   </p>
   <p>
-    <img src="https://img.shields.io/badge/version-2.1.8-blue.svg" alt="2.1.8" />
+    <img src="https://img.shields.io/badge/version-2.1.9-blue.svg" alt="2.1.9" />
     <img src="https://img.shields.io/badge/vercel-ready-black.svg" alt="Vercel" />
     <img src="https://img.shields.io/badge/cloudflare-workers-orange.svg" alt="Workers" />
     <img src="https://img.shields.io/badge/license-ISC-lightgrey.svg" alt="ISC" />
@@ -72,7 +72,7 @@ Add: `https://cinemagraphy.vercel.app/manifest.json`
 - `/manifest.json` — نصب  
 - `/configure` — منیفست اختصاصی  
 - `/guide` — راهنما  
-- `/providers.json` — وضعیت منابع  
+- `/providers.json` — وضعیت منابع + externalCatalogs (AIO/101/anime)  
 - `/tmdb/landing.json` — ویترین سایت  
 - `/health` — healthcheck  
 
