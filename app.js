@@ -21,15 +21,43 @@ import {ID_SEPARATOR, METADATA_SOURCE} from './sources/source.js'
 import {findExternalMetaSource, findExternalStreamSource, formatStreamTitle, getCinemeta, getExternalCatalogSources, getKitsuTitle, getSubtitle, getTMDBMetaFa, getTMDBMetaByTmdbId, getTMDBDetails, getTMDBTitle, getLandingTmdbCatalogs, getTorrentStreams, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxyExternalStream, proxySubtitles, translateCatalogName} from './utils.js'
 
 export const ADDON_PREFIX = 'ip'
-export const ADDON_VERSION = '2.1.1'
+export const ADDON_VERSION = '2.1.2'
 
+
+const PROVIDER_BASEURL_KEYS = [
+    'F2MEDIA_BASEURL',
+    'PEEPBOXTV_BASEURL',
+    'CINAMATIC_BASEURL',
+    'ASLMOVIEZ_BASEURL',
+    'SERIALBLOG_BASEURL',
+    'DIGIMOVIE_BASEURL',
+    'DONYAYESERIAL_BASEURL',
+    'ANIMEX_BASEURL',
+]
+
+const PROVIDER_KEY_TO_ENV = {
+    f2media: 'F2MEDIA_BASEURL',
+    peepboxtv: 'PEEPBOXTV_BASEURL',
+    cinamatic: 'CINAMATIC_BASEURL',
+    aslmoviez: 'ASLMOVIEZ_BASEURL',
+    serialblog: 'SERIALBLOG_BASEURL',
+    digimovie: 'DIGIMOVIE_BASEURL',
+    donyayeserial: 'DONYAYESERIAL_BASEURL',
+    animex: 'ANIMEX_BASEURL',
+}
 
 const CONFIG_ALLOW = new Set([
-    'TMDB_API_KEY', 'F2MEDIA_BASEURL', 'CINAMATIC_BASEURL', 'ASLMOVIEZ_BASEURL',
-    'SERIALBLOG_BASEURL', 'DONYAYESERIAL_BASEURL', 'ANIMEX_BASEURL',
-    'TORRENT_METEOR_MANIFEST_URL', 'EXTERNAL_CATALOG_MANIFEST_URLS', 'PROVIDER_TIMEOUT_MS',
-    'PEEPBOXTV_BASEURL', 'DIGIMOVIE_BASEURL', 'DIGIMOVIE_USERNAME', 'DIGIMOVIE_PASSWORD',
-    'PROXY_ENABLE', 'PROXY_URL', 'PROXY_PATH',
+    'TMDB_API_KEY',
+    'ENABLED_PROVIDERS',
+    'TORRENT_METEOR_MANIFEST_URL',
+    'EXTERNAL_CATALOG_MANIFEST_URLS',
+    'PROVIDER_TIMEOUT_MS',
+    'DIGIMOVIE_USERNAME',
+    'DIGIMOVIE_PASSWORD',
+    'PROXY_ENABLE',
+    'PROXY_URL',
+    'PROXY_PATH',
+    ...PROVIDER_BASEURL_KEYS,
 ])
 
 export function decodeAddonConfig(encoded) {
@@ -51,9 +79,49 @@ export function decodeAddonConfig(encoded) {
     }
 }
 
-export function mergeEnv(baseEnv, config) {
+/**
+ * When a custom /c/<config>/ install is used, provider BASEURLs from the
+ * public server env must NOT leak in. Only providers the user selected
+ * (ENABLED_PROVIDERS and/or explicit *_BASEURL) stay active.
+ */
+export function mergeEnv(baseEnv = {}, config) {
     if (!config) return baseEnv
-    return {...baseEnv, ...config}
+    const e = {...baseEnv, ...config}
+
+    const enabled = String(config.ENABLED_PROVIDERS || '')
+        .split(',')
+        .map((s) => s.trim().toLowerCase())
+        .filter(Boolean)
+
+    const explicitBase = PROVIDER_BASEURL_KEYS.filter((k) => String(config[k] || '').trim())
+
+    if (enabled.length || explicitBase.length) {
+        for (const k of PROVIDER_BASEURL_KEYS) {
+            delete e[k]
+        }
+        for (const k of explicitBase) {
+            e[k] = String(config[k]).trim()
+        }
+        for (const key of enabled) {
+            const envKey = PROVIDER_KEY_TO_ENV[key] || PROVIDER_KEY_TO_ENV[key.replace(/_baseurl$/i, '')]
+            if (!envKey) continue
+            if (String(config[envKey] || '').trim()) {
+                e[envKey] = String(config[envKey]).trim()
+            } else if (String(baseEnv[envKey] || '').trim()) {
+                e[envKey] = String(baseEnv[envKey]).trim()
+            }
+        }
+        // Optional extras stay from config only when exclusive provider mode
+        if (!String(config.TORRENT_METEOR_MANIFEST_URL || '').trim()) {
+            // keep server torrent unless user cleared — only strip if they set ENABLED without torrent key
+            // User expectation: only selected providers → disable torrent unless explicitly set
+            if (!('TORRENT_METEOR_MANIFEST_URL' in config)) {
+                delete e.TORRENT_METEOR_MANIFEST_URL
+            }
+        }
+    }
+
+    return e
 }
 
 
@@ -85,7 +153,10 @@ export function createManifest(env = process.env) {
         description: 'سینماگرافی — دانلود و تماشای فیلم و سریال از منابع ایرانی و بین‌المللی.',
         logo: 'https://raw.githubusercontent.com/TheNerdCow/CinemaGraphy/refs/heads/master/logo.png',
         name: `سینماگرافی${developmentSuffix}`,
-        catalogs: CATALOGS.flatMap((cfg) => {
+        catalogs: CATALOGS.filter((cfg) => {
+            const envKey = PROVIDER_KEY_TO_ENV[cfg.key]
+            return Boolean(envKey && String(env[envKey] || '').trim())
+        }).flatMap((cfg) => {
             const types = cfg.catalogType === 'tv' ? ['tv'] : ['movie', 'series']
             return types.map((type) => ({
                 name: `${cfg.name}${developmentSuffix}`,
@@ -681,9 +752,10 @@ export function createAddon({
     })
 
     addon.get('/manifest.json', async (req, res) => {
-        const manifest = createManifest(env)
+        const {env: activeEnv} = requestScope(req)
+        const manifest = createManifest(activeEnv)
         try {
-            const externalSources = await getExternalCatalogSources(env, axios, logger)
+            const externalSources = await getExternalCatalogSources(activeEnv, axios, logger)
             for (const source of externalSources) {
                 manifest.catalogs.push(...source.catalogs.map((catalog) => ({
                     ...catalog,
@@ -774,6 +846,9 @@ export function createAddon({
 
     addon.get('/meta/:type/:id.json', async (req, res) => {
         try {
+            const {env: activeEnv, providers: activeProviders} = requestScope(req)
+            const env = activeEnv
+            const providers = activeProviders
             // IMDb ids → Persian TMDB meta
             if (req.params.id.startsWith('tt') && env.TMDB_API_KEY) {
                 const tmdbMeta = await getTMDBMetaFa(
