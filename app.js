@@ -8,7 +8,7 @@ import {dirname, join} from 'node:path'
 import {fileURLToPath} from 'node:url'
 
 import {createErrorHandler} from './errorMiddleware.js'
-import {landingUrlsFromRequest, renderLandingPage, renderGuidePage} from './landing.js'
+import {landingUrlsFromRequest, renderLandingPage, renderGuidePage, renderConfigurePage} from './landing.js'
 import Aslmoviez from './sources/aslmoviez.js'
 import Cinamatic from './sources/cinamatic.js'
 import Digimovie from './sources/digimovie.js'
@@ -21,7 +21,41 @@ import {ID_SEPARATOR, METADATA_SOURCE} from './sources/source.js'
 import {findExternalMetaSource, findExternalStreamSource, formatStreamTitle, getCinemeta, getExternalCatalogSources, getKitsuTitle, getSubtitle, getTMDBMetaFa, getTMDBMetaByTmdbId, getTMDBDetails, getTMDBTitle, getLandingTmdbCatalogs, getTorrentStreams, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxyExternalStream, proxySubtitles, translateCatalogName} from './utils.js'
 
 export const ADDON_PREFIX = 'ip'
-export const ADDON_VERSION = '2.1.0'
+export const ADDON_VERSION = '2.1.1'
+
+
+const CONFIG_ALLOW = new Set([
+    'TMDB_API_KEY', 'F2MEDIA_BASEURL', 'CINAMATIC_BASEURL', 'ASLMOVIEZ_BASEURL',
+    'SERIALBLOG_BASEURL', 'DONYAYESERIAL_BASEURL', 'ANIMEX_BASEURL',
+    'TORRENT_METEOR_MANIFEST_URL', 'EXTERNAL_CATALOG_MANIFEST_URLS', 'PROVIDER_TIMEOUT_MS',
+    'PEEPBOXTV_BASEURL', 'DIGIMOVIE_BASEURL', 'DIGIMOVIE_USERNAME', 'DIGIMOVIE_PASSWORD',
+    'PROXY_ENABLE', 'PROXY_URL', 'PROXY_PATH',
+])
+
+export function decodeAddonConfig(encoded) {
+    if (!encoded) return null
+    try {
+        const json = Buffer.from(String(encoded), 'base64url').toString('utf8')
+        const obj = JSON.parse(json)
+        if (!obj || typeof obj !== 'object') return null
+        const out = {}
+        for (const [k, v] of Object.entries(obj)) {
+            if (!CONFIG_ALLOW.has(k)) continue
+            if (v == null) continue
+            const s = String(v).trim()
+            if (s) out[k] = s
+        }
+        return Object.keys(out).length ? out : null
+    } catch {
+        return null
+    }
+}
+
+export function mergeEnv(baseEnv, config) {
+    if (!config) return baseEnv
+    return {...baseEnv, ...config}
+}
+
 
 const CATALOGS = [
     {key: 'f2media', name: 'F2Media', catalogType: 'movies'},
@@ -564,6 +598,27 @@ export function createAddon({
     const addon = express()
     addon.disable('x-powered-by')
     addon.use(cors())
+    addon.use((req, _res, next) => {
+        try {
+            const pathOnly = (req.url || '').split('?')[0]
+            const qs = (req.url || '').includes('?') ? req.url.slice(req.url.indexOf('?')) : ''
+            const m = pathOnly.match(/^\/c\/([^/]+)(\/.*)?$/)
+            if (m) {
+                req.addonConfig = decodeAddonConfig(decodeURIComponent(m[1]))
+                req.url = (m[2] && m[2].length ? m[2] : '/') + qs
+            }
+        } catch {
+            /* ignore bad config segment */
+        }
+        next()
+    })
+
+
+    function requestScope(req) {
+        const e = mergeEnv(env, req?.addonConfig)
+        const p = req?.addonConfig ? createProviders({env: e, logger}) : providers
+        return {env: e, providers: p}
+    }
 
     const rootDir = dirname(fileURLToPath(import.meta.url))
     let logoBytes = null
@@ -592,6 +647,22 @@ export function createAddon({
         } catch (error) {
             logger.error('Guide page failed', {message: error?.message ?? String(error)})
             res.status(500).type('text/plain').send('Guide error')
+        }
+    })
+
+    addon.get('/configure', (req, res) => {
+        try {
+            const urls = landingUrlsFromRequest(req, env)
+            const origin = urls.manifestUrl.replace(/\/manifest.json$/i, '')
+            const html = renderConfigurePage({
+                logoUrl: urls.logoUrl,
+                version: ADDON_VERSION,
+                origin: origin || urls.manifestUrl.replace('/manifest.json', ''),
+            })
+            res.status(200).type('html').set('cache-control', 'no-store').send(html)
+        } catch (error) {
+            logger.error('Configure page failed', {message: error?.message ?? String(error)})
+            res.status(500).type('text/plain').send('Configure error')
         }
     })
 
@@ -643,7 +714,8 @@ export function createAddon({
 
     const catalogHandler = async (req, res) => {
         try {
-            const externalSources = await getExternalCatalogSources(env, axios, logger)
+            const {env: activeEnv, providers: activeProviders} = requestScope(req)
+            const externalSources = await getExternalCatalogSources(activeEnv, axios, logger)
             const externalSource = externalSources.find((source) => source.catalogIds.has(req.params.id))
             if (externalSource) {
                 const data = await proxyExternalCatalog(
@@ -652,7 +724,7 @@ export function createAddon({
                 return res.json(data)
             }
 
-            const provider = findCatalogProvider(req.params.id, providers)
+            const provider = findCatalogProvider(req.params.id, activeProviders)
             if (!provider) {
                 return res.json({metas: []})
             }
@@ -791,6 +863,9 @@ export function createAddon({
 
     addon.get('/stream/:type/:id.json', async (req, res) => {
         try {
+            const {env: activeEnv, providers: activeProviders} = requestScope(req)
+            const env = activeEnv
+            const providers = activeProviders
             const {type, id} = req.params
             if (!['movie', 'series', 'tv'].includes(type)) {
                 return res.json({streams: []})
