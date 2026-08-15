@@ -756,49 +756,101 @@ function sleep(ms) {
 }
 
 async function fetchOneExternalCatalog(manifestUrl, httpClient, logger, timeoutMs) {
-    const url = normalizeExternalManifestUrl(manifestUrl)
-    let manifest
-    // Prefer global fetch: safer with JSON path segments (AIOCatalogs userId blob).
-    if (typeof fetch === 'function') {
-        const ctrl = new AbortController()
-        const timer = setTimeout(() => ctrl.abort(), timeoutMs)
-        try {
-            const response = await fetch(url, {
-                signal: ctrl.signal,
-                headers: {
-                    Accept: 'application/json,text/plain,*/*',
-                    'User-Agent': 'Cinemagraphy-Addon/2.1.11',
-                },
-                redirect: 'follow',
-            })
-            if (!response.ok) {
-                const err = new Error(`HTTP ${response.status}`)
-                err.response = {status: response.status}
-                throw err
-            }
-            manifest = await response.json()
-        } finally {
-            clearTimeout(timer)
+    const primary = normalizeExternalManifestUrl(manifestUrl)
+    const candidates = [primary]
+    // aio.pantelx.com often returns 403 to datacenter IPs (Cloudflare).
+    // Public workers.dev mirror accepts the same userId path for many configs.
+    try {
+        const u = new URL(primary)
+        if (/(^|\.)aio\.pantelx\.com$/i.test(u.hostname)) {
+            const alt = new URL(primary)
+            alt.hostname = 'aiocatalogs.jqrw92fchz.workers.dev'
+            candidates.push(alt.toString())
         }
-    } else {
-        const response = await httpClient.get(url, {
-            timeout: timeoutMs,
-            headers: {
-                Accept: 'application/json,text/plain,*/*',
-                'User-Agent': 'Cinemagraphy-Addon/2.1.11',
-            },
-            validateStatus: (s) => s >= 200 && s < 300,
-            // Do not transform the already-normalized URL
-            maxRedirects: 5,
-        })
-        manifest = response.data ?? {}
+    } catch { /* ignore */ }
+
+    let lastError = null
+    let manifest = null
+    let usedUrl = primary
+
+    for (const url of candidates) {
+        try {
+            if (typeof fetch === 'function') {
+                const ctrl = new AbortController()
+                const timer = setTimeout(() => ctrl.abort(), timeoutMs)
+                try {
+                    const response = await fetch(url, {
+                        signal: ctrl.signal,
+                        headers: {
+                            Accept: 'application/json,text/plain,*/*',
+                            'User-Agent': 'Mozilla/5.0 (compatible; Cinemagraphy/2.1.12; +https://cinemagraphy.vercel.app)',
+                            'Accept-Language': 'en-US,en;q=0.9',
+                        },
+                        redirect: 'follow',
+                    })
+                    if (response.status === 403 || response.status === 503) {
+                        lastError = new Error(`HTTP ${response.status}`)
+                        lastError.response = {status: response.status}
+                        logger.warn?.('External catalog host blocked, trying fallback if any', {
+                            url,
+                            status: response.status,
+                        })
+                        continue
+                    }
+                    if (!response.ok) {
+                        const err = new Error(`HTTP ${response.status}`)
+                        err.response = {status: response.status}
+                        throw err
+                    }
+                    manifest = await response.json()
+                    usedUrl = url
+                    break
+                } finally {
+                    clearTimeout(timer)
+                }
+            } else {
+                const response = await httpClient.get(url, {
+                    timeout: timeoutMs,
+                    headers: {
+                        Accept: 'application/json,text/plain,*/*',
+                        'User-Agent': 'Mozilla/5.0 (compatible; Cinemagraphy/2.1.12; +https://cinemagraphy.vercel.app)',
+                    },
+                    validateStatus: (s) => (s >= 200 && s < 300) || s === 403 || s === 503,
+                    maxRedirects: 5,
+                })
+                if (response.status === 403 || response.status === 503) {
+                    lastError = new Error(`HTTP ${response.status}`)
+                    continue
+                }
+                manifest = response.data ?? {}
+                usedUrl = url
+                break
+            }
+        } catch (error) {
+            lastError = error
+            const status = error?.response?.status
+            if (status === 403 || status === 503) {
+                logger.warn?.('External catalog fetch blocked', {url, status})
+                continue
+            }
+            // network errors: try next candidate
+            if (candidates.length > 1) {
+                logger.warn?.('External catalog fetch error, trying fallback', {
+                    url,
+                    message: error?.message,
+                })
+                continue
+            }
+            throw error
+        }
     }
+
     if (!manifest || typeof manifest !== 'object') {
-        throw new Error('External catalog manifest is not JSON')
+        throw lastError || new Error('External catalog manifest is not JSON')
     }
     const catalogs = Array.isArray(manifest.catalogs) ? manifest.catalogs : []
     if (!catalogs.length) {
-        logger.warn?.('External catalog manifest has no catalogs', {manifestUrl: url})
+        logger.warn?.('External catalog manifest has no catalogs', {manifestUrl: usedUrl})
     }
     const metaResource = (manifest.resources ?? []).find((r) => (
         r === 'meta' || r?.name === 'meta'
@@ -807,13 +859,13 @@ async function fetchOneExternalCatalog(manifestUrl, httpClient, logger, timeoutM
         r === 'stream' || r?.name === 'stream'
     ))
     return {
-        baseUrl: catalogBaseUrl(url),
+        baseUrl: catalogBaseUrl(usedUrl),
         catalogIds: new Set(catalogs.map((catalog) => catalog.id)),
         catalogs,
         idPrefixes: manifest.idPrefixes ?? [],
         hasMeta: Boolean(metaResource),
         hasStream: Boolean(streamResource),
-        manifestUrl: url,
+        manifestUrl: usedUrl,
     }
 }
 
