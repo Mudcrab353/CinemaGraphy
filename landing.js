@@ -59,14 +59,14 @@ export function renderLandingPage({
   manifestUrl = PUBLIC_INSTALL,
   installUrl,
   logoUrl = '/logo.png',
-  version = '2.1.2',
+  version = '2.1.3',
 } = {}) {
   const m = escapeHtml(manifestUrl || PUBLIC_INSTALL)
   const install = escapeHtml(
     installUrl || `stremio://${String(manifestUrl || PUBLIC_INSTALL).replace(/^https?:\/\//i, '')}`,
   )
   const logo = escapeHtml(logoUrl || LOGO_FALLBACK)
-  const ver = escapeHtml(String(version || '2.1.2'))
+  const ver = escapeHtml(String(version || '2.1.3'))
 
   const addonCards = RECOMMENDED.map(
     (a) => `
@@ -534,19 +534,28 @@ h2{font-size:1.15rem;margin:26px 0 10px}
 
 export function renderConfigurePage({
   logoUrl = '/logo.png',
-  version = '2.1.2',
+  version = '2.1.3',
   origin = PUBLIC_SITE,
 } = {}) {
   const logo = escapeHtml(logoUrl || LOGO_FALLBACK)
-  const ver = escapeHtml(String(version || '2.1.2'))
-  const base = escapeHtml(String(origin || PUBLIC_SITE).replace(/\/$/, ''))
+  const ver = escapeHtml(String(version || '2.1.3'))
+  const originClean = String(origin || PUBLIC_SITE).replace(/\/$/, '')
+  const base = escapeHtml(originClean)
+  const baseJson = JSON.stringify(originClean)
+
   return `<!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
 <meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Configure — سینماگرافی</title>
 <link rel="icon" href="${logo}"/>
-<style>${shellStyle()}</style>
+<style>${shellStyle()}
+.prov-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;padding:14px;margin-bottom:16px}
+.prov-grid label{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:12px;background:rgba(0,0,0,.22);border:1px solid var(--gb);cursor:pointer;font-weight:700;user-select:none}
+.prov-grid label:has(input:checked){border-color:rgba(232,160,74,.55);background:rgba(232,160,74,.12)}
+.prov-grid input{width:18px;height:18px;accent-color:#e8a04a}
+.sel-row{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px}
+</style>
 </head>
 <body>
 <div class="wrap">
@@ -560,11 +569,50 @@ export function renderConfigurePage({
 <p style="font-size:.75rem;color:var(--a)">v${ver}</p>
 <h1 class="lang-fa">🔧 شخصی‌سازی افزونه</h1>
 <h1 class="lang-en">🔧 Configure addon</h1>
-<p class="sub lang-fa">پروایدرهای موردنظر را تیک بزنید. لینک منیفست فقط همان‌ها را فعال می‌کند (روی همین دامنه Vercel).</p>
-<p class="sub lang-en">Fill the variables you need. A custom manifest URL is generated for this deployment.</p>
-<p class="sub lang-fa">🟢 آسان · 🟡 متوسط · 🔴 پیشرفته (خالی = پیش‌فرض سرور)</p>
-<p class="sub lang-en">🟢 Easy · 🟡 Medium · 🔴 Advanced (empty = server default)</p>
-<div id="cfgList"></div>
+<p class="sub lang-fa">پروایدرهایی که می‌خواهید را تیک بزنید، بعد لینک منیفست اختصاصی را کپی یا نصب کنید. بدون تیک = منیفست پیش‌فرض همه منابع.</p>
+<p class="sub lang-en">Check the providers you want, then copy/install the custom manifest. None checked = default (all server providers).</p>
+
+<div class="sel-row">
+<button class="btn ghost" type="button" id="btnAll"><span class="lang-fa">انتخاب همه</span><span class="lang-en">Select all</span></button>
+<button class="btn ghost" type="button" id="btnNone"><span class="lang-fa">حذف همه</span><span class="lang-en">Clear all</span></button>
+</div>
+
+<h2 class="lang-fa">پروایدرها</h2>
+<h2 class="lang-en">Providers</h2>
+<div class="prov-grid glass" id="provGrid">
+<label><input type="checkbox" data-prov="f2media"/> F2Media</label>
+<label><input type="checkbox" data-prov="cinamatic"/> Cinamatic</label>
+<label><input type="checkbox" data-prov="aslmoviez"/> AslMoviez</label>
+<label><input type="checkbox" data-prov="serialblog"/> SerialBlog</label>
+<label><input type="checkbox" data-prov="donyayeserial"/> DonyayeSerial</label>
+<label><input type="checkbox" data-prov="animex"/> Animex</label>
+<label><input type="checkbox" data-prov="peepboxtv"/> PeepBoxTv <span class="diff h">!</span></label>
+<label><input type="checkbox" data-prov="digimovie"/> DigiMovie <span class="diff h">!</span></label>
+</div>
+
+<h2 class="lang-fa">تنظیمات اختیاری</h2>
+<h2 class="lang-en">Optional settings</h2>
+<div class="cfg-item glass">
+<div class="top"><code>TMDB_API_KEY</code><span class="diff e"><span class="lang-fa">آسان</span><span class="lang-en">Easy</span></span></div>
+<div class="hint"><span class="lang-fa">کلید TMDB — خالی = کلید سرور</span><span class="lang-en">TMDB key — empty = server key</span></div>
+<input data-k="TMDB_API_KEY" placeholder="…" autocomplete="off"/>
+</div>
+<div class="cfg-item glass">
+<div class="top"><code>TORRENT_METEOR_MANIFEST_URL</code><span class="diff m"><span class="lang-fa">متوسط</span><span class="lang-en">Medium</span></span></div>
+<div class="hint"><span class="lang-fa">فعال‌سازی تورنت با URL منیفست Meteor</span><span class="lang-en">Enable torrent via Meteor manifest URL</span></div>
+<input data-k="TORRENT_METEOR_MANIFEST_URL" placeholder="https://…/manifest.json" autocomplete="off"/>
+</div>
+<div class="cfg-item glass">
+<div class="top"><code>EXTERNAL_CATALOG_MANIFEST_URLS</code><span class="diff m"><span class="lang-fa">متوسط</span><span class="lang-en">Medium</span></span></div>
+<div class="hint"><span class="lang-fa">کاتالوگ‌های خارجی با ویرگول</span><span class="lang-en">External catalogs, comma-separated</span></div>
+<input data-k="EXTERNAL_CATALOG_MANIFEST_URLS" placeholder="https://…/manifest.json" autocomplete="off"/>
+</div>
+<div class="cfg-item glass">
+<div class="top"><code>PROVIDER_TIMEOUT_MS</code><span class="diff m"><span class="lang-fa">متوسط</span><span class="lang-en">Medium</span></span></div>
+<div class="hint"><span class="lang-fa">مهلت هر پروایدر (میلی‌ثانیه)</span><span class="lang-en">Per-provider timeout (ms)</span></div>
+<input data-k="PROVIDER_TIMEOUT_MS" placeholder="11000" autocomplete="off"/>
+</div>
+
 <div class="out glass">
 <label class="lang-fa" style="font-size:.8rem;color:var(--m)">لینک منیفست اختصاصی</label>
 <label class="lang-en" style="font-size:.8rem;color:var(--m)">Custom manifest URL</label>
@@ -577,109 +625,93 @@ export function renderConfigurePage({
 </div>
 </div>
 <script>
-(function(){
-const BASE=${JSON.stringify(String(origin || PUBLIC_SITE).replace(/\/$/, ''))};
-const PROVIDERS=[
-  {key:'f2media',label:'F2Media'},
-  {key:'cinamatic',label:'Cinamatic'},
-  {key:'aslmoviez',label:'AslMoviez'},
-  {key:'serialblog',label:'SerialBlog'},
-  {key:'donyayeserial',label:'DonyayeSerial'},
-  {key:'animex',label:'Animex'},
-  {key:'peepboxtv',label:'PeepBoxTv',adv:true},
-  {key:'digimovie',label:'DigiMovie',adv:true},
-];
-const EXTRA=[
-  {key:'TMDB_API_KEY',d:'e',fa:'کلید TMDB',en:'TMDB API key'},
-  {key:'TORRENT_METEOR_MANIFEST_URL',d:'m',fa:'منیفست تورنت Meteor',en:'Meteor torrent manifest'},
-  {key:'EXTERNAL_CATALOG_MANIFEST_URLS',d:'m',fa:'کاتالوگ خارجی',en:'External catalogs'},
-  {key:'PROVIDER_TIMEOUT_MS',d:'m',fa:'تایم‌اوت (ms)',en:'Timeout (ms)'},
-];
-const r=document.documentElement,lb=document.getElementById('langBtn');
-function al(l){r.lang=l;r.dir=l==='fa'?'rtl':'ltr';lb.textContent=l==='fa'?'EN':'FA';localStorage.setItem('cg-lang',l);draw()}
-al(localStorage.getItem('cg-lang')||'fa');
-lb.onclick=()=>al(r.lang==='fa'?'en':'fa');
-function b64url(obj){
-  const s=JSON.stringify(obj);
-  const bin=new TextEncoder().encode(s);
-  let str=''; bin.forEach(c=>str+=String.fromCharCode(c));
-  return btoa(str).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
-}
-function collect(){
-  const o={};
-  const on=[];
-  document.querySelectorAll('[data-prov]').forEach(cb=>{ if(cb.checked) on.push(cb.getAttribute('data-prov')); });
-  if(on.length) o.ENABLED_PROVIDERS=on.join(',');
-  document.querySelectorAll('[data-k]').forEach(inp=>{
-    const v=(inp.value||'').trim();
-    if(v) o[inp.getAttribute('data-k')]=v;
-  });
-  return o;
-}
-function refresh(){
-  const o=collect();
-  const keys=Object.keys(o);
-  let manifest=BASE+'/manifest.json';
-  let install='stremio://'+BASE.replace(/^https?:\/\//i,'')+'/manifest.json';
-  if(keys.length){
-    const cfg=b64url(o);
-    manifest=BASE+'/c/'+cfg+'/manifest.json';
-    install='stremio://'+BASE.replace(/^https?:\/\//i,'')+'/c/'+cfg+'/manifest.json';
+(function () {
+  var BASE = ${baseJson};
+  var r = document.documentElement;
+  var lb = document.getElementById('langBtn');
+  function al(l) {
+    r.lang = l;
+    r.dir = l === 'fa' ? 'rtl' : 'ltr';
+    if (lb) lb.textContent = l === 'fa' ? 'EN' : 'FA';
+    localStorage.setItem('cg-lang', l);
   }
-  document.getElementById('outUrl').value=manifest;
-  document.getElementById('btnInstall').href=install;
-}
-function draw(){
-  const fa=r.lang==='fa';
-  const list=document.getElementById('cfgList');
-  const prevProv=new Set();
-  document.querySelectorAll('[data-prov]').forEach(cb=>{ if(cb.checked) prevProv.add(cb.getAttribute('data-prov')); });
-  const prev={};
-  document.querySelectorAll('[data-k]').forEach(inp=>{prev[inp.getAttribute('data-k')]=inp.value});
-  let html='<h2 class="lang-fa">پروایدرها</h2><h2 class="lang-en">Providers</h2>';
-  html+='<p class="sub lang-fa">فقط موارد تیک‌خورده در منیفست اختصاصی می‌آیند. اگر هیچ‌کدام را نزنید، منیفست پیش‌فرض است.</p>';
-  html+='<p class="sub lang-en">Only checked providers appear in the custom manifest.</p>';
-  html+='<div class="glass" style="padding:14px;margin-bottom:14px;display:grid;gap:8px">';
-  html+=PROVIDERS.map(p=>{
-    const checked=prevProv.size? (prevProv.has(p.key)?' checked':''):'';
-    const tag=p.adv?' <span class="diff h">'+(fa?'پیشرفته':'Adv')+'</span>':'';
-    return '<label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:600">'+
-      '<input type="checkbox" data-prov="'+p.key+'"'+checked+'/>'+p.label+tag+'</label>';
-  }).join('');
-  html+='</div>';
-  html+='<h2 class="lang-fa">تنظیمات اختیاری</h2><h2 class="lang-en">Optional settings</h2>';
-  html+=EXTRA.map(v=>{
-    const diff=v.d==='e'?(fa?'آسان':'Easy'):(fa?'متوسط':'Medium');
-    return '<div class="cfg-item glass"><div class="top"><code>'+v.key+'</code><span class="diff '+v.d+'">'+diff+'</span></div>'+
-      '<div class="hint">'+(fa?v.fa:v.en)+'</div>'+
-      '<input data-k="'+v.key+'" placeholder="…" value="'+(prev[v.key]||'').replace(/"/g,'&quot;')+'"/></div>';
-  }).join('');
-  list.innerHTML=html;
-  list.querySelectorAll('input').forEach(inp=>inp.addEventListener('input',refresh));
-  list.querySelectorAll('input').forEach(inp=>inp.addEventListener('change',refresh));
+  al(localStorage.getItem('cg-lang') || 'fa');
+  if (lb) lb.onclick = function () { al(r.lang === 'fa' ? 'en' : 'fa'); };
+
+  function toB64Url(obj) {
+    var s = JSON.stringify(obj);
+    var b64 = btoa(unescape(encodeURIComponent(s)));
+    return b64.split('+').join('-').split('/').join('_').split('=').join('');
+  }
+  function stripProto(u) {
+    return String(u || '').split('://').slice(1).join('://');
+  }
+  function collect() {
+    var o = {};
+    var on = [];
+    document.querySelectorAll('[data-prov]').forEach(function (cb) {
+      if (cb.checked) on.push(cb.getAttribute('data-prov'));
+    });
+    if (on.length) o.ENABLED_PROVIDERS = on.join(',');
+    document.querySelectorAll('[data-k]').forEach(function (inp) {
+      var v = (inp.value || '').trim();
+      if (v) o[inp.getAttribute('data-k')] = v;
+    });
+    return o;
+  }
+  function refresh() {
+    var o = collect();
+    var keys = Object.keys(o);
+    var manifest = BASE + '/manifest.json';
+    var install = 'stremio://' + stripProto(BASE) + '/manifest.json';
+    if (keys.length) {
+      var cfg = toB64Url(o);
+      manifest = BASE + '/c/' + cfg + '/manifest.json';
+      install = 'stremio://' + stripProto(BASE) + '/c/' + cfg + '/manifest.json';
+    }
+    var out = document.getElementById('outUrl');
+    var btn = document.getElementById('btnInstall');
+    if (out) out.value = manifest;
+    if (btn) btn.href = install;
+  }
+  document.querySelectorAll('[data-prov], [data-k]').forEach(function (el) {
+    el.addEventListener('change', refresh);
+    el.addEventListener('input', refresh);
+  });
+  var btnAll = document.getElementById('btnAll');
+  var btnNone = document.getElementById('btnNone');
+  if (btnAll) btnAll.onclick = function () {
+    document.querySelectorAll('[data-prov]').forEach(function (cb) { cb.checked = true; });
+    refresh();
+  };
+  if (btnNone) btnNone.onclick = function () {
+    document.querySelectorAll('[data-prov]').forEach(function (cb) { cb.checked = false; });
+    refresh();
+  };
+  var btnCopy = document.getElementById('btnCopy');
+  if (btnCopy) btnCopy.onclick = async function () {
+    var inp = document.getElementById('outUrl');
+    try {
+      await navigator.clipboard.writeText(inp.value);
+      var prev = btnCopy.innerHTML;
+      btnCopy.classList.add('ok');
+      btnCopy.innerHTML = r.lang === 'fa' ? 'کپی شد ✓' : 'Copied ✓';
+      setTimeout(function () { btnCopy.classList.remove('ok'); btnCopy.innerHTML = prev; }, 1600);
+    } catch (e) { if (inp) inp.select(); }
+  };
   refresh();
-}
-document.getElementById('btnCopy').onclick=async function(){
-  const inp=document.getElementById('outUrl');
-  try{
-    await navigator.clipboard.writeText(inp.value);
-    const b=this,p=b.innerHTML;b.classList.add('ok');
-    b.innerHTML=r.lang==='fa'?'کپی شد ✓':'Copied ✓';
-    setTimeout(()=>{b.classList.remove('ok');b.innerHTML=p},1600);
-  }catch(e){inp.select()}
-};
-draw();
+})();
 </script>
 </body></html>`
 }
 
 export function renderGuidePage({
   logoUrl = '/logo.png',
-  version = '2.1.2',
+  version = '2.1.3',
   manifestUrl = PUBLIC_INSTALL,
 } = {}) {
   const logo = escapeHtml(logoUrl || LOGO_FALLBACK)
-  const ver = escapeHtml(String(version || '2.1.2'))
+  const ver = escapeHtml(String(version || '2.1.3'))
   const m = escapeHtml(manifestUrl || PUBLIC_INSTALL)
   const install = escapeHtml('stremio://' + String(manifestUrl || PUBLIC_INSTALL).replace(/^https?:\/\//i, ''))
   return `<!DOCTYPE html>
