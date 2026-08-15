@@ -8,7 +8,7 @@
     <a href="https://cinemagraphy.vercel.app/manifest.json"><img src="https://img.shields.io/badge/manifest-install-blue?style=for-the-badge" alt="Manifest" /></a>
   </p>
   <p>
-    <img src="https://img.shields.io/badge/version-2.0.3-blue.svg" alt="2.0.3" />
+    <img src="https://img.shields.io/badge/version-2.1.0-blue.svg" alt="2.1.0" />
     <img src="https://img.shields.io/badge/vercel-ready-black.svg" alt="Vercel" />
     <img src="https://img.shields.io/badge/cloudflare-workers-orange.svg" alt="Workers" />
     <img src="https://img.shields.io/badge/license-ISC-lightgrey.svg" alt="ISC" />
@@ -80,6 +80,8 @@ pnpm start
 ```
 
 Endpoints:
+-  — راهنمای فارسی/انگلیسی
+-  section  — شخصی‌سازی self-host
 - `/manifest.json` — نصب استریمیو
 - `/providers.json` — وضعیت منابع
 - `/tmdb/landing.json` — ویترین سایت

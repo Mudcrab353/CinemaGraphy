@@ -8,7 +8,7 @@ import {dirname, join} from 'node:path'
 import {fileURLToPath} from 'node:url'
 
 import {createErrorHandler} from './errorMiddleware.js'
-import {landingUrlsFromRequest, renderLandingPage} from './landing.js'
+import {landingUrlsFromRequest, renderLandingPage, renderGuidePage} from './landing.js'
 import Aslmoviez from './sources/aslmoviez.js'
 import Cinamatic from './sources/cinamatic.js'
 import Digimovie from './sources/digimovie.js'
@@ -21,7 +21,7 @@ import {ID_SEPARATOR, METADATA_SOURCE} from './sources/source.js'
 import {findExternalMetaSource, findExternalStreamSource, formatStreamTitle, getCinemeta, getExternalCatalogSources, getKitsuTitle, getSubtitle, getTMDBMetaFa, getTMDBMetaByTmdbId, getTMDBDetails, getTMDBTitle, getLandingTmdbCatalogs, getTorrentStreams, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxyExternalStream, proxySubtitles, translateCatalogName} from './utils.js'
 
 export const ADDON_PREFIX = 'ip'
-export const ADDON_VERSION = '2.0.3'
+export const ADDON_VERSION = '2.1.0'
 
 const CATALOGS = [
     {key: 'f2media', name: 'F2Media', catalogType: 'movies'},
@@ -578,6 +578,21 @@ export function createAddon({
             return res.status(404).type('text/plain').send('logo not found')
         }
         res.type('png').set('cache-control', 'public, max-age=86400').send(logoBytes)
+    })
+
+    addon.get('/guide', (req, res) => {
+        try {
+            const urls = landingUrlsFromRequest(req, env)
+            const html = renderGuidePage({
+                logoUrl: urls.logoUrl,
+                version: ADDON_VERSION,
+                manifestUrl: urls.manifestUrl,
+            })
+            res.status(200).type('html').set('cache-control', 'no-store').send(html)
+        } catch (error) {
+            logger.error('Guide page failed', {message: error?.message ?? String(error)})
+            res.status(500).type('text/plain').send('Guide error')
+        }
     })
 
     addon.get('/', (req, res) => {

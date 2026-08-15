@@ -59,14 +59,14 @@ export function renderLandingPage({
   manifestUrl = PUBLIC_INSTALL,
   installUrl,
   logoUrl = '/logo.png',
-  version = '2.0.3',
+  version = '2.1.0',
 } = {}) {
   const m = escapeHtml(manifestUrl || PUBLIC_INSTALL)
   const install = escapeHtml(
     installUrl || `stremio://${String(manifestUrl || PUBLIC_INSTALL).replace(/^https?:\/\//i, '')}`,
   )
   const logo = escapeHtml(logoUrl || LOGO_FALLBACK)
-  const ver = escapeHtml(String(version || '2.0.3'))
+  const ver = escapeHtml(String(version || '2.1.0'))
 
   const addonCards = RECOMMENDED.map(
     (a) => `
@@ -165,9 +165,13 @@ footer{margin-top:12px;padding:32px 5vw 44px;border-top:1px solid rgba(255,255,2
 .prov .sk{height:72px;border-radius:16px;background:linear-gradient(90deg,rgba(255,255,255,.04),rgba(255,255,255,.1),rgba(255,255,255,.04));background-size:200% 100%;animation:sh 1.2s ease-in-out infinite}
 @keyframes sh{0%{background-position:200% 0}100%{background-position:-200% 0}}
 
-.rail{display:flex;gap:12px;overflow-x:auto;padding:4px 2px 12px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch}
-.rail::-webkit-scrollbar{height:6px}
-.rail::-webkit-scrollbar-thumb{background:rgba(255,255,255,.15);border-radius:99px}
+.rail{display:flex;gap:12px;overflow-x:auto;padding:4px 2px 14px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;
+scrollbar-width:none;-ms-overflow-style:none;overscroll-behavior-x:contain;mask-image:linear-gradient(90deg,transparent,#000 12px,#000 calc(100% - 12px),transparent)}
+.rail::-webkit-scrollbar{display:none;width:0;height:0}
+.rail-wrap{position:relative}
+.rail-wrap::before,.rail-wrap::after{content:'';position:absolute;top:0;bottom:10px;width:28px;z-index:2;pointer-events:none}
+.rail-wrap::before{inset-inline-start:0;background:linear-gradient(to left,transparent,rgba(5,5,8,.85))}
+.rail-wrap::after{inset-inline-end:0;background:linear-gradient(to right,transparent,rgba(5,5,8,.85))}
 .tile{flex:0 0 120px;scroll-snap-align:start;text-decoration:none;color:var(--t);transition:transform .2s}
 .tile:hover{transform:translateY(-3px)}
 .tile img{width:120px;height:180px;object-fit:cover;border-radius:12px;background:rgba(255,255,255,.06);display:block}
@@ -182,7 +186,6 @@ footer{margin-top:12px;padding:32px 5vw 44px;border-top:1px solid rgba(255,255,2
 .tr-tile .actions a{flex:1;font-size:.62rem;font-weight:800;padding:5px 4px;border-radius:8px;text-decoration:none;text-align:center}
 .tr-tile .actions .s{background:linear-gradient(135deg,#e8a04a,#d4783a);color:#1a0f05}
 .tr-tile .actions .y{background:rgba(255,255,255,.12);color:#fff}
-.rail{scrollbar-width:thin;overscroll-behavior-x:contain}
 .modal{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.75);padding:16px}
 .modal.open{display:flex}
 .modal .inner{width:min(900px,100%);aspect-ratio:16/9;background:#000;border-radius:12px;overflow:hidden;position:relative}
@@ -200,6 +203,30 @@ footer{margin-top:12px;padding:32px 5vw 44px;border-top:1px solid rgba(255,255,2
 .tr-tile:hover .hov{opacity:1}
 .foot{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;align-items:center}
 .foot .gh{margin:0}
+
+.nav{display:flex;gap:8px;align-items:center}
+.nav a{color:var(--m);text-decoration:none;font-weight:600;font-size:.85rem;padding:8px 12px;border-radius:999px;border:1px solid transparent}
+.nav a:hover{color:var(--t);border-color:var(--gb);background:var(--g)}
+.cfg-grid{display:grid;gap:10px}
+.cfg-item{padding:14px 16px;border-radius:16px}
+.cfg-item .row2{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;margin-bottom:8px}
+.cfg-item code{font-size:.78rem;direction:ltr;color:var(--a2)}
+.cfg-item .diff{font-size:.7rem;font-weight:800;padding:3px 8px;border-radius:999px}
+.diff.e{background:rgba(93,206,160,.15);color:#5dcea0}
+.diff.m{background:rgba(232,160,74,.15);color:var(--a)}
+.diff.h{background:rgba(224,112,112,.15);color:#e07070}
+.cfg-item input,.cfg-item textarea{width:100%;background:rgba(0,0,0,.28);border:1px solid var(--gb);border-radius:10px;color:var(--t);padding:10px 12px;font-family:ui-monospace,monospace;font-size:.78rem;direction:ltr;outline:none}
+.cfg-item .hint{font-size:.75rem;color:var(--m);margin-top:6px}
+.steps{display:grid;gap:12px;counter-reset:s}
+.step{padding:16px;border-radius:16px;position:relative}
+.step b{display:block;margin-bottom:4px}
+.faq details{padding:12px 16px;border-radius:14px;margin-bottom:8px}
+.faq summary{cursor:pointer;font-weight:700}
+.faq p{color:var(--m);margin-top:8px;font-size:.9rem}
+.feat{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
+.feat .c{padding:16px;border-radius:16px;text-align:center}
+.feat .c b{display:block;margin:6px 0 4px}
+.feat .c span{font-size:.8rem;color:var(--m)}
 </style>
 </head>
 <body>
@@ -207,7 +234,11 @@ footer{margin-top:12px;padding:32px 5vw 44px;border-top:1px solid rgba(255,255,2
 <div class="neb n1"></div><div class="neb n2"></div>
 <header>
 <a class="brand" href="/"><img src="${logo}" alt="Cinemagraphy" onerror="this.src='${LOGO_FALLBACK}'"/><span>سینماگرافی</span></a>
+<div class="nav">
+<a href="/guide"><span class="lang-fa">راهنما</span><span class="lang-en">Guide</span></a>
+<a href="#configure"><span class="lang-fa">شخصی‌سازی</span><span class="lang-en">Customize</span></a>
 <button class="chip" id="langBtn" type="button">EN</button>
+</div>
 </header>
 <main>
 <div class="hero">
@@ -241,19 +272,19 @@ footer{margin-top:12px;padding:32px 5vw 44px;border-top:1px solid rgba(255,255,2
 
 <section id="sec-trend-day">
 <h2 class="lang-fa">🔥 محبوب امروز</h2><h2 class="lang-en">🔥 Trending today</h2>
-<div class="rail" id="railDay"><div class="sk glass" style="min-width:120px;height:180px"></div></div>
+<div class="rail-wrap"><div class="rail" id="railDay"><div class="sk glass" style="min-width:120px;height:180px"></div></div></div>
 </section>
 <section id="sec-trend-week">
 <h2 class="lang-fa">🔥 محبوب این هفته</h2><h2 class="lang-en">🔥 Trending this week</h2>
-<div class="rail" id="railWeek"><div class="sk glass" style="min-width:120px;height:180px"></div></div>
+<div class="rail-wrap"><div class="rail" id="railWeek"><div class="sk glass" style="min-width:120px;height:180px"></div></div></div>
 </section>
 <section id="sec-now">
 <h2 class="lang-fa">🎬 در سالن نمایش</h2><h2 class="lang-en">🎬 Now playing</h2>
-<div class="rail" id="railNow"><div class="sk glass" style="min-width:120px;height:180px"></div></div>
+<div class="rail-wrap"><div class="rail" id="railNow"><div class="sk glass" style="min-width:120px;height:180px"></div></div></div>
 </section>
 <section id="sec-trailers">
 <h2 class="lang-fa">▶️ آخرین تریلرها</h2><h2 class="lang-en">▶️ Latest trailers</h2>
-<div class="rail" id="railTrailers"><div class="sk glass" style="min-width:220px;height:124px"></div></div>
+<div class="rail-wrap"><div class="rail" id="railTrailers"><div class="sk glass" style="min-width:168px;height:94px"></div></div></div>
 </section>
 <div class="modal" id="trailerModal" role="dialog" aria-modal="true">
   <div class="inner">
@@ -265,6 +296,19 @@ footer{margin-top:12px;padding:32px 5vw 44px;border-top:1px solid rgba(255,255,2
 <h2 class="lang-fa">منابع</h2><h2 class="lang-en">Sources</h2>
 <div class="prov" id="providerGrid" aria-live="polite">
 <div class="sk glass"></div><div class="sk glass"></div><div class="sk glass"></div><div class="sk glass"></div>
+</div>
+</section>
+
+
+<section id="configure">
+<h2 class="lang-fa">🔧 شخصی‌سازی (Self-host)</h2>
+<h2 class="lang-en">🔧 Customize (Self-host)</h2>
+<p class="sub lang-fa">برای نمونهٔ عمومی Vercel همان منیفست پیش‌فرض کافی است. این بخش برای کسانی است که خودشان روی Vercel / Cloudflare / VPS دیپلوی می‌کنند.</p>
+<p class="sub lang-en">The public Vercel instance works with the default manifest. This section is for self-hosted deploys.</p>
+<div class="cfg-grid" id="cfgGrid"></div>
+<div class="row" style="margin-top:14px">
+<button class="btn bp" type="button" id="cfgCopyEnv"><span class="lang-fa">کپی قالب .env</span><span class="lang-en">Copy .env template</span></button>
+<a class="btn bp" href="${install}"><span class="lang-fa">نصب منیفست پیش‌فرض</span><span class="lang-en">Install default manifest</span></a>
 </div>
 </section>
 
@@ -439,6 +483,52 @@ function bindRailWheel(){
 }
 bindRailWheel();
 
+var CFG_VARS=[
+  {key:'TMDB_API_KEY',diff:'e',fa:'کلید TMDB برای متای فارسی و ویترین لندینگ',en:'TMDB key for Persian meta + landing',def:''},
+  {key:'F2MEDIA_BASEURL',diff:'e',fa:'آدرس پایه F2Media',en:'F2Media base URL',def:''},
+  {key:'CINAMATIC_BASEURL',diff:'e',fa:'آدرس پایه Cinamatic',en:'Cinamatic base URL',def:''},
+  {key:'ASLMOVIEZ_BASEURL',diff:'e',fa:'آدرس پایه AslMoviez',en:'AslMoviez base URL',def:''},
+  {key:'SERIALBLOG_BASEURL',diff:'e',fa:'آدرس پایه SerialBlog',en:'SerialBlog base URL',def:''},
+  {key:'DONYAYESERIAL_BASEURL',diff:'e',fa:'آدرس پایه دنیای سریال',en:'DonyayeSerial base URL',def:''},
+  {key:'ANIMEX_BASEURL',diff:'e',fa:'آدرس پایه Animex',en:'Animex base URL',def:''},
+  {key:'TORRENT_METEOR_MANIFEST_URL',diff:'m',fa:'منیفست Meteor برای تورنت',en:'Meteor torrent manifest URL',def:''},
+  {key:'EXTERNAL_CATALOG_MANIFEST_URLS',diff:'m',fa:'کاتالوگ‌های خارجی (۱۰۱ و …) با ویرگول',en:'External catalog manifests, comma-separated',def:''},
+  {key:'PROVIDER_TIMEOUT_MS',diff:'m',fa:'مهلت هر پروایدر (میلی‌ثانیه)',en:'Per-provider timeout ms',def:'11000'},
+  {key:'PEEPBOXTV_BASEURL',diff:'h',fa:'PeepBox (معمولاً پولی — پیش‌فرض خاموش)',en:'PeepBox (paid — off by default)',def:''},
+  {key:'DIGIMOVIE_BASEURL',diff:'h',fa:'DigiMovie + یوزر/پسورد جدا',en:'DigiMovie (+ user/pass env)',def:''},
+  {key:'PROXY_ENABLE',diff:'h',fa:'فعال‌سازی پروکسی (می‌تواند همه چیز را خراب کند)',en:'Enable proxy (can break installs)',def:'false'}
+];
+function renderCfg(){
+  var g=document.getElementById('cfgGrid'); if(!g)return;
+  var fa=document.documentElement.lang==='fa';
+  g.innerHTML=CFG_VARS.map(function(v){
+    var diff=v.diff==='e'?(fa?'آسان':'Easy'):v.diff==='m'?(fa?'متوسط':'Medium'):(fa?'پیشرفته':'Advanced');
+    var dc=v.diff==='e'?'e':v.diff==='m'?'m':'h';
+    return '<div class="cfg-item glass">'+
+      '<div class="row2"><code>'+v.key+'</code><span class="diff '+dc+'">'+diff+'</span></div>'+
+      '<div class="hint">'+(fa?v.fa:v.en)+'</div>'+
+      '<input data-env="'+v.key+'" placeholder="'+(v.def||'…')+'" value=""/>'+
+    '</div>';
+  }).join('');
+}
+renderCfg();
+var cfgBtn=document.getElementById('cfgCopyEnv');
+if(cfgBtn)cfgBtn.onclick=async function(){
+  var lines=['# Cinemagraphy self-host .env','LOG_LEVEL=info','DEV_MODE=false'];
+  document.querySelectorAll('#cfgGrid input[data-env]').forEach(function(inp){
+    var val=(inp.value||'').trim();
+    if(val) lines.push(inp.getAttribute('data-env')+'='+val);
+    else lines.push('# '+inp.getAttribute('data-env')+'=');
+  });
+  try{
+    await navigator.clipboard.writeText(lines.join('\n'));
+    var prev=cfgBtn.innerHTML; cfgBtn.classList.add('ok');
+    cfgBtn.innerHTML=document.documentElement.lang==='fa'?'کپی شد ✓':'Copied ✓';
+    setTimeout(function(){cfgBtn.classList.remove('ok');cfgBtn.innerHTML=prev},1800);
+  }catch(e){}
+};
+
+
 
 
 })();
@@ -484,4 +574,152 @@ export function landingUrlsFromRequest(requestLike, env = {}) {
     installUrl: `stremio://${manifestUrl.replace(/^https?:\/\//i, '')}`,
     logoUrl: `${origin}/logo.png`,
   }
+}
+
+
+export function renderGuidePage({
+  logoUrl = '/logo.png',
+  version = '2.1.0',
+  manifestUrl = PUBLIC_INSTALL,
+} = {}) {
+  const logo = escapeHtml(logoUrl || LOGO_FALLBACK)
+  const ver = escapeHtml(String(version || '2.1.0'))
+  const m = escapeHtml(manifestUrl || PUBLIC_INSTALL)
+  const install = escapeHtml(`stremio://${String(manifestUrl || PUBLIC_INSTALL).replace(/^https?:\/\//i, '')}`)
+  return `<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>راهنما — سینماگرافی</title>
+<link rel="icon" href="${logo}"/>
+<style>
+:root{--t:#f4f0ea;--m:#a89f94;--a:#e8a04a;--a2:#7eb6ff;--g:rgba(255,255,255,.07);--gb:rgba(255,255,255,.14)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Vazirmatn,Tahoma,Segoe UI,system-ui,sans-serif;color:var(--t);min-height:100vh;line-height:1.7;background:linear-gradient(180deg,#050508,#0a0612 40%,#12081c)}
+a{color:var(--a2)}
+.wrap{max-width:820px;margin:0 auto;padding:28px 5vw 48px}
+header{display:flex;justify-content:space-between;align-items:center;margin-bottom:28px}
+.brand{display:flex;gap:10px;align-items:center;color:var(--t);text-decoration:none;font-weight:800}
+.brand img{width:36px;height:36px;border-radius:10px}
+.chip{border:1px solid var(--gb);background:var(--g);color:var(--t);border-radius:999px;padding:8px 14px;text-decoration:none;font-weight:600;font-size:.85rem}
+h1{font-size:1.8rem;font-weight:900;margin-bottom:8px}
+h2{font-size:1.2rem;margin:28px 0 10px}
+.sub{color:var(--m);margin-bottom:16px}
+.glass{background:var(--g);backdrop-filter:blur(20px);border:1px solid var(--gb);border-radius:16px}
+.feat{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin:12px 0 20px}
+.feat .c{padding:14px;text-align:center}
+.feat b{display:block;margin:4px 0}
+.feat span{font-size:.78rem;color:var(--m)}
+.steps{display:grid;gap:10px}
+.step{padding:14px 16px}
+.step b{display:block;margin-bottom:4px}
+.faq details{padding:12px 16px;margin-bottom:8px}
+.faq summary{cursor:pointer;font-weight:700}
+.faq p{color:var(--m);margin-top:8px;font-size:.9rem}
+.call{padding:14px 16px;margin:12px 0;border-color:rgba(232,160,74,.35)!important}
+.btn{display:inline-flex;padding:12px 18px;border-radius:12px;background:linear-gradient(135deg,#e8a04a,#d4783a);color:#1a0f05;font-weight:800;text-decoration:none;margin-top:8px}
+.lang-en{display:none}html[lang=en] .lang-fa{display:none}html[lang=en] .lang-en{display:block}html[lang=en] body{direction:ltr}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+<a class="brand" href="/"><img src="${logo}" alt=""/><span>سینماگرافی</span></a>
+<div style="display:flex;gap:8px;align-items:center">
+<button class="chip" id="langBtn" type="button" style="cursor:pointer;font-family:inherit">EN</button>
+<a class="chip" href="/"><span class="lang-fa">بازگشت</span><span class="lang-en">Home</span></a>
+</div>
+</header>
+<span class="lang-fa" style="font-size:.75rem;color:var(--a)">نسخه ${ver}</span>
+<span class="lang-en" style="font-size:.75rem;color:var(--a)">v${ver}</span>
+<h1 class="lang-fa">📖 راهنمای سینماگرافی</h1>
+<h1 class="lang-en">📖 Cinemagraphy guide</h1>
+<p class="sub lang-fa">آشنایی سریع با استریمیو، نصب افزونه و رفع مشکلات رایج.</p>
+<p class="sub lang-en">Quick intro to Stremio, installing the addon, and common fixes.</p>
+
+<h2 class="lang-fa">Stremio چیست؟</h2>
+<h2 class="lang-en">What is Stremio?</h2>
+<p class="lang-fa">استریمیو یک Media Center است. خودش به‌تنهایی منبع فیلم نیست؛ با <b>افزونه‌ها</b> کاتالوگ، استریم و زیرنویس اضافه می‌شود.</p>
+<p class="lang-en">Stremio is a media center. Addons provide catalogs, streams and subtitles.</p>
+
+<h2 class="lang-fa">Cinemagraphy چیست؟</h2>
+<h2 class="lang-en">What is Cinemagraphy?</h2>
+<p class="lang-fa">پروژه‌ای برای کاربران فارسی‌زبان: منابع ایرانی، تورنت اختیاری، زیرنویس، متای فارسی (TMDB) و کاتالوگ‌های خارجی. <b>رایگان</b> است و میزبان فایل ویدیو نیست.</p>
+<p class="lang-en">An Iranian-focused Stremio addon: local sources, optional torrent, subtitles, Persian metadata. Free — does not host video files.</p>
+
+<div class="feat">
+<div class="c glass"><div>🎥</div><b class="lang-fa">منابع ایرانی</b><b class="lang-en">Iran sources</b><span class="lang-fa">چند پروایدر همزمان</span><span class="lang-en">Parallel providers</span></div>
+<div class="c glass"><div>🌱</div><b>Torrent</b><span class="lang-fa">در کنار لینک مستقیم</span><span class="lang-en">Alongside HTTP links</span></div>
+<div class="c glass"><div>📝</div><b class="lang-fa">زیرنویس</b><b class="lang-en">Subtitles</b><span>OpenSubtitles</span></div>
+<div class="c glass"><div>🇮🇷</div><b class="lang-fa">متای فارسی</b><b class="lang-en">Persian meta</b><span>TMDB fa-IR</span></div>
+<div class="c glass"><div>⚙️</div><b class="lang-fa">Self-host</b><b class="lang-en">Self-host</b><span class="lang-fa">Vercel / CF / VPS</span><span class="lang-en">Vercel / CF / VPS</span></div>
+<div class="c glass"><div>🆓</div><b class="lang-fa">رایگان</b><b class="lang-en">Free</b><span class="lang-fa">بدون اشتراک اجباری</span><span class="lang-en">No paid lock-in</span></div>
+</div>
+
+<h2 class="lang-fa">نصب Stremio</h2>
+<h2 class="lang-en">Install Stremio</h2>
+<div class="steps">
+<div class="step glass"><b>1</b><span class="lang-fa">از <a href="https://www.stremio.com/downloads" target="_blank" rel="noopener">سایت رسمی</a> برای ویندوز، مک، لینوکس یا اندروید دانلود کنید.</span><span class="lang-en">Download from the <a href="https://www.stremio.com/downloads" target="_blank" rel="noopener">official site</a>.</span></div>
+<div class="step glass"><b>2</b><span class="lang-fa">نصب و یک‌بار اجرا کنید.</span><span class="lang-en">Install and open it once.</span></div>
+</div>
+
+<h2 class="lang-fa">نصب سینماگرافی</h2>
+<h2 class="lang-en">Install Cinemagraphy</h2>
+<div class="steps">
+<div class="step glass"><b>1</b><span class="lang-fa">به <a href="/">صفحه اصلی</a> بروید.</span><span class="lang-en">Open the <a href="/">home page</a>.</span></div>
+<div class="step glass"><b>2</b><span class="lang-fa">روی <b>نصب در Stremio</b> بزنید یا لینک منیفست را کپی کنید.</span><span class="lang-en">Tap <b>Install in Stremio</b> or copy the manifest link.</span></div>
+<div class="step glass"><b>3</b><span class="lang-fa">در استریمیو نصب را تأیید کنید.</span><span class="lang-en">Confirm install in Stremio.</span></div>
+</div>
+<p><a class="btn" href="${install}"><span class="lang-fa">نصب سریع</span><span class="lang-en">Quick install</span></a></p>
+<p class="sub" style="direction:ltr;margin-top:8px">${m}</p>
+
+<h2 class="lang-fa">فارسی کردن Stremio</h2>
+<h2 class="lang-en">Persian UI in Stremio</h2>
+<p class="lang-fa">مسیر معمول: <b>Settings → Interface → Language → فارسی</b>. همه متن‌های خود استریمیو لزوماً با افزونه ترجمه نمی‌شوند.</p>
+<p class="lang-en">Typical path: <b>Settings → Interface → Language</b>. Not every Stremio string is controlled by addons.</p>
+
+<h2 class="lang-fa">نحوه استفاده</h2>
+<h2 class="lang-en">How to use</h2>
+<div class="steps">
+<div class="step glass"><b>1</b><span class="lang-fa">فیلم/سریال را از کاتالوگ یا جستجو پیدا کنید.</span><span class="lang-en">Find a title via catalog or search.</span></div>
+<div class="step glass"><b>2</b><span class="lang-fa">استریم‌ها را ببینید (منبع، کیفیت، حجم، سانسور).</span><span class="lang-en">Pick a stream (source, quality, size).</span></div>
+<div class="step glass"><b>3</b><span class="lang-fa">در صورت نیاز زیرنویس را انتخاب کنید.</span><span class="lang-en">Pick subtitles if needed.</span></div>
+</div>
+
+<h2 class="lang-fa">Provider و Torrent</h2>
+<h2 class="lang-en">Providers &amp; torrents</h2>
+<p class="lang-fa"><b>Provider</b> منبعی است که لینک پخش می‌دهد. ممکن است کیفیت یا موجودی‌شان فرق کند. <b>Torrent</b> به‌صورت P2P است و به seeder وابسته است؛ با لینک مستقیم فرق دارد.</p>
+<p class="lang-en"><b>Providers</b> supply playback links. <b>Torrents</b> are P2P and depend on seeders.</p>
+
+<div class="call glass">
+<p class="lang-fa"><b>درباره IP:</b> درخواست‌های کاتالوگ/استریم از سرور (Vercel/Workers/VPS) به سایت‌های ایرانی می‌روند؛ IP دیده‌شده معمولاً IP سرور است نه موبایل شما. جعل هدر IP راه‌حل نیست و در این پروژه انجام نمی‌شود.</p>
+<p class="lang-en"><b>About IP:</b> Catalog/stream fetches go server-side; Iranian sites typically see the server IP. Header spoofing is not used.</p>
+</div>
+
+<h2 class="lang-fa">رفع مشکل</h2>
+<h2 class="lang-en">Troubleshooting</h2>
+<div class="steps">
+<div class="step glass"><b class="lang-fa">افزونه نصب نمی‌شود</b><b class="lang-en">Addon won’t install</b><span class="lang-fa">منیفست و اینترنت را چک کنید؛ یک‌بار استریمیو را ببندید و باز کنید.</span><span class="lang-en">Check the manifest URL and restart Stremio.</span></div>
+<div class="step glass"><b class="lang-fa">استریم خالی است</b><b class="lang-en">No streams</b><span class="lang-fa">ممکن است پروایدر آن عنوان را نداشته باشد یا موقتاً آفلاین باشد.</span><span class="lang-en">Provider may lack the title or be offline.</span></div>
+<div class="step glass"><b class="lang-fa">زیرنویس نیست</b><b class="lang-en">No subtitles</b><span class="lang-fa">برای همه محتوا زیرنویس پیدا نمی‌شود.</span><span class="lang-en">Not every title has subs.</span></div>
+</div>
+
+<h2>FAQ</h2>
+<div class="faq">
+<details class="glass"><summary class="lang-fa">آیا رایگان است؟</summary><summary class="lang-en">Is it free?</summary><p class="lang-fa">بله. برخی پروایدرهای اختیاری ممکن است حساب پولی بخواهند.</p><p class="lang-en">Yes. Optional third-party sources may need their own accounts.</p></details>
+<details class="glass"><summary class="lang-fa">روی Android TV کار می‌کند؟</summary><summary class="lang-en">Android TV?</summary><p class="lang-fa">اگر استریمیو روی دستگاه نصب شود، بله.</p><p class="lang-en">Yes, if Stremio runs on the device.</p></details>
+<details class="glass"><summary class="lang-fa">چطور مشکل را گزارش کنم؟</summary><summary class="lang-en">How to report issues?</summary><p class="lang-fa">گیت‌هاب پروژه یا تلگرام پشتیبانی <a href="https://t.me/nerdcow" target="_blank" rel="noopener">@nerdcow</a>.</p><p class="lang-en">GitHub or Telegram <a href="https://t.me/nerdcow" target="_blank" rel="noopener">@nerdcow</a>.</p></details>
+</div>
+
+<p style="margin-top:28px"><a class="chip" href="/"><span class="lang-fa">🎬 بازگشت به سینماگرافی</span><span class="lang-en">🎬 Back to Cinemagraphy</span></a></p>
+</div>
+<script>
+(function(){
+const r=document.documentElement,lb=document.getElementById('langBtn');
+let L=localStorage.getItem('cg-lang')||'fa';
+function al(l){r.lang=l;r.dir=l==='fa'?'rtl':'ltr';if(lb)lb.textContent=l==='fa'?'EN':'FA';localStorage.setItem('cg-lang',l)}
+al(L); if(lb)lb.onclick=()=>al(r.lang==='fa'?'en':'fa');
+})();
+</script>
+</body></html>`
 }
