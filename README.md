@@ -22,9 +22,6 @@
 2. منیفست عمومی: `https://cinemagraphy.vercel.app/manifest.json`  
 3. یا از [سایت](https://cinemagraphy.vercel.app/) · [شخصی‌سازی](https://cinemagraphy.vercel.app/configure) · [راهنما](https://cinemagraphy.vercel.app/guide)
 
-### 🇬🇧 Quick install
-Add: `https://cinemagraphy.vercel.app/manifest.json`
-
 ---
 
 **سینماگرافی** منابع ایرانی، تورنت اختیاری، زیرنویس و متای فارسی را در یک افزونه جمع می‌کند.
