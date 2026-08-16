@@ -312,6 +312,40 @@ function catalogFaCacheSet(key, value) {
  * fill poster/name/description/genres from TMDB fa-IR using the user's key.
  * Items that already have RPDB posters are left untouched (ratings stay).
  */
+
+async function searchTmdbMetaByTitle(title, type, httpClient, apiKey, logger = console) {
+    if (!title || !apiKey) return null
+    try {
+        const kind = type === 'series' || type === 'tv' ? 'tv' : 'multi'
+        const path = kind === 'tv' ? 'search/tv' : (type === 'movie' ? 'search/movie' : 'search/multi')
+        const response = await httpClient.get(`https://api.themoviedb.org/3/${path}`, {
+            params: {
+                api_key: apiKey,
+                query: String(title).replace(/\s*season\s*\d+/ig, '').trim(),
+                language: 'fa-IR',
+                include_adult: false,
+                page: 1,
+            },
+            timeout: REQUEST_TIMEOUT_MS,
+        })
+        const results = response.data?.results || []
+        let hit = results[0]
+        if (path === 'search/multi') {
+            hit = results.find((r) => r.media_type === 'movie' || r.media_type === 'tv') || results[0]
+        }
+        if (!hit?.id) return null
+        const mediaType = hit.media_type === 'tv' || type === 'series' || type === 'tv' ? 'series' : 'movie'
+        if (hit.media_type === 'movie') {
+            /* keep movie */
+        }
+        const tmdbType = (hit.media_type === 'tv' || mediaType === 'series') ? 'series' : 'movie'
+        return getTMDBMetaByTmdbId(tmdbType, hit.id, httpClient, apiKey, logger, null)
+    } catch (error) {
+        logAxiosError(error, logger, 'TMDB title search failed')
+        return null
+    }
+}
+
 export async function enrichCatalogMetasWithoutRpdb(
     metas,
     type,
@@ -344,9 +378,14 @@ export async function enrichCatalogMetasWithoutRpdb(
                 tmdbNumeric = String(meta.tmdb_id || meta.tmdbId)
             }
 
-            const cacheKey = imdbId
+            let cacheKey = imdbId
                 ? `imdb:${type}:${imdbId}`
                 : (tmdbNumeric ? `tmdb:${type}:${tmdbNumeric}` : null)
+
+            // Anime / kitsu often has no imdb in list — search TMDB by title
+            if (!cacheKey && meta.name) {
+                cacheKey = `q:${type}:${String(meta.name).slice(0, 80)}`
+            }
             if (!cacheKey) continue
 
             try {
@@ -356,6 +395,8 @@ export async function enrichCatalogMetasWithoutRpdb(
                         fa = await getTMDBMetaFa(type, imdbId, httpClient, apiKey, logger)
                     } else if (tmdbNumeric) {
                         fa = await getTMDBMetaByTmdbId(type, tmdbNumeric, httpClient, apiKey, logger, null)
+                    } else if (meta.name) {
+                        fa = await searchTmdbMetaByTitle(meta.name, type, httpClient, apiKey, logger)
                     }
                     if (fa) catalogFaCacheSet(cacheKey, fa)
                 }
@@ -487,10 +528,21 @@ const CATALOG_BRAND_STRIP_RE = /\b(myanimelist|anidb|anilist|anisearch|livechart
 
 /** Exact / high-priority phrases (first match wins). Everyday Persian. */
 const CATALOG_EXACT_PHRASES = [
-    [/top[\s-]*airing/i, 'در حال پخش — برترین‌ها'],
+    // Hot first-name style
+    [/trending\s*movies?/i, 'داغ — فیلم'],
+    [/trending\s*(tv\s*)?series/i, 'داغ — سریال'],
+    [/trending\s*tv\s*shows?/i, 'داغ — سریال'],
+    [/popular\s*movies?/i, 'محبوب — فیلم'],
+    [/popular\s*(tv\s*)?series/i, 'محبوب — سریال'],
+
+    // Top history / airing (anime + general)
+    [/top[\s-]*all[\s-]*time[\s-]*(anime)?/i, 'برترین‌های تاریخ'],
+    [/all[\s-]*time[\s-]*top[\s-]*(anime)?/i, 'برترین‌های تاریخ'],
+    [/top\s*rated\s*movies?/i, 'برترین‌های تاریخ — فیلم'],
+    [/top\s*rated\s*(tv\s*)?(series|shows?)/i, 'برترین‌های تاریخ — سریال'],
+    [/top\s*rated/i, 'برترین‌های تاریخ'],
+    [/top[\s-]*airing[\s-]*(anime)?/i, 'برترین‌های در حال پخش'],
     [/currently[\s-]*airing/i, 'در حال پخش'],
-    [/top[\s-]*all[\s-]*time/i, 'برترین‌های تاریخ'],
-    [/all[\s-]*time[\s-]*top/i, 'برترین‌های تاریخ'],
 
     [/iptv\s*live\s*channels?/i, 'پخش زنده ماهواره'],
     [/iptv\s*movies?/i, 'فیلم‌های ماهواره'],
@@ -614,12 +666,7 @@ const CATALOG_EXACT_PHRASES = [
     [/popular\s*movies?/i, 'فیلم‌های محبوب'],
     [/popular\s*(tv\s*)?series/i, 'سریال‌های محبوب'],
     [/popular\s*tv\s*shows?/i, 'سریال‌های محبوب'],
-    [/trending\s*movies?/i, 'فیلم‌های داغ'],
-    [/trending\s*(tv\s*)?series/i, 'سریال‌های داغ'],
-    [/trending\s*tv\s*shows?/i, 'سریال‌های داغ'],
-    [/top\s*rated\s*movies?/i, 'فیلم‌های پرامتیاز'],
-    [/top\s*rated\s*(tv\s*)?series/i, 'سریال‌های پرامتیاز'],
-    [/now\s*playing/i, 'اکران‌های روز'],
+                        [/now\s*playing/i, 'اکران‌های روز'],
     [/on\s*the\s*air/i, 'در حال پخش'],
     [/airing\s*today/i, 'پخش امروز'],
 
@@ -739,6 +786,22 @@ function cleanupCatalogFaName(working) {
     if (s === 'انیمه') s = 'انیمه'
     if (s === 'کانال') s = 'کانال‌ها'
 
+    // Keep "anime" label Persian in titles (discover/search/catalog)
+    s = s
+        .replace(/\b[Aa]nime\b/g, 'انیمه')
+        .replace(/\s*[—\-]\s*انیمه\s*$/u, ' — انیمه')
+        .replace(/برترین\s*های\s*تاریخ\s*$/u, 'برترین‌های تاریخ')
+        .replace(/برترین\s*-\s*در حال پخش/u, 'برترین‌های در حال پخش')
+        .replace(/برترین‌ها\s*در حال پخش/u, 'برترین‌های در حال پخش')
+
+    // If title is only history/airing without type, leave; Stremio may append type
+    if (/^برترین‌های تاریخ$/u.test(s)) {
+        /* keep; anime/movie type shown by row or we add nothing to avoid سریال-سریال */
+    }
+    if (/^برترین‌های در حال پخش$/u.test(s)) {
+        /* keep */
+    }
+
     // Tidy dashes
     s = s.replace(/\s*—\s*$/u, '').replace(/^\s*—\s*/u, '').trim()
     return s
@@ -777,6 +840,18 @@ export function translateCatalogName(name, type) {
         else working = `آثار ${working}`
     }
 
+    // Anime catalog labels: history / airing get clear Persian + انیمه
+    const origLower = original.toLowerCase()
+    if (/anime|انیمه|mal|myanimelist|kitsu/i.test(origLower) || type === 'anime') {
+        if (/all\s*time|top\s*rated|تاریخ/i.test(origLower + working)) {
+            working = 'برترین‌های تاریخ — انیمه'
+        } else if (/airing|در حال پخش/i.test(origLower + working)) {
+            working = 'برترین‌های در حال پخش — انیمه'
+        } else if (working && !/انیمه/.test(working) && !regionOnly[working]) {
+            // soft: don't force suffix on every anime list
+        }
+    }
+
     if (!working) {
         if (type === 'movie') return 'فیلم‌ها'
         if (type === 'series') return 'سریال‌ها'
@@ -806,15 +881,52 @@ export function classifyExternalCatalogSource(source = {}) {
 }
 
 function catalogSortScore(cat) {
-    const blob = `${cat?.name || ''} ${cat?.id || ''}`
-    const platformRe = /\b(netflix|disney\+?|hbo\s*max|\bmax\b|prime\s*video|amazon\s*prime|apple\s*tv|paramount\+?|hulu|peacock|crunchyroll|starz|showtime|sky\s*showtime|discovery\+?|mubi|shudder|britbox|acorn|hayu|iqiyi|viaplay|canal\+|movistar|zee5|sonyliv|hotstar|jiohotstar|bbc\s*iplayer|itvx|channel\s*4|streaming|پلتفرم|نتفلیکس|دیزنی|اچ‌بی‌او|پرایم|اپل\s*تی‌وی|پارامونت|هولو|پیکاک|کرانچی|استارز)\b/i
-    const trendRe = /\b(trending|popular|top\s*rated|top\s*seeded|latest|new\b|now\s*playing|on\s*the\s*air|airing|upcoming|certified\s*fresh|rt\s*fresh|داغ|محبوب|پرطرفدار|برترین|جدیدترین|جدید|تازه|اکران)\b/i
-    const krCnRe = /\b(korean|k-?drama|chinese|c-?drama|hong\s*kong|taiwan|کره‌|چین|درام\s*کره‌|درام\s*چین|هنگ‌کنگ|تایوان)\b/i
+    const name = String(cat?.name || '')
+    const id = String(cat?.id || '')
+    const blob = `${name} ${id}`
+    const type = String(cat?.type || '')
+    const isMovie = type === 'movie'
+    const isSeries = type === 'series' || type === 'tv'
 
+    const platformRe = /\b(netflix|disney\+?|hbo\s*max|\bmax\b|prime\s*video|amazon\s*prime|apple\s*tv|paramount\+?|hulu|peacock|crunchyroll|starz|showtime|sky\s*showtime|discovery\+?|mubi|shudder|britbox|acorn|hayu|iqiyi|viaplay|canal\+|movistar|zee5|sonyliv|hotstar|jiohotstar|bbc\s*iplayer|itvx|channel\s*4|streaming|پلتفرم|نتفلیکس|دیزنی|اچ‌بی‌او|پرایم|اپل\s*تی‌وی|پارامونت|هولو|پیکاک|کرانچی|استارز)\b/i
     if (platformRe.test(blob)) return 400
-    if (trendRe.test(blob)) return 0
-    if (krCnRe.test(blob)) return 50
-    return 120
+
+    // 1–2: داغ / trending (movie then series)
+    const isHot = /\b(trending|داغ)\b/i.test(blob)
+        || (/\b(popular|محبوب|پرطرفدار)\b/i.test(blob) && !/top\s*rated|برترین|all\s*time|تاریخ/i.test(blob))
+    if (isHot) {
+        if (isMovie) return 0
+        if (isSeries) return 1
+        return 2
+    }
+
+    // 3: برترین‌های تاریخ / top rated / top all time (not airing)
+    const isTopHistory = /top\s*all\s*time|all\s*time\s*top|top\s*rated|برترین.*تاریخ|برترین‌های تاریخ/i.test(blob)
+        && !/airing|در حال پخش/i.test(blob)
+    if (isTopHistory) {
+        if (isMovie) return 10
+        if (isSeries) return 11
+        return 10
+    }
+
+    // Anime: top airing after history
+    if (/top\s*airing|currently\s*airing|برترین.*در حال پخش|در حال پخش/i.test(blob)) {
+        return 15
+    }
+
+    // Korean then Chinese (movie before series)
+    if (/\b(korean|k-?drama|کره‌)/i.test(blob)) {
+        if (isMovie) return 20
+        if (isSeries) return 21
+        return 22
+    }
+    if (/\b(chinese|c-?drama|چین|hong\s*kong|taiwan|هنگ‌کنگ|تایوان)/i.test(blob)) {
+        if (isMovie) return 30
+        if (isSeries) return 31
+        return 32
+    }
+
+    return 100
 }
 
 /** Sort inside one group (101 / AIO / anime / …). */
