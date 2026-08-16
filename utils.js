@@ -646,7 +646,7 @@ export function formatStreamTitle({providerKey, quality, size, audioType, extraT
 // them automatically — nothing else needs to change for streams to work.
 // ---------------------------------------------------------------------------
 
-const EXTERNAL_CATALOGS_TTL_MS = 10 * 60 * 1_000 // 10 min
+const EXTERNAL_CATALOGS_TTL_MS = 3 * 60 * 1_000 // 3 min — honor env URL changes sooner
 const EXTERNAL_CATALOG_FAST_MS = 20_000
 const EXTERNAL_CATALOG_ANIME_MS = 35_000
 /** Soft budget on the critical path so a slow anime host does not delay the whole manifest */
@@ -758,8 +758,8 @@ function sleep(ms) {
 async function fetchOneExternalCatalog(manifestUrl, httpClient, logger, timeoutMs) {
     const primary = normalizeExternalManifestUrl(manifestUrl)
     const candidates = [primary]
+    // Only hostname fallback — path/query always from the env URL the user set.
     // aio.pantelx.com often returns 403 to datacenter IPs (Cloudflare).
-    // Public workers.dev mirror accepts the same userId path for many configs.
     try {
         const u = new URL(primary)
         if (/(^|\.)aio\.pantelx\.com$/i.test(u.hostname)) {
@@ -865,7 +865,9 @@ async function fetchOneExternalCatalog(manifestUrl, httpClient, logger, timeoutM
         idPrefixes: manifest.idPrefixes ?? [],
         hasMeta: Boolean(metaResource),
         hasStream: Boolean(streamResource),
-        manifestUrl: usedUrl,
+        // original env URL (cache key) + resolved fetch URL (may be CF fallback host)
+        manifestUrl: primary,
+        resolvedUrl: usedUrl,
     }
 }
 
@@ -980,15 +982,25 @@ export async function getExternalCatalogSources(env = {}, httpClient = axios, lo
 export function getExternalCatalogStatus(env = {}) {
     const urls = externalManifestUrls(env)
     const cache = externalCatalogsCache
-    const byUrl = new Map((cache?.sources || []).map((s) => [s.manifestUrl, s]))
+    const sources = cache?.sources || []
+    const byUrl = new Map()
+    for (const s of sources) {
+        if (s.manifestUrl) byUrl.set(s.manifestUrl, s)
+        if (s.resolvedUrl) byUrl.set(s.resolvedUrl, s)
+    }
     const failed = new Set(cache?.failed || [])
     return urls.map((url) => {
         let host = url
         try { host = new URL(url).host } catch { /* keep */ }
         const src = byUrl.get(url)
         const err = externalCatalogLastError.get(url)
+        let resolvedHost = null
+        try {
+            if (src?.resolvedUrl) resolvedHost = new URL(src.resolvedUrl).host
+        } catch { /* ignore */ }
         return {
             host,
+            resolvedHost: resolvedHost && resolvedHost !== host ? resolvedHost : null,
             ok: Boolean(src),
             catalogs: src ? (src.catalogs?.length || 0) : 0,
             pending: externalInflight.has(url),
