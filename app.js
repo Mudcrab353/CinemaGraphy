@@ -18,10 +18,10 @@ import F2Media from './sources/f2media.js'
 import Peepboxtv from './sources/peepboxtv.js'
 import Serialblog from './sources/serialblog.js'
 import {ID_SEPARATOR, METADATA_SOURCE} from './sources/source.js'
-import {findExternalMetaSource, findExternalStreamSource, formatStreamTitle, getCinemeta, getExternalCatalogSources, getExternalCatalogStatus, getKitsuTitle, getSubtitle, getTMDBMetaFa, getTMDBMetaByTmdbId, getTMDBDetails, getTMDBTitle, getLandingTmdbCatalogs, getTorrentStreams, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxyExternalStream, proxySubtitles, translateCatalogName} from './utils.js'
+import {findExternalMetaSource, findExternalStreamSource, formatStreamTitle, getCinemeta, getExternalCatalogSources, getExternalCatalogStatus, invalidateExternalCatalogCache, getKitsuTitle, getSubtitle, getTMDBMetaFa, getTMDBMetaByTmdbId, getTMDBDetails, getTMDBTitle, getLandingTmdbCatalogs, getTorrentStreams, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxyExternalStream, proxySubtitles, translateCatalogName} from './utils.js'
 
 export const ADDON_PREFIX = 'ip'
-export const ADDON_VERSION = '2.1.13'
+export const ADDON_VERSION = '2.1.14'
 
 
 const PROVIDER_BASEURL_KEYS = [
@@ -253,8 +253,33 @@ async function probeProviderUrl(url, httpClient) {
  * Never throws — individual probe failures mark that provider offline only.
  */
 export async function getProvidersStatus(env = process.env, httpClient = axios) {
-    if (providerStatusCache && Date.now() - providerStatusCache.at < PROVIDER_STATUS_TTL_MS) {
-        return providerStatusCache.payload
+    const cacheHit = providerStatusCache && Date.now() - providerStatusCache.at < PROVIDER_STATUS_TTL_MS
+    if (cacheHit) {
+        // Provider probe cache stays, but always refresh external catalog snapshot
+        try {
+            // force re-fetch by clearing only external side is internal; call get again
+            const externalCatalogs = await (async () => {
+                invalidateExternalCatalogCache()
+                await getExternalCatalogSources(env, httpClient)
+                return getExternalCatalogStatus(env)
+            })()
+            const externalCatalogEnv = {
+                CATALOG101_MANIFEST_URL: Boolean(String(env.CATALOG101_MANIFEST_URL || '').trim()),
+                CATALOG_AIO_MANIFEST_URL: Boolean(String(env.CATALOG_AIO_MANIFEST_URL || env.CATALOG_AIOCATALOGS_MANIFEST_URL || '').trim()),
+                CATALOG_TMDB_MANIFEST_URL: Boolean(String(env.CATALOG_TMDB_MANIFEST_URL || '').trim()),
+                CATALOG_ANIME_MANIFEST_URL: Boolean(String(env.CATALOG_ANIME_MANIFEST_URL || '').trim()),
+                CATALOG_IPTVBRIDGE_MANIFEST_URL: Boolean(String(env.CATALOG_IPTVBRIDGE_MANIFEST_URL || '').trim()),
+                EXTERNAL_CATALOG_MANIFEST_URLS: Boolean(String(env.EXTERNAL_CATALOG_MANIFEST_URLS || '').trim()),
+            }
+            return {
+                ...providerStatusCache.payload,
+                checkedAt: new Date().toISOString(),
+                externalCatalogs,
+                externalCatalogEnv,
+            }
+        } catch {
+            return providerStatusCache.payload
+        }
     }
 
     const items = await Promise.all(
@@ -304,6 +329,7 @@ export async function getProvidersStatus(env = process.env, httpClient = axios) 
     // Warm external catalog cache so /manifest.json can include AIO/101/anime quickly.
     let externalCatalogs = []
     try {
+        invalidateExternalCatalogCache()
         await getExternalCatalogSources(env, httpClient)
         externalCatalogs = getExternalCatalogStatus(env)
     } catch {
@@ -786,6 +812,9 @@ export function createAddon({
         const {env: activeEnv} = requestScope(req)
         const manifest = createManifest(activeEnv)
         try {
+            if (String(req.query?.refresh || '') === '1') {
+                invalidateExternalCatalogCache()
+            }
             const externalSources = await getExternalCatalogSources(activeEnv, axios, logger)
             for (const source of externalSources) {
                 manifest.catalogs.push(...source.catalogs.map((catalog) => ({
@@ -812,7 +841,10 @@ export function createAddon({
         } catch (error) {
             logAxiosError(error, logger, 'External catalogs unavailable, serving own catalogs only')
         }
-        res.json(manifest)
+        res.status(200)
+            .type('json')
+            .set('cache-control', 'no-store, max-age=0')
+            .json(manifest)
     })
 
     const catalogHandler = async (req, res) => {

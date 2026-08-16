@@ -646,7 +646,7 @@ export function formatStreamTitle({providerKey, quality, size, audioType, extraT
 // them automatically — nothing else needs to change for streams to work.
 // ---------------------------------------------------------------------------
 
-const EXTERNAL_CATALOGS_TTL_MS = 3 * 60 * 1_000 // 3 min — honor env URL changes sooner
+const EXTERNAL_CATALOGS_TTL_MS = 45 * 1_000 // 45s — AIO configs change often
 const EXTERNAL_CATALOG_FAST_MS = 20_000
 const EXTERNAL_CATALOG_ANIME_MS = 35_000
 /** Soft budget on the critical path so a slow anime host does not delay the whole manifest */
@@ -775,18 +775,28 @@ async function fetchOneExternalCatalog(manifestUrl, httpClient, logger, timeoutM
 
     for (const url of candidates) {
         try {
+            // Bust CDN/edge cache on the upstream AIO host so new catalogs appear quickly
+            let fetchUrl = url
+            try {
+                const bu = new URL(url)
+                bu.searchParams.set('_cg', String(Date.now()))
+                fetchUrl = bu.toString()
+            } catch { /* keep url */ }
             if (typeof fetch === 'function') {
                 const ctrl = new AbortController()
                 const timer = setTimeout(() => ctrl.abort(), timeoutMs)
                 try {
-                    const response = await fetch(url, {
+                    const response = await fetch(fetchUrl, {
                         signal: ctrl.signal,
                         headers: {
                             Accept: 'application/json,text/plain,*/*',
-                            'User-Agent': 'Mozilla/5.0 (compatible; Cinemagraphy/2.1.12; +https://cinemagraphy.vercel.app)',
+                            'User-Agent': 'Mozilla/5.0 (compatible; Cinemagraphy/2.1.14; +https://cinemagraphy.vercel.app)',
                             'Accept-Language': 'en-US,en;q=0.9',
+                            'Cache-Control': 'no-cache',
+                            Pragma: 'no-cache',
                         },
                         redirect: 'follow',
+                        cache: 'no-store',
                     })
                     if (response.status === 403 || response.status === 503) {
                         lastError = new Error(`HTTP ${response.status}`)
@@ -809,11 +819,13 @@ async function fetchOneExternalCatalog(manifestUrl, httpClient, logger, timeoutM
                     clearTimeout(timer)
                 }
             } else {
-                const response = await httpClient.get(url, {
+                const response = await httpClient.get(fetchUrl, {
                     timeout: timeoutMs,
                     headers: {
                         Accept: 'application/json,text/plain,*/*',
-                        'User-Agent': 'Mozilla/5.0 (compatible; Cinemagraphy/2.1.12; +https://cinemagraphy.vercel.app)',
+                        'User-Agent': 'Mozilla/5.0 (compatible; Cinemagraphy/2.1.14; +https://cinemagraphy.vercel.app)',
+                        'Cache-Control': 'no-cache',
+                        Pragma: 'no-cache',
                     },
                     validateStatus: (s) => (s >= 200 && s < 300) || s === 403 || s === 503,
                     maxRedirects: 5,
@@ -884,6 +896,10 @@ function rememberSource(source) {
         sources,
         failed,
     }
+}
+
+export function invalidateExternalCatalogCache() {
+    externalCatalogsCache = null
 }
 
 export async function getExternalCatalogSources(env = {}, httpClient = axios, logger = console) {
