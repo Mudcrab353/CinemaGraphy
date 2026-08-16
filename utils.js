@@ -520,7 +520,89 @@ const CATALOG_EXACT_PHRASES = [
     [/hanna\s*barbera/i, 'هانا‌باربرا'],
     [/cartoon\s*network/i, 'کارتون نتورک'],
     [/pixar\s*movies/i, 'فیلم‌های پیکسار'],
+    
     [/pixar\s*shorts?/i, 'کوتاه‌های پیکسار'],
+
+    // Regions / languages — full natural titles (before generic word pass)
+    [/chinese\s*(tv\s*)?(series|shows?|dramas?)/i, 'سریال‌های چینی'],
+    [/chinese\s*movies?/i, 'فیلم‌های چینی'],
+    [/chinese\s*animation/i, 'انیمیشن چینی'],
+    [/\bc-?drama\b/i, 'درام چینی'],
+    [/\bchinese\b/i, 'چینی'],
+
+    [/japanese\s*(tv\s*)?(series|shows?|dramas?)/i, 'سریال‌های ژاپنی'],
+    [/japanese\s*movies?/i, 'فیلم‌های ژاپنی'],
+    [/japanese\s*animation/i, 'انیمیشن ژاپنی'],
+    [/\bj-?drama\b/i, 'درام ژاپنی'],
+    [/\bjapanese\b/i, 'ژاپنی'],
+
+    [/korean\s*(tv\s*)?(series|shows?|dramas?)/i, 'سریال‌های کره‌ای'],
+    [/korean\s*movies?/i, 'فیلم‌های کره‌ای'],
+    [/\bk-?drama\b/i, 'درام کره‌ای'],
+    [/\bkorean\b/i, 'کره‌ای'],
+
+    [/indian\s*(tv\s*)?(series|shows?|dramas?)/i, 'سریال‌های هندی'],
+    [/indian\s*movies?/i, 'فیلم‌های هندی'],
+    [/\bbollywood\b/i, 'بالیوود'],
+    [/\bindian\b/i, 'هندی'],
+
+    [/turkish\s*(tv\s*)?(series|shows?|dramas?)/i, 'سریال‌های ترکی'],
+    [/turkish\s*movies?/i, 'فیلم‌های ترکی'],
+    [/\bturkish\b/i, 'ترکی'],
+
+    [/arabic\s*(tv\s*)?(series|shows?|dramas?)/i, 'سریال‌های عربی'],
+    [/arabic\s*movies?/i, 'فیلم‌های عربی'],
+    [/\barabic\b/i, 'عربی'],
+
+    [/french\s*(tv\s*)?(series|shows?)/i, 'سریال‌های فرانسوی'],
+    [/french\s*movies?/i, 'فیلم‌های فرانسوی'],
+    [/\bfrench\b/i, 'فرانسوی'],
+
+    [/spanish\s*(tv\s*)?(series|shows?)/i, 'سریال‌های اسپانیایی'],
+    [/spanish\s*movies?/i, 'فیلم‌های اسپانیایی'],
+    [/latin\s*american/i, 'آمریکای لاتین'],
+    [/\bspanish\b/i, 'اسپانیایی'],
+
+    [/german\s*(tv\s*)?(series|shows?)/i, 'سریال‌های آلمانی'],
+    [/german\s*movies?/i, 'فیلم‌های آلمانی'],
+    [/\bgerman\b/i, 'آلمانی'],
+
+    [/italian\s*(tv\s*)?(series|shows?)/i, 'سریال‌های ایتالیایی'],
+    [/italian\s*movies?/i, 'فیلم‌های ایتالیایی'],
+    [/\bitalian\b/i, 'ایتالیایی'],
+
+    [/russian\s*(tv\s*)?(series|shows?)/i, 'سریال‌های روسی'],
+    [/russian\s*movies?/i, 'فیلم‌های روسی'],
+    [/\brussian\b/i, 'روسی'],
+
+    [/thai\s*(tv\s*)?(series|shows?|dramas?)/i, 'سریال‌های تایلندی'],
+    [/thai\s*movies?/i, 'فیلم‌های تایلندی'],
+    [/\bthai\b/i, 'تایلندی'],
+
+    [/vietnamese\s*(tv\s*)?(series|shows?)/i, 'سریال‌های ویتنامی'],
+    [/vietnamese\s*movies?/i, 'فیلم‌های ویتنامی'],
+    [/\bvietnamese\b/i, 'ویتنامی'],
+
+    [/filipino\s*(tv\s*)?(series|shows?)/i, 'سریال‌های فیلیپینی'],
+    [/pinoy\s*(tv\s*)?(series|shows?|movies?)/i, 'آثار فیلیپینی'],
+    [/\bfilipino\b/i, 'فیلیپینی'],
+
+    [/hong\s*kong\s*movies?/i, 'فیلم‌های هنگ‌کنگ'],
+    [/hong\s*kong/i, 'هنگ‌کنگ'],
+    [/taiwan(ese)?\s*(tv\s*)?(series|shows?|movies?)/i, 'آثار تایوانی'],
+    [/\btaiwan/i, 'تایوان'],
+    [/mainland\s*china/i, 'چین'],
+    [/\bbritish\b/i, 'بریتانیایی'],
+    [/\buk\s*series/i, 'سریال‌های بریتانیایی'],
+    [/\buk\s*movies?/i, 'فیلم‌های بریتانیایی'],
+    [/nordic/i, 'نوردیک'],
+    [/scandinavian/i, 'اسکاندیناوی'],
+    [/brazilian/i, 'برزیلی'],
+    [/mexican/i, 'مکزیکی'],
+    [/european/i, 'اروپایی'],
+    [/asian/i, 'آسیایی'],
+    [/african/i, 'آفریقایی'],
+
 
     [/^movies?$/i, 'فیلم‌ها'],
     [/^series$/i, 'سریال‌ها'],
@@ -583,7 +665,7 @@ const CATALOG_NAME_PHRASES = [
     [/\bthriller\b/gi, 'هیجانی'],
     [/\baction\b/gi, 'اکشن'],
     [/\bcomedy\b/gi, 'کمدی'],
-    [/\bdrama\b/gi, 'درام'],
+    [/\bdramas?\b/gi, 'درام'],
     [/\bsci-?fi\b/gi, 'علمی‌تخیلی'],
     [/\bscience\s*fiction\b/gi, 'علمی‌تخیلی'],
 
@@ -631,11 +713,23 @@ function cleanupCatalogFaName(working) {
             .trim()
     }
 
-    // Collapse duplicate type words: "سریال — سریال" / "فیلم فیلم"
+    // Region + type word order: "چینی فیلم" → "فیلم‌های چینی"
+    const regions = 'چینی|ژاپنی|کره‌ای|هندی|ترکی|عربی|فرانسوی|اسپانیایی|آلمانی|ایتالیایی|روسی|تایلندی|ویتنامی|فیلیپینی|بریتانیایی|برزیلی|مکزیکی|اروپایی|آسیایی|آفریقایی|نوردیک|اسکاندیناوی|هنگ‌کنگ|تایوانی|بالیوود'
     s = s
-        .replace(/^(فیلم|سریال|انیمه|کانال)(\s*[—\-]\s*|\s+)\1$/u, '$1‌ها')
-        .replace(/\b(فیلم|سریال|انیمه)(\s+\1)+\b/gu, '$1')
-        .replace(/(فیلم|سریال|انیمه)\s*[—\-]\s*\1/gu, '$1‌ها')
+        .replace(new RegExp(`^(${regions})\\s+فیلم‌ها$`, 'u'), 'فیلم‌های $1')
+        .replace(new RegExp(`^(${regions})\\s+سریال‌ها$`, 'u'), 'سریال‌های $1')
+        .replace(new RegExp(`^(${regions})\\s+فیلم$`, 'u'), 'فیلم‌های $1')
+        .replace(new RegExp(`^(${regions})\\s+سریال$`, 'u'), 'سریال‌های $1')
+        .replace(new RegExp(`^فیلم\\s+(${regions})$`, 'u'), 'فیلم‌های $1')
+        .replace(new RegExp(`^سریال\\s+(${regions})$`, 'u'), 'سریال‌های $1')
+
+    // Collapse duplicate type words: "سریال — سریال" / "سریال سریال‌ها" / "فیلم فیلم"
+    s = s
+        .replace(/(فیلم|سریال|انیمه|کانال)\s*[—\-]\s*\1‌ها/gu, '$1‌ها')
+        .replace(/(فیلم|سریال|انیمه|کانال)\s+\1‌ها/gu, '$1‌ها')
+        .replace(/(فیلم|سریال|انیمه|کانال)‌ها\s*[—\-]?\s*\1‌ها/gu, '$1‌ها')
+        .replace(/(فیلم|سریال|انیمه|کانال)\s*[—\-]\s*\1(?!‌)/gu, '$1‌ها')
+        .replace(/(فیلم|سریال|انیمه)(\s+\1)+/gu, '$1')
         .replace(/\s+/g, ' ')
         .trim()
 
@@ -668,8 +762,21 @@ export function translateCatalogName(name, type) {
 
     working = cleanupCatalogFaName(working)
 
-    // If translation wiped everything, fall back to a natural type label — never
-    // force "سریال‌های …" prefix (Stremio already shows the type in the UI).
+    // Lone region adjective → "فیلم/سریال‌های …"
+    const regionOnly = {
+        'چینی': 1, 'ژاپنی': 1, 'کره‌ای': 1, 'هندی': 1, 'ترکی': 1, 'عربی': 1,
+        'فرانسوی': 1, 'اسپانیایی': 1, 'آلمانی': 1, 'ایتالیایی': 1, 'روسی': 1,
+        'تایلندی': 1, 'ویتنامی': 1, 'فیلیپینی': 1, 'بریتانیایی': 1, 'برزیلی': 1,
+        'مکزیکی': 1, 'اروپایی': 1, 'آسیایی': 1, 'آفریقایی': 1, 'نوردیک': 1,
+        'اسکاندیناوی': 1, 'هنگ‌کنگ': 1, 'تایوان': 1, 'بالیوود': 1,
+    }
+    if (working && regionOnly[working]) {
+        if (type === 'movie') working = `فیلم‌های ${working}`
+        else if (type === 'series' || type === 'tv') working = `سریال‌های ${working}`
+        else if (type === 'anime') working = `انیمه ${working}`
+        else working = `آثار ${working}`
+    }
+
     if (!working) {
         if (type === 'movie') return 'فیلم‌ها'
         if (type === 'series') return 'سریال‌ها'
@@ -678,7 +785,7 @@ export function translateCatalogName(name, type) {
         return original
     }
 
-    return working
+    return cleanupCatalogFaName(working)
 }
 
 export async function getTMDBDetails(type, tmdbId, httpClient = axios, apiKey, logger = console) {
