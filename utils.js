@@ -888,6 +888,34 @@ async function fetchOneExternalCatalog(manifestUrl, httpClient, logger, timeoutM
     }
 }
 
+
+function rememberSource(source) {
+    if (!source?.manifestUrl) return
+    const key = source.manifestUrl
+    if (!externalCatalogsCache) {
+        externalCatalogsCache = {
+            timestamp: Date.now(),
+            key: key,
+            sources: [source],
+            failed: [],
+        }
+        externalCatalogLastError.delete(key)
+        return
+    }
+    const sources = [...(externalCatalogsCache.sources || [])]
+    const idx = sources.findIndex((s) => s.manifestUrl === key || s.resolvedUrl === source.resolvedUrl)
+    if (idx >= 0) sources[idx] = source
+    else sources.push(source)
+    const failed = (externalCatalogsCache.failed || []).filter((u) => u !== key)
+    externalCatalogsCache = {
+        ...externalCatalogsCache,
+        timestamp: Date.now(),
+        sources,
+        failed,
+    }
+    externalCatalogLastError.delete(key)
+}
+
 export function invalidateExternalCatalogCache() {
     externalCatalogsCache = null
 }
@@ -939,36 +967,19 @@ export async function getExternalCatalogSources(env = {}, httpClient = axios, lo
         }
     }
 
-    // Slow (anime) — longer timeout, but only a soft wait on the critical path
+    // Anime catalog can be slow; wait the full anime timeout (do not soft-drop it).
     for (const manifestUrl of slowUrls) {
-        let inflight = externalInflight.get(manifestUrl)
-        if (!inflight) {
-            inflight = fetchOneExternalCatalog(
+        try {
+            const source = await fetchOneExternalCatalog(
                 manifestUrl, httpClient, logger, EXTERNAL_CATALOG_ANIME_MS,
             )
-                .then((source) => {
-                    rememberSource(source)
-                    return source
-                })
-                .catch((error) => {
-                    externalCatalogLastError.set(manifestUrl, error?.message || String(error))
-                    logAxiosError(error, logger, `External catalog manifest fetch failed (${manifestUrl})`)
-                    return null
-                })
-                .finally(() => {
-                    externalInflight.delete(manifestUrl)
-                })
-            externalInflight.set(manifestUrl, inflight)
-        }
-
-        const raced = await Promise.race([
-            inflight.then((source) => ({source})),
-            sleep(EXTERNAL_CATALOG_SOFT_WAIT_MS).then(() => ({source: null})),
-        ])
-        if (raced.source) {
-            cachedByUrl.set(manifestUrl, raced.source)
-        } else {
-            logger.info?.('Deferring slow external catalog to background cache', {manifestUrl})
+            externalCatalogLastError.delete(manifestUrl)
+            rememberSource(source)
+            cachedByUrl.set(manifestUrl, source)
+        } catch (error) {
+            const msg = error?.message || String(error)
+            externalCatalogLastError.set(manifestUrl, msg)
+            logAxiosError(error, logger, `External catalog manifest fetch failed (${manifestUrl})`)
         }
     }
 
