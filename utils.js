@@ -881,27 +881,29 @@ export function classifyExternalCatalogSource(source = {}) {
 }
 
 function catalogSortScore(cat) {
+    // Score must work on English ids AND Persian translated names (no \b on FA).
     const name = String(cat?.name || '')
     const id = String(cat?.id || '')
-    const blob = `${name} ${id}`
+    const extra = String(cat?._sortKey || cat?.extra || '')
+    const blob = `${name} ${id} ${extra}`.toLowerCase()
     const type = String(cat?.type || '')
     const isMovie = type === 'movie'
     const isSeries = type === 'series' || type === 'tv'
 
-    const platformRe = /\b(netflix|disney\+?|hbo\s*max|\bmax\b|prime\s*video|amazon\s*prime|apple\s*tv|paramount\+?|hulu|peacock|crunchyroll|starz|showtime|sky\s*showtime|discovery\+?|mubi|shudder|britbox|acorn|hayu|iqiyi|viaplay|canal\+|movistar|zee5|sonyliv|hotstar|jiohotstar|bbc\s*iplayer|itvx|channel\s*4|streaming|پلتفرم|نتفلیکس|دیزنی|اچ‌بی‌او|پرایم|اپل\s*تی‌وی|پارامونت|هولو|پیکاک|کرانچی|استارز)\b/i
+    const platformRe = /netflix|disney\+?|hbo\s*max|(^|[^a-z])max([^a-z]|$)|prime\s*video|amazon\s*prime|apple\s*tv|paramount\+?|hulu|peacock|crunchyroll|starz|showtime|sky\s*showtime|discovery\+?|mubi|shudder|britbox|acorn|hayu|iqiyi|viaplay|canal\+|movistar|zee5|sonyliv|hotstar|jiohotstar|bbc\s*iplayer|itvx|channel\s*4|streaming|پلتفرم|نتفلیکس|دیزنی|اچ‌بی‌او|پرایم|اپل\s*تی‌?وی|پارامونت|هولو|پیکاک|کرانچی|استارز/i
     if (platformRe.test(blob)) return 400
 
-    // 1–2: داغ / trending (movie then series)
-    const isHot = /\b(trending|داغ)\b/i.test(blob)
-        || (/\b(popular|محبوب|پرطرفدار)\b/i.test(blob) && !/top\s*rated|برترین|all\s*time|تاریخ/i.test(blob))
+    // داغ / trending / popular (not top-rated history)
+    const isHistoryish = /top\s*rated|top[_\s-]*all[_\s-]*time|all[_\s-]*time|برترین.*تاریخ|برترین‌های تاریخ|top[_\s-]*airing|در حال پخش/i.test(blob)
+    const isHot = /trending|داغ|(^|[^a-z])popular([^a-z]|$)|محبوب|پرطرفدار/i.test(blob) && !isHistoryish
     if (isHot) {
         if (isMovie) return 0
         if (isSeries) return 1
         return 2
     }
 
-    // 3: برترین‌های تاریخ / top rated / top all time (not airing)
-    const isTopHistory = /top\s*all\s*time|all\s*time\s*top|top\s*rated|برترین.*تاریخ|برترین‌های تاریخ/i.test(blob)
+    // برترین‌های تاریخ (not airing)
+    const isTopHistory = /top\s*rated|top[_\s-]*all[_\s-]*time|all[_\s-]*time|برترین.*تاریخ|برترین‌های تاریخ/i.test(blob)
         && !/airing|در حال پخش/i.test(blob)
     if (isTopHistory) {
         if (isMovie) return 10
@@ -909,18 +911,16 @@ function catalogSortScore(cat) {
         return 10
     }
 
-    // Anime: top airing after history
-    if (/top\s*airing|currently\s*airing|برترین.*در حال پخش|در حال پخش/i.test(blob)) {
+    if (/top[_\s-]*airing|currently[_\s-]*airing|برترین.*در حال پخش|در حال پخش/i.test(blob)) {
         return 15
     }
 
-    // Korean then Chinese (movie before series)
-    if (/\b(korean|k-?drama|کره‌)/i.test(blob)) {
+    if (/korean|k[_\s-]*drama|کره‌|کره\s*ای/i.test(blob)) {
         if (isMovie) return 20
         if (isSeries) return 21
         return 22
     }
-    if (/\b(chinese|c-?drama|چین|hong\s*kong|taiwan|هنگ‌کنگ|تایوان)/i.test(blob)) {
+    if (/chinese|c[_\s-]*drama|چین|hong[_\s-]*kong|taiwan|هنگ‌کنگ|تایوان/i.test(blob)) {
         if (isMovie) return 30
         if (isSeries) return 31
         return 32
@@ -932,11 +932,17 @@ function catalogSortScore(cat) {
 /** Sort inside one group (101 / AIO / anime / …). */
 export function sortCatalogsWithinGroup(catalogs) {
     if (!Array.isArray(catalogs) || catalogs.length < 2) return catalogs || []
-    return [...catalogs].sort((a, b) => {
-        const d = catalogSortScore(a) - catalogSortScore(b)
-        if (d !== 0) return d
-        return String(a?.name || '').localeCompare(String(b?.name || ''), 'fa')
-    })
+    return [...catalogs]
+        .sort((a, b) => {
+            const d = catalogSortScore(a) - catalogSortScore(b)
+            if (d !== 0) return d
+            return String(a?.name || '').localeCompare(String(b?.name || ''), 'fa')
+        })
+        .map((cat) => {
+            if (!cat || typeof cat !== 'object') return cat
+            const { _sortKey, ...rest } = cat
+            return rest
+        })
 }
 
 /**
@@ -964,8 +970,11 @@ export function buildOrderedExternalCatalogs(externalSources, mapFn) {
         const group = classifyExternalCatalogSource(source)
         const list = Array.isArray(source.catalogs) ? source.catalogs : []
         for (const catalog of list) {
-            const mapped = typeof mapFn === 'function' ? mapFn(catalog, source) : catalog
-            if (mapped) buckets[group].push(mapped)
+            const mapped = typeof mapFn === 'function' ? mapFn(catalog, source) : {...catalog}
+            if (!mapped) continue
+            // Preserve original EN name/id for reliable sort after FA translate
+            mapped._sortKey = `${catalog?.name || ''} ${catalog?.id || ''}`
+            buckets[group].push(mapped)
         }
     }
     return [
@@ -973,7 +982,7 @@ export function buildOrderedExternalCatalogs(externalSources, mapFn) {
         ...sortCatalogsWithinGroup(buckets.aio),
         ...sortCatalogsWithinGroup(buckets.other),
         ...sortCatalogsWithinGroup(buckets.anime),
-        ...buckets.iptv, // keep IPTV order; always last block
+        ...buckets.iptv,
     ]
 }
 
