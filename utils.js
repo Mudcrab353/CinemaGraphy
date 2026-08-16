@@ -758,111 +758,117 @@ function sleep(ms) {
 async function fetchOneExternalCatalog(manifestUrl, httpClient, logger, timeoutMs) {
     const primary = normalizeExternalManifestUrl(manifestUrl)
     const candidates = [primary]
-    // Only hostname fallback — path/query always from the env URL the user set.
-    // aio.pantelx.com often returns 403 to datacenter IPs (Cloudflare).
+    // pantelx and workers.dev can diverge; always try both and pick the richer manifest.
     try {
         const u = new URL(primary)
         if (/(^|\.)aio\.pantelx\.com$/i.test(u.hostname)) {
             const alt = new URL(primary)
             alt.hostname = 'aiocatalogs.jqrw92fchz.workers.dev'
             candidates.push(alt.toString())
+        } else if (/(^|\.)aiocatalogs\.jqrw92fchz\.workers\.dev$/i.test(u.hostname)) {
+            const alt = new URL(primary)
+            alt.hostname = 'aio.pantelx.com'
+            candidates.push(alt.toString())
         }
     } catch { /* ignore */ }
 
-    let lastError = null
-    let manifest = null
-    let usedUrl = primary
-
-    for (const url of candidates) {
+    async function fetchManifest(url) {
+        let fetchUrl = url
         try {
-            // Bust CDN/edge cache on the upstream AIO host so new catalogs appear quickly
-            let fetchUrl = url
+            const bu = new URL(url)
+            bu.searchParams.set('_cg', String(Date.now()))
+            fetchUrl = bu.toString()
+        } catch { /* keep */ }
+
+        if (typeof fetch === 'function') {
+            const ctrl = new AbortController()
+            const timer = setTimeout(() => ctrl.abort(), timeoutMs)
             try {
-                const bu = new URL(url)
-                bu.searchParams.set('_cg', String(Date.now()))
-                fetchUrl = bu.toString()
-            } catch { /* keep url */ }
-            if (typeof fetch === 'function') {
-                const ctrl = new AbortController()
-                const timer = setTimeout(() => ctrl.abort(), timeoutMs)
-                try {
-                    const response = await fetch(fetchUrl, {
-                        signal: ctrl.signal,
-                        headers: {
-                            Accept: 'application/json,text/plain,*/*',
-                            'User-Agent': 'Mozilla/5.0 (compatible; Cinemagraphy/2.1.14; +https://cinemagraphy.vercel.app)',
-                            'Accept-Language': 'en-US,en;q=0.9',
-                            'Cache-Control': 'no-cache',
-                            Pragma: 'no-cache',
-                        },
-                        redirect: 'follow',
-                        cache: 'no-store',
-                    })
-                    if (response.status === 403 || response.status === 503) {
-                        lastError = new Error(`HTTP ${response.status}`)
-                        lastError.response = {status: response.status}
-                        logger.warn?.('External catalog host blocked, trying fallback if any', {
-                            url,
-                            status: response.status,
-                        })
-                        continue
-                    }
-                    if (!response.ok) {
-                        const err = new Error(`HTTP ${response.status}`)
-                        err.response = {status: response.status}
-                        throw err
-                    }
-                    manifest = await response.json()
-                    usedUrl = url
-                    break
-                } finally {
-                    clearTimeout(timer)
-                }
-            } else {
-                const response = await httpClient.get(fetchUrl, {
-                    timeout: timeoutMs,
+                const response = await fetch(fetchUrl, {
+                    signal: ctrl.signal,
                     headers: {
                         Accept: 'application/json,text/plain,*/*',
-                        'User-Agent': 'Mozilla/5.0 (compatible; Cinemagraphy/2.1.14; +https://cinemagraphy.vercel.app)',
+                        'User-Agent': 'Mozilla/5.0 (compatible; Cinemagraphy/2.1.15; +https://cinemagraphy.vercel.app)',
+                        'Accept-Language': 'en-US,en;q=0.9',
                         'Cache-Control': 'no-cache',
                         Pragma: 'no-cache',
                     },
-                    validateStatus: (s) => (s >= 200 && s < 300) || s === 403 || s === 503,
-                    maxRedirects: 5,
+                    redirect: 'follow',
+                    cache: 'no-store',
                 })
-                if (response.status === 403 || response.status === 503) {
-                    lastError = new Error(`HTTP ${response.status}`)
-                    continue
+                if (!response.ok) {
+                    const err = new Error(`HTTP ${response.status}`)
+                    err.response = {status: response.status}
+                    throw err
                 }
-                manifest = response.data ?? {}
-                usedUrl = url
-                break
+                const manifest = await response.json()
+                return {url, manifest}
+            } finally {
+                clearTimeout(timer)
             }
-        } catch (error) {
-            lastError = error
-            const status = error?.response?.status
-            if (status === 403 || status === 503) {
-                logger.warn?.('External catalog fetch blocked', {url, status})
-                continue
-            }
-            // network errors: try next candidate
-            if (candidates.length > 1) {
-                logger.warn?.('External catalog fetch error, trying fallback', {
-                    url,
-                    message: error?.message,
-                })
-                continue
-            }
-            throw error
         }
+
+        const response = await httpClient.get(fetchUrl, {
+            timeout: timeoutMs,
+            headers: {
+                Accept: 'application/json,text/plain,*/*',
+                'User-Agent': 'Mozilla/5.0 (compatible; Cinemagraphy/2.1.15; +https://cinemagraphy.vercel.app)',
+                'Cache-Control': 'no-cache',
+                Pragma: 'no-cache',
+            },
+            validateStatus: (s) => s >= 200 && s < 300,
+            maxRedirects: 5,
+        })
+        return {url, manifest: response.data ?? {}}
     }
 
-    if (!manifest || typeof manifest !== 'object') {
-        throw lastError || new Error('External catalog manifest is not JSON')
+    const settled = await Promise.all(
+        candidates.map(async (url) => {
+            try {
+                return {ok: true, ...(await fetchManifest(url))}
+            } catch (error) {
+                logger.warn?.('External catalog candidate failed', {
+                    url,
+                    message: error?.message,
+                    status: error?.response?.status,
+                })
+                return {ok: false, url, error}
+            }
+        }),
+    )
+
+    const successes = settled.filter((row) => row.ok && row.manifest && typeof row.manifest === 'object')
+    if (!successes.length) {
+        const last = settled.find((row) => row.error)?.error
+        throw last || new Error('External catalog manifest fetch failed')
     }
+
+    // Prefer more catalogs (AIO UI vs stale edge), then prefer primary host match
+    successes.sort((a, b) => {
+        const na = Array.isArray(a.manifest.catalogs) ? a.manifest.catalogs.length : 0
+        const nb = Array.isArray(b.manifest.catalogs) ? b.manifest.catalogs.length : 0
+        if (nb !== na) return nb - na
+        if (a.url === primary) return -1
+        if (b.url === primary) return 1
+        return 0
+    })
+
+    const best = successes[0]
+    const usedUrl = best.url
+    const manifest = best.manifest
     const catalogs = Array.isArray(manifest.catalogs) ? manifest.catalogs : []
     if (!catalogs.length) {
         logger.warn?.('External catalog manifest has no catalogs', {manifestUrl: usedUrl})
+    } else {
+        logger.info?.('External catalog selected', {
+            primary,
+            usedUrl,
+            catalogs: catalogs.length,
+            tried: successes.map((s) => ({
+                url: s.url,
+                n: Array.isArray(s.manifest.catalogs) ? s.manifest.catalogs.length : 0,
+            })),
+        })
     }
     const metaResource = (manifest.resources ?? []).find((r) => (
         r === 'meta' || r?.name === 'meta'
@@ -877,24 +883,8 @@ async function fetchOneExternalCatalog(manifestUrl, httpClient, logger, timeoutM
         idPrefixes: manifest.idPrefixes ?? [],
         hasMeta: Boolean(metaResource),
         hasStream: Boolean(streamResource),
-        // original env URL (cache key) + resolved fetch URL (may be CF fallback host)
         manifestUrl: primary,
         resolvedUrl: usedUrl,
-    }
-}
-
-function rememberSource(source) {
-    if (!externalCatalogsCache || !source?.manifestUrl) return
-    const sources = [...(externalCatalogsCache.sources || [])]
-    const idx = sources.findIndex((s) => s.manifestUrl === source.manifestUrl)
-    if (idx >= 0) sources[idx] = source
-    else sources.push(source)
-    const failed = (externalCatalogsCache.failed || []).filter((u) => u !== source.manifestUrl)
-    externalCatalogsCache = {
-        ...externalCatalogsCache,
-        timestamp: Date.now(),
-        sources,
-        failed,
     }
 }
 
