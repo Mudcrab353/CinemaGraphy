@@ -18,10 +18,10 @@ import F2Media from './sources/f2media.js'
 import Peepboxtv from './sources/peepboxtv.js'
 import Serialblog from './sources/serialblog.js'
 import {ID_SEPARATOR, METADATA_SOURCE} from './sources/source.js'
-import {findExternalMetaSource, findExternalStreamSource, formatStreamTitle, getCinemeta, getExternalCatalogSources, getExternalCatalogStatus, invalidateExternalCatalogCache, getKitsuTitle, getSubtitle, getTMDBMetaFa, enrichMetaWithFaTmdb, enrichCatalogMetasWithoutRpdb, getTMDBMetaByTmdbId, getTMDBDetails, getTMDBTitle, getLandingTmdbCatalogs, getTorrentStreams, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxyExternalStream, proxySubtitles, translateCatalogName, buildOrderedExternalCatalogs} from './utils.js'
+import {findExternalMetaSource, findExternalStreamSource, formatStreamTitle, getCinemeta, getExternalCatalogSources, getExternalCatalogStatus, invalidateExternalCatalogCache, getKitsuTitle, getSubtitle, getTMDBMetaFa, enrichMetaWithFaTmdb, enrichCatalogMetasWithoutRpdb, getTMDBMetaByTmdbId, getTMDBDetails, getTMDBTitle, getLandingTmdbCatalogs, getTorrentStreams, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxyExternalStream, proxySubtitles, translateCatalogName, buildOrderedExternalCatalogs, rewriteTmdbImageUrls, parseTmdbImageProxyPath, tmdbRequest} from './utils.js'
 
 export const ADDON_PREFIX = 'ip'
-export const ADDON_VERSION = '2.1.28'
+export const ADDON_VERSION = '2.1.29'
 
 
 const PROVIDER_BASEURL_KEYS = [
@@ -771,6 +771,99 @@ export function createAddon({
         res.type('png').set('cache-control', 'public, max-age=86400').send(logoBytes)
     })
 
+    /** Public base for rewriting TMDB image URLs in this request (no hard-coded domain). */
+    function publicBase(req) {
+        try {
+            const urls = landingUrlsFromRequest(req, env)
+            return String(urls.manifestUrl || '').replace(/\/manifest\.json$/i, '')
+        } catch {
+            return ''
+        }
+    }
+
+    function jsonWithTmdbImages(req, res, payload, cacheControl) {
+        const base = publicBase(req)
+        const body = base ? rewriteTmdbImageUrls(payload, base) : payload
+        if (cacheControl) res.set('cache-control', cacheControl)
+        return res.status(200).type('json').json(body)
+    }
+
+    // TMDB Image Proxy — client in Iran never hits image.tmdb.org directly
+    // GET /api/tmdb-image/w500/abc123.jpg
+    addon.get(/^\/api\/tmdb-image\/([^/]+)\/(.+)$/, async (req, res) => {
+        try {
+            const size = req.params[0]
+            const fileParam = req.params[1]
+            const parsed = parseTmdbImageProxyPath(size, fileParam)
+            if (!parsed) {
+                return res.status(400).type('text/plain').send('invalid tmdb image path')
+            }
+            const upstream = await axios.get(parsed.upstream, {
+                responseType: 'arraybuffer',
+                timeout: 20_000,
+                maxRedirects: 2,
+                validateStatus: (s) => s >= 200 && s < 400,
+                headers: {Accept: 'image/*,*/*'},
+            })
+            const ct = upstream.headers?.['content-type'] || 'image/jpeg'
+            if (!String(ct).startsWith('image/') && !String(ct).includes('octet-stream')) {
+                return res.status(502).type('text/plain').send('upstream not image')
+            }
+            const buf = Buffer.from(upstream.data)
+            if (buf.length > 8 * 1024 * 1024) {
+                return res.status(502).type('text/plain').send('image too large')
+            }
+            res.status(200)
+                .type(ct)
+                .set({
+                    'cache-control': 'public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400',
+                    'cdn-cache-control': 'public, s-maxage=604800',
+                })
+                .send(buf)
+        } catch (error) {
+            const status = error?.response?.status
+            logger.error('TMDB image proxy failed', {
+                message: error?.message ?? String(error),
+                status: status || undefined,
+            })
+            if (status === 404) return res.status(404).type('text/plain').send('not found')
+            return res.status(502).type('text/plain').send('TMDB image proxy failed')
+        }
+    })
+
+    // Optional TMDB API proxy (server-side key only; query language/region preserved)
+    // GET /api/tmdb/movie/550?language=fa-IR
+    addon.get(/^\/api\/tmdb\/(.+)$/, async (req, res) => {
+        try {
+            const apiKey = env.TMDB_API_KEY
+            if (!apiKey) {
+                return res.status(503).type('json').json({error: 'TMDB_API_KEY not configured'})
+            }
+            const pathPart = String(req.params[0] || '').replace(/^\/+/, '')
+            if (!pathPart || pathPart.includes('..') || !/^[a-zA-Z0-9_/.-]+$/.test(pathPart)) {
+                return res.status(400).type('json').json({error: 'invalid path'})
+            }
+            const params = {...(req.query || {})}
+            delete params.api_key
+            delete params.apiKey
+            const data = await tmdbRequest(pathPart, params, axios, apiKey, logger)
+            res.status(200)
+                .type('json')
+                .set('cache-control', 'public, max-age=300, s-maxage=3600')
+                .json(data)
+        } catch (error) {
+            const status = error?.response?.status
+            logger.error('TMDB proxy request failed', {
+                message: error?.message ?? String(error),
+                status: status || undefined,
+            })
+            if (status === 429) return res.status(429).type('json').json({error: 'rate limited'})
+            if (status === 404) return res.status(404).type('json').json({error: 'not found'})
+            return res.status(502).type('json').json({error: 'TMDB upstream error'})
+        }
+    })
+
+
     addon.get('/guide', (req, res) => {
         try {
             const urls = landingUrlsFromRequest(req, env)
@@ -883,7 +976,7 @@ export function createAddon({
                         logger.warn?.('Catalog FA enrich skipped', {message: error?.message})
                     }
                 }
-                return res.json(data)
+                return jsonWithTmdbImages(req, res, data)
             }
 
             const provider = findCatalogProvider(req.params.id, activeProviders)
@@ -925,7 +1018,7 @@ export function createAddon({
                 resultCount: list.length,
                 metaCount: metas.length,
             })
-            return res.json({metas})
+            return jsonWithTmdbImages(req, res, {metas})
         } catch (error) {
             logResourceError(logger, 'Catalog', error)
             return res.json({metas: []})
@@ -946,16 +1039,16 @@ export function createAddon({
                         req.params.type, req.params.id, axios, env.TMDB_API_KEY, logger,
                     )
                     if (tmdbMeta) {
-                        return res.json({meta: tmdbMeta})
+                        return jsonWithTmdbImages(req, res, {meta: tmdbMeta})
                     }
                 }
                 try {
                     const cin = await services.getCinemeta(req.params.type, req.params.id)
                     if (cin?.meta) {
-                        return res.json(cin)
+                        return jsonWithTmdbImages(req, res, cin)
                     }
                     if (cin && cin.id) {
-                        return res.json({meta: cin})
+                        return jsonWithTmdbImages(req, res, {meta: cin})
                     }
                 } catch { /* ignore */ }
                 return res.json({})
@@ -974,7 +1067,7 @@ export function createAddon({
                     services.getCinemeta,
                 )
                 if (meta) {
-                    return res.json({meta})
+                    return jsonWithTmdbImages(req, res, {meta})
                 }
                 return res.json({})
             }
@@ -993,7 +1086,7 @@ export function createAddon({
                         req.params.id,
                     )
                 }
-                return res.json(data)
+                return jsonWithTmdbImages(req, res, data)
             }
 
             const parsedId = parseAddonId(req.params.id, providers)
@@ -1050,7 +1143,7 @@ export function createAddon({
                     defaultVideoId: result.meta.id,
                 }
             }
-            return res.json(result)
+            return jsonWithTmdbImages(req, res, result)
         } catch (error) {
             logResourceError(logger, 'Meta', error)
             return res.json({})
@@ -1162,10 +1255,7 @@ export function createAddon({
     addon.get('/tmdb/landing.json', async (req, res) => {
         try {
             const data = await getLandingTmdbCatalogs(axios, env.TMDB_API_KEY, logger)
-            res.status(200)
-                .type('json')
-                .set('cache-control', 'public, max-age=300, s-maxage=600')
-                .json(data)
+            return jsonWithTmdbImages(req, res, data, 'public, max-age=300, s-maxage=600')
         } catch (error) {
             logger.error('tmdb/landing.json failed', {message: error?.message ?? String(error)})
             res.status(200).type('json').json({

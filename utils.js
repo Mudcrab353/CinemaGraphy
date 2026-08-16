@@ -16,6 +16,128 @@ export function logAxiosError(error, logger = console, context = 'HTTP request f
     logger.error(context, details)
 }
 
+// ---------------------------------------------------------------------------
+// TMDB transport: server-side API client + image URL rewrite for clients in IR
+// ---------------------------------------------------------------------------
+
+const TMDB_API_BASE = 'https://api.themoviedb.org/3'
+const TMDB_IMAGE_HOST = 'image.tmdb.org'
+const TMDB_IMAGE_SIZES = new Set([
+    'w92', 'w154', 'w185', 'w300', 'w342', 'w500', 'w780', 'w1280',
+    'h632', 'original',
+])
+
+/** In-memory API cache (language/region aware). */
+const tmdbApiCache = new Map()
+const TMDB_API_CACHE_TTL_MS = Number(process.env.TMDB_CACHE_TTL_MS || 6 * 60 * 60 * 1000) // 6h default
+const TMDB_API_CACHE_MAX = 400
+
+function tmdbCacheKey(path, params = {}) {
+    const sorted = Object.keys(params || {})
+        .filter((k) => k !== 'api_key' && params[k] != null && params[k] !== '')
+        .sort()
+        .map((k) => `${k}=${params[k]}`)
+        .join('&')
+    return `${path}?${sorted}`
+}
+
+function tmdbCacheGet(key) {
+    const row = tmdbApiCache.get(key)
+    if (!row) return null
+    if (Date.now() - row.at > TMDB_API_CACHE_TTL_MS) {
+        tmdbApiCache.delete(key)
+        return null
+    }
+    return row.data
+}
+
+function tmdbCacheSet(key, data) {
+    tmdbApiCache.set(key, {at: Date.now(), data})
+    if (tmdbApiCache.size > TMDB_API_CACHE_MAX) {
+        const first = tmdbApiCache.keys().next().value
+        tmdbApiCache.delete(first)
+    }
+}
+
+/**
+ * Central TMDB API client (server-side only). Preserves language/region params.
+ * Never exposes api_key in returned data.
+ */
+export async function tmdbRequest(path, params = {}, httpClient = axios, apiKey = process.env.TMDB_API_KEY, logger = console) {
+    if (!apiKey) {
+        throw new Error('TMDB_API_KEY missing')
+    }
+    const cleanPath = String(path || '').replace(/^\/+/, '')
+    if (!cleanPath || cleanPath.includes('..')) {
+        throw new Error('Invalid TMDB path')
+    }
+    const key = tmdbCacheKey(cleanPath, params)
+    const cached = tmdbCacheGet(key)
+    if (cached != null) return cached
+
+    const response = await httpClient.get(`${TMDB_API_BASE}/${cleanPath}`, {
+        params: {...params, api_key: apiKey},
+        timeout: REQUEST_TIMEOUT_MS,
+    })
+    const data = response.data ?? null
+    if (data != null) tmdbCacheSet(key, data)
+    return data
+}
+
+/** Build absolute TMDB image URL (upstream). */
+export function tmdbImageUpstream(size, filePath) {
+    const s = TMDB_IMAGE_SIZES.has(String(size)) ? String(size) : 'w500'
+    let p = String(filePath || '').replace(/^\/+/, '')
+    if (!p) return null
+    return `https://${TMDB_IMAGE_HOST}/t/p/${s}/${p}`
+}
+
+/**
+ * Rewrite a single image.tmdb.org URL to same-origin proxy.
+ * Non-TMDB URLs (RPDB, provider CDNs, …) are left untouched.
+ */
+export function proxyTmdbImageUrl(url, publicBase) {
+    if (!url || typeof url !== 'string') return url
+    if (!publicBase) return url
+    const m = url.match(/^https?:\/\/image\.tmdb\.org\/t\/p\/([a-zA-Z0-9]+)\/(.+)$/i)
+    if (!m) return url
+    const size = m[1]
+    const file = m[2].replace(/^\/+/, '')
+    if (!/^[a-zA-Z0-9]+$/.test(size)) return url
+    if (!file || file.includes('..') || /[^\w./-]/.test(file)) return url
+    const base = String(publicBase).replace(/\/$/, '')
+    return `${base}/api/tmdb-image/${size}/${file}`
+}
+
+/** Deep-rewrite image.tmdb.org strings inside meta / catalog JSON. */
+export function rewriteTmdbImageUrls(value, publicBase, seen = new WeakSet()) {
+    if (!publicBase) return value
+    if (typeof value === 'string') {
+        return proxyTmdbImageUrl(value, publicBase)
+    }
+    if (typeof value !== 'object' || value === null) return value
+    if (seen.has(value)) return value
+    seen.add(value)
+    if (Array.isArray(value)) {
+        return value.map((v) => rewriteTmdbImageUrls(v, publicBase, seen))
+    }
+    const out = {}
+    for (const [k, child] of Object.entries(value)) {
+        out[k] = rewriteTmdbImageUrls(child, publicBase, seen)
+    }
+    return out
+}
+
+/** Validate image proxy path segment (no open-proxy / SSRF). */
+export function parseTmdbImageProxyPath(size, filePath) {
+    const s = String(size || '')
+    if (!/^[a-zA-Z0-9]+$/.test(s)) return null
+    let file = String(filePath || '').replace(/^\/+/, '')
+    if (!file || file.includes('..') || file.includes('\\') || /[^\w./-]/.test(file)) return null
+    return {size: s, file, upstream: `https://${TMDB_IMAGE_HOST}/t/p/${s}/${file}`}
+}
+
+
 export async function getCinemeta(type, imdbId, httpClient = axios) {
     if (!imdbId) {
         return null
@@ -46,25 +168,21 @@ export async function searchAndGetTMDB(
     }
 
     try {
-        const searchResponse = await httpClient.get('https://api.themoviedb.org/3/search/multi', {
-            params: {api_key: apiKey, query: title},
-            timeout: REQUEST_TIMEOUT_MS,
-        })
+        const searchData = await tmdbRequest('search/multi', {query: title}, httpClient, apiKey, logger)
         const expectedMediaType = type === 'series' ? 'tv' : type
-        const results = Array.isArray(searchResponse.data?.results) ? searchResponse.data.results : []
+        const results = Array.isArray(searchData?.results) ? searchData.results : []
         const item = results.find((result) => result.media_type === expectedMediaType)
         if (!item?.id || !['movie', 'tv'].includes(item.media_type)) {
             return null
         }
 
-        const detailsResponse = await httpClient.get(
-            `https://api.themoviedb.org/3/${item.media_type}/${item.id}`,
-            {
-                params: {api_key: apiKey, append_to_response: 'external_ids'},
-                timeout: REQUEST_TIMEOUT_MS,
-            },
+        return await tmdbRequest(
+            `${item.media_type}/${item.id}`,
+            {append_to_response: 'external_ids'},
+            httpClient,
+            apiKey,
+            logger,
         )
-        return detailsResponse.data ?? null
     } catch (error) {
         logAxiosError(error, logger, 'Unable to resolve IMDb ID through TMDB')
         return null
@@ -97,11 +215,14 @@ async function getTMDBGenreMap(type, httpClient, apiKey, logger) {
         return cached.genres
     }
     try {
-        const response = await httpClient.get(
-            `https://api.themoviedb.org/3/genre/${type === 'series' ? 'tv' : 'movie'}/list`,
-            {params: {api_key: apiKey, language: 'fa-IR'}, timeout: REQUEST_TIMEOUT_MS},
+        const data = await tmdbRequest(
+            `genre/${type === 'series' ? 'tv' : 'movie'}/list`,
+            {language: 'fa-IR'},
+            httpClient,
+            apiKey,
+            logger,
         )
-        const genres = new Map((response.data?.genres ?? []).map((g) => [g.id, g.name]))
+        const genres = new Map((data?.genres ?? []).map((g) => [g.id, g.name]))
         tmdbGenreCache.set(type, {timestamp: Date.now(), genres})
         return genres
     } catch (error) {
@@ -147,15 +268,13 @@ export function pickFaOrEnGenres(genresFa, genresEn) {
 
 
 async function fetchTmdbDetailLang(kind, tmdbId, lang, httpClient, apiKey) {
-    const response = await httpClient.get(`https://api.themoviedb.org/3/${kind}/${tmdbId}`, {
-        params: {
-            api_key: apiKey,
-            language: lang,
-            append_to_response: 'external_ids',
-        },
-        timeout: REQUEST_TIMEOUT_MS,
-    })
-    return response.data ?? {}
+    const data = await tmdbRequest(
+        `${kind}/${tmdbId}`,
+        {language: lang, append_to_response: 'external_ids'},
+        httpClient,
+        apiKey,
+    )
+    return data ?? {}
 }
 
 export async function getTMDBMetaFa(type, imdbId, httpClient = axios, apiKey, logger = console) {
@@ -164,15 +283,15 @@ export async function getTMDBMetaFa(type, imdbId, httpClient = axios, apiKey, lo
     }
 
     try {
-        const findResponse = await httpClient.get(
-            `https://api.themoviedb.org/3/find/${encodeURIComponent(imdbId)}`,
-            {
-                params: {api_key: apiKey, external_source: 'imdb_id', language: 'fa-IR'},
-                timeout: REQUEST_TIMEOUT_MS,
-            },
+        const findData = await tmdbRequest(
+            `find/${encodeURIComponent(imdbId)}`,
+            {external_source: 'imdb_id', language: 'fa-IR'},
+            httpClient,
+            apiKey,
+            logger,
         )
         const resultsKey = type === 'series' ? 'tv_results' : 'movie_results'
-        const item = findResponse.data?.[resultsKey]?.[0]
+        const item = findData?.[resultsKey]?.[0]
         if (!item?.id) {
             return null
         }
@@ -318,17 +437,13 @@ async function searchTmdbMetaByTitle(title, type, httpClient, apiKey, logger = c
     try {
         const kind = type === 'series' || type === 'tv' ? 'tv' : 'multi'
         const path = kind === 'tv' ? 'search/tv' : (type === 'movie' ? 'search/movie' : 'search/multi')
-        const response = await httpClient.get(`https://api.themoviedb.org/3/${path}`, {
-            params: {
-                api_key: apiKey,
-                query: String(title).replace(/\s*season\s*\d+/ig, '').trim(),
-                language: 'fa-IR',
-                include_adult: false,
-                page: 1,
-            },
-            timeout: REQUEST_TIMEOUT_MS,
-        })
-        const results = response.data?.results || []
+        const data = await tmdbRequest(path, {
+            query: String(title).replace(/\s*season\s*\d+/ig, '').trim(),
+            language: 'fa-IR',
+            include_adult: false,
+            page: 1,
+        }, httpClient, apiKey, logger)
+        const results = data?.results || []
         let hit = results[0]
         if (path === 'search/multi') {
             hit = results.find((r) => r.media_type === 'movie' || r.media_type === 'tv') || results[0]
@@ -993,11 +1108,13 @@ export async function getTMDBDetails(type, tmdbId, httpClient = axios, apiKey, l
     }
     const kind = type === 'series' ? 'tv' : 'movie'
     try {
-        const response = await httpClient.get(`https://api.themoviedb.org/3/${kind}/${tmdbId}`, {
-            params: {api_key: apiKey, append_to_response: 'external_ids'},
-            timeout: REQUEST_TIMEOUT_MS,
-        })
-        const data = response.data ?? {}
+        const data = (await tmdbRequest(
+            `${kind}/${tmdbId}`,
+            {append_to_response: 'external_ids'},
+            httpClient,
+            apiKey,
+            logger,
+        )) ?? {}
         const title = data.title || data.name || data.original_title || data.original_name || null
         const imdbId = data.external_ids?.imdb_id
             || data.imdb_id
@@ -1875,21 +1992,15 @@ async function tmdbListMerged(path, params, httpClient, apiKey) {
 }
 
 async function tmdbList(path, params, httpClient, apiKey) {
-    const response = await httpClient.get(`https://api.themoviedb.org/3/${path}`, {
-        params: {api_key: apiKey, language: 'fa-IR', ...params},
-        timeout: REQUEST_TIMEOUT_MS,
-    })
-    return Array.isArray(response.data?.results) ? response.data.results : []
+    const data = await tmdbRequest(path, {language: 'fa-IR', ...params}, httpClient, apiKey)
+    return Array.isArray(data?.results) ? data.results : []
 }
 
 async function tmdbVideos(mediaType, id, httpClient, apiKey) {
     try {
         const kind = mediaType === 'tv' ? 'tv' : 'movie'
-        const response = await httpClient.get(`https://api.themoviedb.org/3/${kind}/${id}/videos`, {
-            params: {api_key: apiKey, language: 'en-US'},
-            timeout: REQUEST_TIMEOUT_MS,
-        })
-        const results = Array.isArray(response.data?.results) ? response.data.results : []
+        const data = await tmdbRequest(`${kind}/${id}/videos`, {language: 'en-US'}, httpClient, apiKey)
+        const results = Array.isArray(data?.results) ? data.results : []
         const trailer = results.find((v) => v.site === 'YouTube' && /trailer/i.test(v.type))
             || results.find((v) => v.site === 'YouTube')
         return trailer ? {key: trailer.key, name: trailer.name, site: trailer.site} : null

@@ -8,7 +8,7 @@
     <a href="https://cinemagraphy.vercel.app/manifest.json"><img src="https://img.shields.io/badge/manifest-install-blue?style=for-the-badge" alt="Manifest" /></a>
   </p>
   <p>
-    <img src="https://img.shields.io/badge/version-2.1.28-blue.svg" alt="2.1.28" />
+    <img src="https://img.shields.io/badge/version-2.1.29-blue.svg" alt="2.1.29" />
     <img src="https://img.shields.io/badge/vercel-ready-black.svg" alt="Vercel" />
     <img src="https://img.shields.io/badge/cloudflare-workers-orange.svg" alt="Workers" />
     <img src="https://img.shields.io/badge/license-ISC-lightgrey.svg" alt="ISC" />
@@ -21,6 +21,9 @@
 1. [Stremio](https://www.stremio.com/downloads) را نصب کنید  
 2. منیفست عمومی: `https://cinemagraphy.vercel.app/manifest.json`  
 3. یا از [سایت](https://cinemagraphy.vercel.app/) · [شخصی‌سازی](https://cinemagraphy.vercel.app/configure) · [راهنما](https://cinemagraphy.vercel.app/guide)
+
+### 🇬🇧 Quick install
+Add: `https://cinemagraphy.vercel.app/manifest.json`
 
 ---
 
@@ -42,6 +45,10 @@
 فورک و توسعه‌ی شخصی از **[stremio-ir-providers](https://github.com/MrMohebi/stremio-ir-providers)** اثر **آقای محبی (MrMohebi)**.
 
 ---
+
+### نسخه ۲.۱.۲۹ — خلاصه
+- TMDB Image Proxy برای کاربران ایران (بدون VPN)
+- client مرکزی + کش API؛ فارسی‌سازی قبلی حفظ شد
 
 ### نسخه ۲.۱.۲۸ — خلاصه
 - ترتیب کاتالوگ: ۱۰۱ (داغ → برترین تاریخ → کره‌ای/چینی → استریمینگ) → انیمه → IPTV آخر
@@ -83,4 +90,4 @@
 ---
 
 ### License
-ISC — با احترام به پروژهٔ اصلی آقای محبی.
+ISC — با احترام به پروژهٔ اصلی محبی.
