@@ -18,10 +18,10 @@ import F2Media from './sources/f2media.js'
 import Peepboxtv from './sources/peepboxtv.js'
 import Serialblog from './sources/serialblog.js'
 import {ID_SEPARATOR, METADATA_SOURCE} from './sources/source.js'
-import {findExternalMetaSource, findExternalStreamSource, formatStreamTitle, getCinemeta, getExternalCatalogSources, getExternalCatalogStatus, invalidateExternalCatalogCache, getKitsuTitle, getSubtitle, getTMDBMetaFa, getTMDBMetaByTmdbId, getTMDBDetails, getTMDBTitle, getLandingTmdbCatalogs, getTorrentStreams, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxyExternalStream, proxySubtitles, translateCatalogName} from './utils.js'
+import {findExternalMetaSource, findExternalStreamSource, formatStreamTitle, getCinemeta, getExternalCatalogSources, getExternalCatalogStatus, invalidateExternalCatalogCache, getKitsuTitle, getSubtitle, getTMDBMetaFa, enrichMetaWithFaTmdb, getTMDBMetaByTmdbId, getTMDBDetails, getTMDBTitle, getLandingTmdbCatalogs, getTorrentStreams, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxyExternalStream, proxySubtitles, translateCatalogName} from './utils.js'
 
 export const ADDON_PREFIX = 'ip'
-export const ADDON_VERSION = '2.1.16'
+export const ADDON_VERSION = '2.1.18'
 
 
 const PROVIDER_BASEURL_KEYS = [
@@ -912,14 +912,25 @@ export function createAddon({
             const {env: activeEnv, providers: activeProviders} = requestScope(req)
             const env = activeEnv
             const providers = activeProviders
-            // IMDb ids → Persian TMDB meta
-            if (req.params.id.startsWith('tt') && env.TMDB_API_KEY) {
-                const tmdbMeta = await getTMDBMetaFa(
-                    req.params.type, req.params.id, axios, env.TMDB_API_KEY, logger,
-                )
-                if (tmdbMeta) {
-                    return res.json({meta: tmdbMeta})
+            // IMDb ids → Persian TMDB meta (fallback Cinemeta if TMDB misses)
+            if (req.params.id.startsWith('tt')) {
+                if (env.TMDB_API_KEY) {
+                    const tmdbMeta = await getTMDBMetaFa(
+                        req.params.type, req.params.id, axios, env.TMDB_API_KEY, logger,
+                    )
+                    if (tmdbMeta) {
+                        return res.json({meta: tmdbMeta})
+                    }
                 }
+                try {
+                    const cin = await services.getCinemeta(req.params.type, req.params.id)
+                    if (cin?.meta) {
+                        return res.json(cin)
+                    }
+                    if (cin && cin.id) {
+                        return res.json({meta: cin})
+                    }
+                } catch { /* ignore */ }
                 return res.json({})
             }
 
@@ -945,6 +956,16 @@ export function createAddon({
             const metaSource = findExternalMetaSource(externalSources, req.params.id)
             if (metaSource) {
                 const data = await proxyExternalMeta(metaSource, req.params.type, req.params.id, axios, logger)
+                if (data?.meta && env.TMDB_API_KEY) {
+                    data.meta = await enrichMetaWithFaTmdb(
+                        data.meta,
+                        req.params.type,
+                        axios,
+                        env.TMDB_API_KEY,
+                        logger,
+                        req.params.id,
+                    )
+                }
                 return res.json(data)
             }
 
@@ -976,6 +997,16 @@ export function createAddon({
                 }
             }
 
+            if (env.TMDB_API_KEY && result.meta) {
+                result.meta = await enrichMetaWithFaTmdb(
+                    result.meta,
+                    req.params.type,
+                    axios,
+                    env.TMDB_API_KEY,
+                    logger,
+                    result.meta.id,
+                )
+            }
             if (req.params.type === 'series') {
                 const videos = Array.isArray(result.meta.videos) ? result.meta.videos : []
                 result.meta.videos = videos

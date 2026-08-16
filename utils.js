@@ -132,23 +132,48 @@ export async function getTMDBMetaFa(type, imdbId, httpClient = axios, apiKey, lo
         )
         const resultsKey = type === 'series' ? 'tv_results' : 'movie_results'
         const item = findResponse.data?.[resultsKey]?.[0]
-        if (!item) {
+        if (!item?.id) {
             return null
         }
 
+        const kind = type === 'series' ? 'tv' : 'movie'
+        let detail = item
+        try {
+            const detailResponse = await httpClient.get(
+                `https://api.themoviedb.org/3/${kind}/${item.id}`,
+                {
+                    params: {api_key: apiKey, language: 'fa-IR'},
+                    timeout: REQUEST_TIMEOUT_MS,
+                },
+            )
+            if (detailResponse.data) detail = detailResponse.data
+        } catch {
+            // keep find() payload
+        }
+
         const genreMap = await getTMDBGenreMap(type, httpClient, apiKey, logger)
-        const genres = (item.genre_ids ?? []).map((id) => genreMap.get(id)).filter(Boolean)
-        const year = (item.release_date || item.first_air_date || '').slice(0, 4) || null
+        const genreIds = detail.genres?.map((g) => g.id) ?? detail.genre_ids ?? item.genre_ids ?? []
+        const genresFromDetail = (detail.genres ?? []).map((g) => g.name).filter(Boolean)
+        const genres = genresFromDetail.length
+            ? genresFromDetail
+            : genreIds.map((id) => genreMap.get(id)).filter(Boolean)
+        const year = (detail.release_date || detail.first_air_date || item.release_date || item.first_air_date || '')
+            .slice(0, 4) || null
+        const vote = detail.vote_average ?? item.vote_average
 
         return {
             id: imdbId,
             type,
-            name: item.title || item.name || null,
-            poster: item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : null,
-            background: item.backdrop_path ? `https://image.tmdb.org/t/p/original${item.backdrop_path}` : null,
-            description: item.overview || null,
+            name: detail.title || detail.name || item.title || item.name || null,
+            poster: (detail.poster_path || item.poster_path)
+                ? `https://image.tmdb.org/t/p/w500${detail.poster_path || item.poster_path}`
+                : null,
+            background: (detail.backdrop_path || item.backdrop_path)
+                ? `https://image.tmdb.org/t/p/original${detail.backdrop_path || item.backdrop_path}`
+                : null,
+            description: detail.overview || item.overview || null,
             releaseInfo: year,
-            imdbRating: item.vote_average ? String(Math.round(item.vote_average * 10) / 10) : null,
+            imdbRating: vote ? String(Math.round(vote * 10) / 10) : null,
             genres: genres.length ? genres : undefined,
         }
     } catch (error) {
@@ -156,6 +181,63 @@ export async function getTMDBMetaFa(type, imdbId, httpClient = axios, apiKey, lo
         return null
     }
 }
+
+/**
+ * Soft overlay: Persian name/description/genres from TMDB when available.
+ * Keeps existing posters (RPDB / Cinemeta / addon) unless missing.
+ * Never changes id, videos, links, or stream-related fields.
+ */
+export function extractImdbIdFromMeta(meta, fallbackId = '') {
+    if (!meta || typeof meta !== 'object') {
+        const m = String(fallbackId || '').match(/^(tt\d+)/)
+        return m ? m[1] : null
+    }
+    for (const key of ['imdb_id', 'imdbId', 'imdb']) {
+        const v = meta[key]
+        if (typeof v === 'string' && /^tt\d+/.test(v)) return v.split(/[^a-z0-9]/i)[0]
+    }
+    const id = String(meta.id || fallbackId || '')
+    if (/^tt\d+/.test(id)) return id.split(/[^a-z0-9]/i)[0]
+    const m = id.match(/(tt\d{5,})/)
+    return m ? m[1] : null
+}
+
+export async function enrichMetaWithFaTmdb(
+    meta,
+    type,
+    httpClient = axios,
+    apiKey,
+    logger = console,
+    fallbackId = '',
+) {
+    if (!meta || typeof meta !== 'object' || !apiKey) {
+        return meta
+    }
+    // Skip pure live/tv channel style ids without imdb
+    const imdbId = extractImdbIdFromMeta(meta, fallbackId)
+    if (!imdbId) {
+        return meta
+    }
+    try {
+        const fa = await getTMDBMetaFa(type, imdbId, httpClient, apiKey, logger)
+        if (!fa) return meta
+        const out = {...meta}
+        if (fa.name) out.name = fa.name
+        if (fa.description) out.description = fa.description
+        if (Array.isArray(fa.genres) && fa.genres.length) out.genres = fa.genres
+        if (fa.releaseInfo && !out.releaseInfo) out.releaseInfo = fa.releaseInfo
+        if (fa.imdbRating && !out.imdbRating) out.imdbRating = fa.imdbRating
+        // Poster: keep RPDB/addon (ratings baked into image). Only fill if missing.
+        if (!out.poster && fa.poster) out.poster = fa.poster
+        // Background: prefer clean TMDB backdrop (no rating badges)
+        if (fa.background) out.background = fa.background
+        return out
+    } catch (error) {
+        logAxiosError(error, logger, 'enrichMetaWithFaTmdb failed')
+        return meta
+    }
+}
+
 
 
 /**
