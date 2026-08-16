@@ -238,6 +238,105 @@ export async function enrichMetaWithFaTmdb(
     }
 }
 
+function isRpdbPosterUrl(url) {
+    return /ratingposterdb|\brpdb\b/i.test(String(url || ''))
+}
+
+/** Short-lived cache for catalog-list TMDB enrich (avoid N identical finds). */
+const catalogFaCache = new Map()
+const CATALOG_FA_CACHE_TTL_MS = 30 * 60 * 1000
+
+function catalogFaCacheGet(key) {
+    const row = catalogFaCache.get(key)
+    if (!row) return null
+    if (Date.now() - row.at > CATALOG_FA_CACHE_TTL_MS) {
+        catalogFaCache.delete(key)
+        return null
+    }
+    return row.value
+}
+
+function catalogFaCacheSet(key, value) {
+    catalogFaCache.set(key, {at: Date.now(), value})
+    if (catalogFaCache.size > 800) {
+        const first = catalogFaCache.keys().next().value
+        catalogFaCache.delete(first)
+    }
+}
+
+/**
+ * For catalog grids (e.g. 101 without RPDB): if a meta has no RPDB poster,
+ * fill poster/name/description/genres from TMDB fa-IR using the user's key.
+ * Items that already have RPDB posters are left untouched (ratings stay).
+ */
+export async function enrichCatalogMetasWithoutRpdb(
+    metas,
+    type,
+    httpClient = axios,
+    apiKey,
+    logger = console,
+    {concurrency = 6} = {},
+) {
+    if (!apiKey || !Array.isArray(metas) || !metas.length) {
+        return metas
+    }
+
+    const work = metas.map((meta, index) => ({meta, index}))
+    const out = metas.map((m) => (m && typeof m === 'object' ? {...m} : m))
+
+    let cursor = 0
+    async function worker() {
+        while (cursor < work.length) {
+            const my = cursor++
+            const {meta, index} = work[my]
+            if (!meta || typeof meta !== 'object') continue
+            if (isRpdbPosterUrl(meta.poster)) continue
+
+            const imdbId = extractImdbIdFromMeta(meta, meta.id)
+            let tmdbNumeric = null
+            const idStr = String(meta.id || '')
+            if (idStr.startsWith('tmdb:')) {
+                tmdbNumeric = idStr.split(':')[1]
+            } else if (meta.tmdb_id || meta.tmdbId) {
+                tmdbNumeric = String(meta.tmdb_id || meta.tmdbId)
+            }
+
+            const cacheKey = imdbId
+                ? `imdb:${type}:${imdbId}`
+                : (tmdbNumeric ? `tmdb:${type}:${tmdbNumeric}` : null)
+            if (!cacheKey) continue
+
+            try {
+                let fa = catalogFaCacheGet(cacheKey)
+                if (!fa) {
+                    if (imdbId) {
+                        fa = await getTMDBMetaFa(type, imdbId, httpClient, apiKey, logger)
+                    } else if (tmdbNumeric) {
+                        fa = await getTMDBMetaByTmdbId(type, tmdbNumeric, httpClient, apiKey, logger, null)
+                    }
+                    if (fa) catalogFaCacheSet(cacheKey, fa)
+                }
+                if (!fa) continue
+
+                const row = out[index]
+                if (fa.poster) row.poster = fa.poster
+                if (fa.background) row.background = fa.background
+                if (fa.name) row.name = fa.name
+                if (fa.description) row.description = fa.description
+                if (Array.isArray(fa.genres) && fa.genres.length) row.genres = fa.genres
+                if (fa.releaseInfo && !row.releaseInfo) row.releaseInfo = fa.releaseInfo
+            } catch (error) {
+                logAxiosError(error, logger, 'catalog TMDB fa enrich failed')
+            }
+        }
+    }
+
+    const n = Math.min(concurrency, work.length)
+    await Promise.all(Array.from({length: n}, () => worker()))
+    return out
+}
+
+
 
 
 /**
