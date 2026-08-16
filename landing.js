@@ -59,14 +59,14 @@ export function renderLandingPage({
   manifestUrl = PUBLIC_INSTALL,
   installUrl,
   logoUrl = '/logo.png',
-  version = '2.1.27',
+  version = '2.1.28',
 } = {}) {
   const m = escapeHtml(manifestUrl || PUBLIC_INSTALL)
   const install = escapeHtml(
     installUrl || `stremio://${String(manifestUrl || PUBLIC_INSTALL).replace(/^https?:\/\//i, '')}`,
   )
   const logo = escapeHtml(logoUrl || LOGO_FALLBACK)
-  const ver = escapeHtml(String(version || '2.1.27'))
+  const ver = escapeHtml(String(version || '2.1.28'))
 
   const addonCards = RECOMMENDED.map(
     (a) => `
@@ -566,11 +566,11 @@ h2{font-size:1.15rem;margin:26px 0 10px}
 
 export function renderConfigurePage({
   logoUrl = '/logo.png',
-  version = '2.1.27',
+  version = '2.1.28',
   origin = PUBLIC_SITE,
 } = {}) {
   const logo = escapeHtml(logoUrl || LOGO_FALLBACK)
-  const ver = escapeHtml(String(version || '2.1.27'))
+  const ver = escapeHtml(String(version || '2.1.28'))
   const originClean = String(origin || PUBLIC_SITE).replace(/\/$/, '')
   const base = escapeHtml(originClean)
   const baseJson = JSON.stringify(originClean)
@@ -746,11 +746,11 @@ export function renderConfigurePage({
 
 export function renderGuidePage({
   logoUrl = '/logo.png',
-  version = '2.1.27',
+  version = '2.1.28',
   manifestUrl = PUBLIC_INSTALL,
 } = {}) {
   const logo = escapeHtml(logoUrl || LOGO_FALLBACK)
-  const ver = escapeHtml(String(version || '2.1.27'))
+  const ver = escapeHtml(String(version || '2.1.28'))
   const install = escapeHtml(
     'stremio://' + String(manifestUrl || PUBLIC_INSTALL).replace(/^https?:\/\//i, ''),
   )
@@ -841,17 +841,47 @@ export function renderGuidePage({
 </div>
 
 <div class="gbox glass">
-<h2 class="lang-fa">۴) حذف / مخفی کردن کاتالوگ‌های پیش‌فرض (Cinemeta)</h2>
-<h2 class="lang-en">4) Hide default Stremio catalogs (Cinemeta)</h2>
-<p class="lang-fa muted">استریمیو معمولاً Cinemeta را «Protected» می‌کند و Uninstall کامل نمی‌دهد. برای خلوت‌کردن صفحهٔ اصلی می‌توانید کاتالوگ‌های اضافه را با ابزار رسمی‌مانند زیر مخفی کنید. فقط از لینک زیر استفاده کنید؛ هیچ دسترسی به اکانت شما نمی‌خواهد و افزونهٔ سینماگرافی را دست نمی‌زند.</p>
-<p class="lang-en muted">Stremio often marks Cinemeta as Protected. You can hide extra default catalogs with the tool below. It does not need your password and does not change Cinemagraphy.</p>
+<div class="gbox glass">
+<h2 class="lang-fa">۴) خلوت کردن صفحه اصلی — مخفی کردن کاتالوگ‌های Cinemeta</h2>
+<h2 class="lang-en">4) Hide default Cinemeta catalogs</h2>
+
+<p class="lang-fa muted">استریمیو معمولاً افزونهٔ رسمی <b>Cinemeta</b> را قفل می‌کند (Addon is protected) و نمی‌شود کامل حذفش کرد. این طبیعی است؛ Cinemeta برای جستجو و مشخصات فیلم لازم است. کاری که بیشتر کاربران می‌خواهند این است که <b>ردیف‌های شلوغ «محبوب / جدید / …» از صفحهٔ اصلی و Discover برداشته شود</b> تا کاتالوگ‌های سینماگرافی و ۱۰۱ جلوتر دیده شوند.</p>
+<p class="lang-en muted">Stremio locks official <b>Cinemeta</b> (protected). You usually want to <b>hide</b> its Board/Discover rows — not uninstall the whole addon.</p>
+
+<p class="lang-fa muted">ابزار رایگان و متن‌باز پیشنهادی: <a href="https://hidden-cinemeta.vercel.app/" target="_blank" rel="noopener">hidden-cinemeta.vercel.app</a> · کد منبع: <a href="https://github.com/Skarian/hidden-cinemeta" target="_blank" rel="noopener">GitHub Skarian/hidden-cinemeta</a></p>
+<p class="lang-en muted">Tool: <a href="https://hidden-cinemeta.vercel.app/" target="_blank" rel="noopener">hidden-cinemeta.vercel.app</a> (open source).</p>
+
 <div class="olist">
-<div class="step glass"><b>1</b> <span class="lang-fa">در مرورگر باز کنید:</span><span class="lang-en">Open in browser:</span> <a href="https://hidden-cinemeta.vercel.app/" target="_blank" rel="noopener">hidden-cinemeta.vercel.app</a></div>
-<div class="step glass"><b>2</b> <span class="lang-fa">طبق راهنمای همان صفحه، کاتالوگ‌های اضافی Cinemeta را مخفی کنید</span><span class="lang-en">Follow that page to hide extra Cinemeta catalogs</span></div>
-<div class="step glass"><b>3</b> <span class="lang-fa">استریمیو را یک‌بار ببندید و دوباره باز کنید</span><span class="lang-en">Restart Stremio once</span></div>
+<div class="step glass"><b>💻</b>
+<span class="lang-fa"><b>روی کامپیوتر:</b> بروید به <a href="https://web.stremio.com/" target="_blank" rel="noopener">web.stremio.com</a> و با همان حساب استریمیو وارد شوید. کلید <code>F12</code> (یا راست‌کلیک → Inspect) را بزنید، تب <b>Console</b> را باز کنید. این را بچسبانید و Enter بزنید:<br/>
+<code style="display:block;margin-top:6px;direction:ltr;text-align:left;font-size:.8rem">JSON.parse(localStorage.getItem("authKey"))</code>
+اگر خالی بود این را امتحان کنید:<br/>
+<code style="display:block;margin-top:6px;direction:ltr;text-align:left;font-size:.8rem">JSON.parse(localStorage.getItem("profile")).auth.key</code>
+رشته‌ای که چاپ می‌شود را <b>بدون علامت نقل‌قول</b> کپی کنید. بعد در <a href="https://hidden-cinemeta.vercel.app/" target="_blank" rel="noopener">صفحهٔ ابزار</a> در حالت <b>Hide</b> وارد کنید، از افزونه‌ها بک‌آپ بگیرید، و Hide را بزنید. استریمیو را یک‌بار ببندید و دوباره باز کنید.</span>
+<span class="lang-en"><b>Desktop:</b> Log into web.stremio.com → F12 Console → run the authKey snippet → paste into hidden-cinemeta (Hide mode) → backup → hide → restart Stremio.</span>
 </div>
-<p class="lang-fa muted" style="margin-top:10px">امنیت: این ابزار فقط تنظیم نمایش کاتالوگ در کلاینت استریمیو است؛ لینک را از همین راهنما باز کنید و سایت‌های ناشناس مشابه را نصب نکنید.</p>
-<p class="lang-en muted" style="margin-top:10px">Security: catalog visibility only — open the link from this guide, avoid unknown clones.</p>
+<div class="step glass"><b>📱</b>
+<span class="lang-fa"><b>روی گوشی:</b> این ابزار عملاً روی <b>مرورگر دسکتاپ</b> طراحی شده (چون به Console نیاز دارد). ساده‌ترین راه: همان حساب را یک‌بار در مرورگر کامپیوتر (یا تبلت با کیبورد) وارد کنید و مراحل بالا را انجام دهید. تنظیمات به <b>حساب ابری استریمیو</b> وصل است؛ بعد از sync، روی اپ موبایل/تلویزیون هم صفحهٔ اصلی خلوت می‌شود. اگر فقط موبایل دارید، از مرورگر دسکتاپ دوست/کافی‌نت امن استفاده کنید و بعد از کار، از حساب خارج شوید.</span>
+<span class="lang-en"><b>Phone:</b> Use a desktop browser once with the same Stremio account; changes sync to mobile/TV apps.</span>
+</div>
+</div>
+
+<div class="gbox glass call" style="margin-top:12px;padding:12px;border:1px solid rgba(254,119,67,.35)">
+<p class="lang-fa" style="margin:0"><b>امنیت — دربارهٔ authKey:</b> این کلید همان «توکن نشست» حساب استریمیوی شماست که داخل مرورگر ذخیره شده. ابزار برای تغییر لیست افزونه‌ها از API استریمیو به آن نیاز دارد. کد منبع ابزار روی GitHub باز است و کارش مخفی‌کردن کاتالوگ است، نه دزدیدن پسورد. با این حال:</p>
+<p class="lang-en" style="margin:0"><b>Security — authKey:</b> session token for Stremio API. Tool is open-source; still treat the key carefully.</p>
+<ul class="lang-fa muted" style="margin:8px 0 0;padding-right:18px">
+<li>فقط از لینک رسمی همین راهنما / ریپوی GitHub بالا استفاده کنید؛ سایت‌های کپی‌شده را باز نکنید.</li>
+<li>کلید را در چت، تلگرام عمومی یا اسکرین‌شات نفرستید.</li>
+<li>بعد از کار، ترجیحاً از web.stremio خارج شوید (Logout) تا نشست تازه شود.</li>
+<li>اگر نگرانید: رمز عبور حساب استریمیو را عوض کنید و دوباره وارد شوید.</li>
+<li>تیم رسمی استریمیو دستکاری لیست Cinemeta را «سوءاستفاده از API» می‌داند و ممکن است در پشتیبانی محدودتان کند؛ افزونه را <b>حذف کامل</b> نکنید — فقط مخفی کردن کاتالوگ.</li>
+</ul>
+<ul class="lang-en muted" style="margin:8px 0 0;padding-left:18px">
+<li>Only the official tool URL; don’t paste the key in chats.</li>
+<li>Log out of web.stremio after; change password if worried.</li>
+<li>Hide catalogs — don’t fully remove Cinemeta (breaks metadata).</li>
+</ul>
+</div>
 </div>
 
 <div class="gbox glass">
