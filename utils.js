@@ -480,149 +480,185 @@ export async function getTMDBMetaByTmdbId(
 
 // ---------------------------------------------------------------------------
 // Persian catalog-name translation for external aggregated catalogs
-// (101Catalogs, Anime Catalogs, ...). Pattern-based rather than a fixed
-// per-name dictionary, so it covers catalogs we haven't seen yet too.
+// Natural Iranian movie-site tone; never emit "سریال - سریال" style clones.
 // ---------------------------------------------------------------------------
 
-const CATALOG_BRAND_STRIP_RE = /\b(myanimelist|anidb|anilist|anisearch|livechart(\.me)?|notify\.moe|kitsu|rpdb)\b/gi
+const CATALOG_BRAND_STRIP_RE = /\b(myanimelist|anidb|anilist|anisearch|livechart(\.me)?|notify\.moe|kitsu|rpdb|101catalogs?|mdblist|imdb|tmdb)\b/gi
 
-const CATALOG_TYPE_WORD = {movie: 'فیلم', series: 'سریال', tv: 'کانال'}
-
-// High-priority exact-phrase overrides (checked before the generic word-by-word
-// pass) for names we know the wording of ahead of time.
+/** Exact / high-priority phrases (first match wins). Everyday Persian. */
 const CATALOG_EXACT_PHRASES = [
-    [/top[\s-]*airing/i, 'بهترین انیمه‌های در حال پخش'],
-    [/currently[\s-]*airing/i, 'انیمه‌های در حال پخش'],
-    [/top[\s-]*all[\s-]*time/i, 'برترین انیمه‌های همه‌ی دوران'],
-    [/all[\s-]*time[\s-]*top/i, 'برترین انیمه‌های همه‌ی دوران'],
+    [/top[\s-]*airing/i, 'در حال پخش — برترین‌ها'],
+    [/currently[\s-]*airing/i, 'در حال پخش'],
+    [/top[\s-]*all[\s-]*time/i, 'برترین‌های تاریخ'],
+    [/all[\s-]*time[\s-]*top/i, 'برترین‌های تاریخ'],
 
-    // IPTV Bridge — branded as "ماهواره" (satellite) rather than a literal
-    // translation of "IPTV", per how Iranian audiences refer to this kind
-    // of live-channel service.
     [/iptv\s*live\s*channels?/i, 'پخش زنده ماهواره'],
     [/iptv\s*movies?/i, 'فیلم‌های ماهواره'],
     [/iptv\s*series/i, 'سریال‌های ماهواره'],
     [/iptv\s*tv\s*shows?/i, 'سریال‌های ماهواره'],
     [/\biptv\b/i, 'ماهواره'],
 
-    // 101 Catalogs common list titles
-    [/rotten\s*tomatoes\s*certified\s*fresh/i, 'تاییدشده راتن تومیتوز'],
-    [/rt\s*fresh/i, 'تازه راتن تومیتوز'],
-    [/top\s*seeded\s*-\s*all\s*time/i, 'پرطرفدارترین تورنت‌ها — همیشه'],
-    [/top\s*seeded\s*-\s*last\s*month/i, 'پرطرفدارترین تورنت‌ها — ماه قبل'],
-    [/top\s*seeded\s*-\s*last\s*week/i, 'پرطرفدارترین تورنت‌ها — هفته قبل'],
-    [/top\s*seeded\s*-\s*this\s*month/i, 'پرطرفدارترین تورنت‌ها — این ماه'],
-    [/top\s*seeded\s*-\s*this\s*week/i, 'پرطرفدارترین تورنت‌ها — این هفته'],
+    [/rotten\s*tomatoes\s*certified\s*fresh/i, 'تأییدشده راتن تومیتوز'],
+    [/rt\s*fresh\s*-\s*action/i, 'تازه‌های راتن — اکشن'],
+    [/rt\s*fresh\s*-\s*adventure/i, 'تازه‌های راتن — ماجراجویی'],
+    [/rt\s*fresh\s*-\s*animation/i, 'تازه‌های راتن — انیمیشن'],
+    [/rt\s*fresh\s*-\s*anime/i, 'تازه‌های راتن — انیمه'],
+    [/rt\s*fresh\s*-\s*biography/i, 'تازه‌های راتن — زندگینامه'],
+    [/rt\s*fresh/i, 'تازه‌های راتن تومیتوز'],
+
+    [/top\s*seeded\s*-\s*all\s*time/i, 'پرطرفدارترین تورنت‌ها (همه زمان‌ها)'],
+    [/top\s*seeded\s*-\s*last\s*month/i, 'پرطرفدارترین تورنت‌ها (ماه قبل)'],
+    [/top\s*seeded\s*-\s*last\s*week/i, 'پرطرفدارترین تورنت‌ها (هفته قبل)'],
+    [/top\s*seeded\s*-\s*this\s*month/i, 'پرطرفدارترین تورنت‌ها (این ماه)'],
+    [/top\s*seeded\s*-\s*this\s*week/i, 'پرطرفدارترین تورنت‌ها (این هفته)'],
     [/top\s*seeded/i, 'پرطرفدارترین تورنت‌ها'],
-    [/latest\s*stand\s*up\s*comedy/i, 'آخرین استندآپ کمدی'],
-    [/all\s*family/i, 'همه خانوادگی'],
-    [/family\s*0-5/i, 'خانوادگی خردسال'],
-    [/hanna\s*barbera/i, 'هانا باربرا'],
+
+    [/latest\s*stand[\s-]*up\s*comedy/i, 'جدیدترین استندآپ‌ها'],
+    [/all\s*family/i, 'همه آثار خانوادگی'],
+    [/family\s*0\s*-\s*5/i, 'کودکانه (۰ تا ۵ سال)'],
+    [/family\s*0-5/i, 'کودکانه (۰ تا ۵ سال)'],
+    [/hanna\s*barbera/i, 'هانا‌باربرا'],
     [/cartoon\s*network/i, 'کارتون نتورک'],
     [/pixar\s*movies/i, 'فیلم‌های پیکسار'],
-    [/pixar\s*shorts/i, 'کوتاه‌های پیکسار'],
-]
+    [/pixar\s*shorts?/i, 'کوتاه‌های پیکسار'],
 
+    [/^movies?$/i, 'فیلم‌ها'],
+    [/^series$/i, 'سریال‌ها'],
+    [/^tv\s*shows?$/i, 'سریال‌ها'],
+    [/^tv$/i, 'تلویزیون'],
+    [/^anime$/i, 'انیمه'],
+    [/^search$/i, 'جستجو'],
 
-const CATALOG_NAME_PHRASES = [
-    [/\bnews\b/i, 'اخبار'],
-    [/\bentertainment\b/i, 'سرگرمی'],
-    [/now\s*playing/i, 'در حال اکران'],
-    [/new\s*releases?/i, 'تازه‌ها'],
-    [/coming\s*soon/i, 'به‌زودی'],
-    [/most\s*popular/i, 'محبوب‌ترین‌ها'],
-    [/critically\s*acclaimed/i, 'مورد تحسین منتقدان'],
-    [/award[\s-]*winning/i, 'برنده‌ی جایزه'],
-    [/hidden\s*gems?/i, 'گوهرهای ناشناخته'],
-    [/sci-?fi/i, 'علمی‌تخیلی'],
-    [/live\s*action/i, 'لایو اکشن'],
+    [/popular\s*movies?/i, 'فیلم‌های محبوب'],
+    [/popular\s*(tv\s*)?series/i, 'سریال‌های محبوب'],
+    [/popular\s*tv\s*shows?/i, 'سریال‌های محبوب'],
+    [/trending\s*movies?/i, 'فیلم‌های داغ'],
+    [/trending\s*(tv\s*)?series/i, 'سریال‌های داغ'],
+    [/trending\s*tv\s*shows?/i, 'سریال‌های داغ'],
+    [/top\s*rated\s*movies?/i, 'فیلم‌های پرامتیاز'],
+    [/top\s*rated\s*(tv\s*)?series/i, 'سریال‌های پرامتیاز'],
+    [/now\s*playing/i, 'اکران‌های روز'],
+    [/on\s*the\s*air/i, 'در حال پخش'],
+    [/airing\s*today/i, 'پخش امروز'],
 
-    // Genres / origins
-    [/\bkorean\b/i, 'کره‌ای'],
-    [/\bchinese\b/i, 'چینی'],
-    [/\bjapanese\b/i, 'ژاپنی'],
-    [/\bturkish\b/i, 'ترکی'],
-    [/\bindian\b/i, 'هندی'],
-    [/\bbollywood\b/i, 'بالیوود'],
-    [/\banimation\b/i, 'انیمیشن'],
-    [/\banime\b/i, 'انیمه'],
-    [/\bkids?\b/i, 'کودک'],
-    [/\bfamily\b/i, 'خانوادگی'],
-    [/\bdocumentary\b/i, 'مستند'],
-    [/\bcrime\b/i, 'جنایی'],
-    [/\bfantasy\b/i, 'فانتزی'],
-    [/\badventure\b/i, 'ماجراجویی'],
-    [/\bwar\b/i, 'جنگی'],
-    [/\bwestern\b/i, 'وسترن'],
-    [/\bmusical\b/i, 'موزیکال'],
-    [/\bmusic\b/i, 'موسیقی'],
-    [/\bsports?\b/i, 'ورزشی'],
-    [/\bmystery\b/i, 'رازآلود'],
-    [/\bbiography\b/i, 'بیوگرافی'],
-    [/\bhistory\b/i, 'تاریخی'],
-    [/\bhorror\b/i, 'ترسناک'],
-    [/\bromance\b/i, 'عاشقانه'],
-    [/\bthriller\b/i, 'هیجان‌انگیز'],
-    [/\baction\b/i, 'اکشن'],
-    [/\bcomedy\b/i, 'کمدی'],
-    [/\bdrama\b/i, 'درام'],
-
-    // Modifiers
-    [/\btop\b/i, 'برترین'],
-    [/\bbest\b/i, 'بهترین'],
-    [/\bpopular\b/i, 'محبوب'],
-    [/\btrending\b/i, 'پرطرفدار'],
-    [/\bnew\b/i, 'جدید'],
-    [/\blatest\b/i, 'آخرین'],
-    [/\bupcoming\b/i, 'به‌زودی'],
-    [/\bairing\b/i, 'در حال پخش'],
-    [/\bongoing\b/i, 'در حال پخش'],
-    [/\bcompleted\b/i, 'تمام‌شده'],
-    [/\bclassic\b/i, 'کلاسیک'],
-    [/\brated\b/i, 'امتیاز'],
-    [/\brating[s]?\b/i, 'امتیاز'],
-
-    [/certified\s*fresh/i, 'تاییدشده تازه'],
-    [/stand\s*up/i, 'استندآپ'],
-    [/torrent/i, 'تورنت'],
-    [/seeded/i, 'سیدشده'],
-    [/streaming/i, 'استریمینگ'],
+    [/netflix\s*kids/i, 'نتفلیکس کودک'],
     [/netflix/i, 'نتفلیکس'],
-    [/disney\+?/i, 'دیزنی پلاس'],
+    [/disney\+/i, 'دیزنی پلاس'],
     [/hbo\s*max/i, 'اچ‌بی‌او مکس'],
     [/prime\s*video/i, 'پرایم ویدیو'],
-    [/apple\s*tv\+?/i, 'اپل تی‌وی'],
-    [/paramount\+?/i, 'پارامونت پلاس'],
-    [/year/i, 'سال'],
-
-    [/rt\s*fresh\s*-\s*action/i, 'تازه راتن — اکشن'],
-    [/rt\s*fresh\s*-\s*adventure/i, 'تازه راتن — ماجراجویی'],
-    [/rt\s*fresh\s*-\s*animation/i, 'تازه راتن — انیمیشن'],
-    [/rt\s*fresh\s*-\s*anime/i, 'تازه راتن — انیمه'],
-    [/rt\s*fresh\s*-\s*biography/i, 'تازه راتن — بیوگرافی'],
-    [/k-?drama/i, 'درام کره‌ای'],
-    [/korean/i, 'کره‌ای'],
-    [/indian/i, 'هندی'],
-    [/turkish/i, 'ترکی'],
-    [/hulu/i, 'هولو'],
-    [/peacock/i, 'پیکاک'],
-    [/crunchyroll/i, 'کرانچی‌رول'],
-    [/shudder/i, 'شادر'],
-    [/starz/i, 'استارز'],
-    [/genre/i, 'ژانر'],
+    [/apple\s*tv\+/i, 'اپل تی‌وی پلاس'],
+    [/paramount\+/i, 'پارامونت پلاس'],
 ]
 
+/** Word/phrase replacements (applied in order). */
+const CATALOG_NAME_PHRASES = [
+    [/tv\s*shows?/gi, 'سریال'],
+    [/\bmovies?\b/gi, 'فیلم'],
+    [/\bseries\b/gi, 'سریال'],
+    [/\banime\b/gi, 'انیمه'],
+    [/\bshows?\b/gi, 'سریال'],
 
-export function translateCatalogName(name, type) {
-    if (!name) {
-        return name
+    [/\bk-?drama\b/gi, 'درام کره‌ای'],
+    [/\bkorean\b/gi, 'کره‌ای'],
+    [/\bindian\b/gi, 'هندی'],
+    [/\bturkish\b/gi, 'ترکی'],
+    [/\bbollywood\b/gi, 'بالیوود'],
+    [/\banimation\b/gi, 'انیمیشن'],
+    [/\bkids?\b/gi, 'کودک'],
+    [/\bfamily\b/gi, 'خانوادگی'],
+    [/\bdocumentary\b/gi, 'مستند'],
+    [/\bcrime\b/gi, 'جنایی'],
+    [/\bfantasy\b/gi, 'فانتزی'],
+    [/\badventure\b/gi, 'ماجراجویی'],
+    [/\bwar\b/gi, 'جنگی'],
+    [/\bwestern\b/gi, 'وسترن'],
+    [/\bmusical\b/gi, 'موزیکال'],
+    [/\bmusic\b/gi, 'موسیقی'],
+    [/\bsports?\b/gi, 'ورزشی'],
+    [/\bmystery\b/gi, 'معمایی'],
+    [/\bbiography\b/gi, 'زندگینامه'],
+    [/\bhistory\b/gi, 'تاریخی'],
+    [/\bhorror\b/gi, 'ترسناک'],
+    [/\bromance\b/gi, 'عاشقانه'],
+    [/\bthriller\b/gi, 'هیجانی'],
+    [/\baction\b/gi, 'اکشن'],
+    [/\bcomedy\b/gi, 'کمدی'],
+    [/\bdrama\b/gi, 'درام'],
+    [/\bsci-?fi\b/gi, 'علمی‌تخیلی'],
+    [/\bscience\s*fiction\b/gi, 'علمی‌تخیلی'],
+
+    [/\btop\s*rated\b/gi, 'پرامتیاز'],
+    [/\btop\b/gi, 'برترین'],
+    [/\bbest\b/gi, 'بهترین'],
+    [/\bpopular\b/gi, 'محبوب'],
+    [/\btrending\b/gi, 'داغ'],
+    [/\bnew\b/gi, 'جدید'],
+    [/\blatest\b/gi, 'جدیدترین'],
+    [/\bupcoming\b/gi, 'به‌زودی'],
+    [/\bairing\b/gi, 'در حال پخش'],
+    [/\bongoing\b/gi, 'در حال پخش'],
+    [/\bcompleted\b/gi, 'تمام‌شده'],
+    [/\bclassic\b/gi, 'کلاسیک'],
+    [/\brated\b/gi, 'امتیازدار'],
+    [/\bratings?\b/gi, 'امتیاز'],
+
+    [/certified\s*fresh/gi, 'تأییدشده'],
+    [/stand[\s-]*up/gi, 'استندآپ'],
+    [/\btorrent\b/gi, 'تورنت'],
+    [/\bseeded\b/gi, 'سیدشده'],
+    [/\bstreaming\b/gi, 'پلتفرم‌ها'],
+    [/\bhulu\b/gi, 'هولو'],
+    [/\bpeacock\b/gi, 'پیکاک'],
+    [/\bcrunchyroll\b/gi, 'کرانچی‌رول'],
+    [/\bshudder\b/gi, 'شادر'],
+    [/\bstarz\b/gi, 'استارز'],
+    [/\byear\b/gi, 'سال'],
+    [/\bgenre\b/gi, 'ژانر'],
+    [/\bsearch\b/gi, 'جستجو'],
+]
+
+function cleanupCatalogFaName(working) {
+    let s = String(working || '')
+        .replace(/\s*[-–—|/]+\s*/g, ' — ')
+        .replace(/\s+/g, ' ')
+        .trim()
+
+    // Drop leftover long English tokens (keep years, +)
+    if (/[a-z]/i.test(s)) {
+        s = s
+            .replace(/\b(?!\d{4}\b)[a-z][a-z0-9.'+]{2,}/gi, '')
+            .replace(/\s+/g, ' ')
+            .trim()
     }
 
-    let working = name.replace(CATALOG_BRAND_STRIP_RE, ' ')
+    // Collapse duplicate type words: "سریال — سریال" / "فیلم فیلم"
+    s = s
+        .replace(/^(فیلم|سریال|انیمه|کانال)(\s*[—\-]\s*|\s+)\1$/u, '$1‌ها')
+        .replace(/\b(فیلم|سریال|انیمه)(\s+\1)+\b/gu, '$1')
+        .replace(/(فیلم|سریال|انیمه)\s*[—\-]\s*\1/gu, '$1‌ها')
+        .replace(/\s+/g, ' ')
+        .trim()
+
+    // Bare type → plural natural form
+    if (s === 'فیلم') s = 'فیلم‌ها'
+    if (s === 'سریال') s = 'سریال‌ها'
+    if (s === 'انیمه') s = 'انیمه'
+    if (s === 'کانال') s = 'کانال‌ها'
+
+    // Tidy dashes
+    s = s.replace(/\s*—\s*$/u, '').replace(/^\s*—\s*/u, '').trim()
+    return s
+}
+
+export function translateCatalogName(name, type) {
+    if (!name) return name
+
+    const original = String(name).trim()
+    let working = original.replace(CATALOG_BRAND_STRIP_RE, ' ').replace(/\s+/g, ' ').trim()
 
     for (const [pattern, replacement] of CATALOG_EXACT_PHRASES) {
         if (pattern.test(working)) {
-            return replacement
+            return cleanupCatalogFaName(replacement)
         }
     }
 
@@ -630,22 +666,19 @@ export function translateCatalogName(name, type) {
         working = working.replace(pattern, replacement)
     }
 
-    working = working.replace(/\s*[-–—]\s*/g, ' ').replace(/\s+/g, ' ').trim()
+    working = cleanupCatalogFaName(working)
 
-    // Safety net: strip leftover English words, keep years and short tokens
-    if (/[a-z]/i.test(working)) {
-        working = working
-            .replace(/\b(?!\d{4}\b)[a-z][a-z0-9.'+]{2,}/gi, '')
-            .replace(/\s+/g, ' ')
-            .trim()
+    // If translation wiped everything, fall back to a natural type label — never
+    // force "سریال‌های …" prefix (Stremio already shows the type in the UI).
+    if (!working) {
+        if (type === 'movie') return 'فیلم‌ها'
+        if (type === 'series') return 'سریال‌ها'
+        if (type === 'tv') return 'تلویزیون'
+        if (type === 'anime') return 'انیمه'
+        return original
     }
 
-    const typeWord = CATALOG_TYPE_WORD[type]
-    if (typeWord && !working.includes(typeWord) && !working.includes('انیمه')) {
-        working = working ? `${typeWord}‌های ${working}` : typeWord
-    }
-
-    return working || typeWord || name
+    return working
 }
 
 export async function getTMDBDetails(type, tmdbId, httpClient = axios, apiKey, logger = console) {
