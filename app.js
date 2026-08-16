@@ -18,10 +18,10 @@ import F2Media from './sources/f2media.js'
 import Peepboxtv from './sources/peepboxtv.js'
 import Serialblog from './sources/serialblog.js'
 import {ID_SEPARATOR, METADATA_SOURCE} from './sources/source.js'
-import {findExternalMetaSource, findExternalStreamSource, formatStreamTitle, getCinemeta, getExternalCatalogSources, getExternalCatalogStatus, invalidateExternalCatalogCache, getKitsuTitle, getSubtitle, getTMDBMetaFa, enrichMetaWithFaTmdb, enrichCatalogMetasWithoutRpdb, getTMDBMetaByTmdbId, getTMDBDetails, getTMDBTitle, getLandingTmdbCatalogs, getTorrentStreams, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxyExternalStream, proxySubtitles, translateCatalogName} from './utils.js'
+import {findExternalMetaSource, findExternalStreamSource, formatStreamTitle, getCinemeta, getExternalCatalogSources, getExternalCatalogStatus, invalidateExternalCatalogCache, getKitsuTitle, getSubtitle, getTMDBMetaFa, enrichMetaWithFaTmdb, enrichCatalogMetasWithoutRpdb, getTMDBMetaByTmdbId, getTMDBDetails, getTMDBTitle, getLandingTmdbCatalogs, getTorrentStreams, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxyExternalStream, proxySubtitles, translateCatalogName, sortExternalCatalogs} from './utils.js'
 
 export const ADDON_PREFIX = 'ip'
-export const ADDON_VERSION = '2.1.22'
+export const ADDON_VERSION = '2.1.23'
 
 
 const PROVIDER_BASEURL_KEYS = [
@@ -816,11 +816,14 @@ export function createAddon({
                 invalidateExternalCatalogCache()
             }
             const externalSources = await getExternalCatalogSources(activeEnv, axios, logger)
+            const pendingExternal = []
             for (const source of externalSources) {
-                manifest.catalogs.push(...source.catalogs.map((catalog) => ({
-                    ...catalog,
-                    name: translateCatalogName(catalog.name, catalog.type),
-                })))
+                for (const catalog of source.catalogs) {
+                    pendingExternal.push({
+                        ...catalog,
+                        name: translateCatalogName(catalog.name, catalog.type),
+                    })
+                }
                 if (source.hasMeta) {
                     const metaResource = manifest.resources.find((r) => r?.name === 'meta')
                     for (const prefix of source.idPrefixes) {
@@ -838,6 +841,8 @@ export function createAddon({
                     }
                 }
             }
+            // Own provider catalogs stay first; external lists reordered (platforms last)
+            manifest.catalogs.push(...sortExternalCatalogs(pendingExternal))
         } catch (error) {
             logAxiosError(error, logger, 'External catalogs unavailable, serving own catalogs only')
         }

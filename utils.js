@@ -788,6 +788,42 @@ export function translateCatalogName(name, type) {
     return cleanupCatalogFaName(working)
 }
 
+
+/**
+ * Reorder external catalogs without Patreon:
+ * trending / popular / new / top → first
+ * streaming platforms (Netflix, Disney+, …) → last
+ */
+export function sortExternalCatalogs(catalogs) {
+    if (!Array.isArray(catalogs) || catalogs.length < 2) {
+        return catalogs
+    }
+
+    const platformRe = /\b(netflix|disney\+?|hbo\s*max|max\b|prime\s*video|amazon\s*prime|apple\s*tv|paramount\+?|hulu|peacock|crunchyroll|starz|showtime|sky\s*showtime|discovery\+?|paramount|mubi|shudder|britbox|acorn|hayu|iqiyi|viaplay|canal\+|movistar|clarovideo|zee5|sonyliv|hotstar|jiohotstar|nlziet|videoland|globoplay|rakuten|shahid|curiosity|magellan|bbc\s*iplayer|itvx|channel\s*4|starz|نتفلیکس|دیزنی|اچ‌بی‌او|پرایم|اپل\s*تی‌وی|پارامونت|هولو|پیکاک|کرانچی|استارز|پلتفرم)\b/i
+
+    const topRe = /\b(trending|popular|top\s*rated|top\s*seeded|latest|new\b|now\s*playing|on\s*the\s*air|airing|upcoming|certified\s*fresh|rt\s*fresh|داغ|محبوب|پرطرفدار|برترین|جدید|تازه|اکران)\b/i
+
+    const midBoostRe = /\b(family|kids?|anime|action|comedy|drama|horror|thriller|korean|chinese|japanese|turkish|indian|خانواد|کودک|انیمه|اکشن|کمدی|کره‌|چین|ژاپن|ترک|هند)\b/i
+
+    function score(cat) {
+        const name = String(cat?.name || '')
+        const id = String(cat?.id || '')
+        const blob = `${name} ${id}`
+        let s = 100
+        if (platformRe.test(blob)) s += 500 // bottom
+        if (topRe.test(blob)) s -= 200 // top
+        if (midBoostRe.test(blob) && !platformRe.test(blob)) s -= 40
+        // stable-ish by name for same score
+        return s
+    }
+
+    return [...catalogs].sort((a, b) => {
+        const d = score(a) - score(b)
+        if (d !== 0) return d
+        return String(a?.name || '').localeCompare(String(b?.name || ''), 'fa')
+    })
+}
+
 export async function getTMDBDetails(type, tmdbId, httpClient = axios, apiKey, logger = console) {
     if (!apiKey || !tmdbId) {
         return null
