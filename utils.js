@@ -794,35 +794,77 @@ export function translateCatalogName(name, type) {
  * trending / popular / new / top → first
  * streaming platforms (Netflix, Disney+, …) → last
  */
-export function sortExternalCatalogs(catalogs) {
-    if (!Array.isArray(catalogs) || catalogs.length < 2) {
-        return catalogs
+export function classifyExternalCatalogSource(source = {}) {
+    const url = `${source.manifestUrl || ''} ${source.resolvedUrl || ''} ${source.baseUrl || ''}`
+    if (/iptvbridge|iptv[\s_-]*bridge|\/iptv/i.test(url)) return 'iptv'
+    if (/stremio-anime|anime-catalog|animecatalog|myanimelist|kitsu|baby-beamup.*anime/i.test(url)) {
+        return 'anime'
     }
+    if (/101catalog|api\.101catalogs/i.test(url)) return '101'
+    if (/aiocatalog|aio\.pantelx|jqrw92fchz\.workers\.dev/i.test(url)) return 'aio'
+    return 'other'
+}
 
-    const platformRe = /\b(netflix|disney\+?|hbo\s*max|max\b|prime\s*video|amazon\s*prime|apple\s*tv|paramount\+?|hulu|peacock|crunchyroll|starz|showtime|sky\s*showtime|discovery\+?|paramount|mubi|shudder|britbox|acorn|hayu|iqiyi|viaplay|canal\+|movistar|clarovideo|zee5|sonyliv|hotstar|jiohotstar|nlziet|videoland|globoplay|rakuten|shahid|curiosity|magellan|bbc\s*iplayer|itvx|channel\s*4|starz|نتفلیکس|دیزنی|اچ‌بی‌او|پرایم|اپل\s*تی‌وی|پارامونت|هولو|پیکاک|کرانچی|استارز|پلتفرم)\b/i
+function catalogSortScore(cat) {
+    const blob = `${cat?.name || ''} ${cat?.id || ''}`
+    const platformRe = /\b(netflix|disney\+?|hbo\s*max|\bmax\b|prime\s*video|amazon\s*prime|apple\s*tv|paramount\+?|hulu|peacock|crunchyroll|starz|showtime|sky\s*showtime|discovery\+?|mubi|shudder|britbox|acorn|hayu|iqiyi|viaplay|canal\+|movistar|zee5|sonyliv|hotstar|jiohotstar|bbc\s*iplayer|itvx|channel\s*4|streaming|پلتفرم|نتفلیکس|دیزنی|اچ‌بی‌او|پرایم|اپل\s*تی‌وی|پارامونت|هولو|پیکاک|کرانچی|استارز)\b/i
+    const trendRe = /\b(trending|popular|top\s*rated|top\s*seeded|latest|new\b|now\s*playing|on\s*the\s*air|airing|upcoming|certified\s*fresh|rt\s*fresh|داغ|محبوب|پرطرفدار|برترین|جدیدترین|جدید|تازه|اکران)\b/i
+    const krCnRe = /\b(korean|k-?drama|chinese|c-?drama|hong\s*kong|taiwan|کره‌|چین|درام\s*کره‌|درام\s*چین|هنگ‌کنگ|تایوان)\b/i
 
-    const topRe = /\b(trending|popular|top\s*rated|top\s*seeded|latest|new\b|now\s*playing|on\s*the\s*air|airing|upcoming|certified\s*fresh|rt\s*fresh|داغ|محبوب|پرطرفدار|برترین|جدید|تازه|اکران)\b/i
+    if (platformRe.test(blob)) return 400
+    if (trendRe.test(blob)) return 0
+    if (krCnRe.test(blob)) return 50
+    return 120
+}
 
-    const midBoostRe = /\b(family|kids?|anime|action|comedy|drama|horror|thriller|korean|chinese|japanese|turkish|indian|خانواد|کودک|انیمه|اکشن|کمدی|کره‌|چین|ژاپن|ترک|هند)\b/i
-
-    function score(cat) {
-        const name = String(cat?.name || '')
-        const id = String(cat?.id || '')
-        const blob = `${name} ${id}`
-        let s = 100
-        if (platformRe.test(blob)) s += 500 // bottom
-        if (topRe.test(blob)) s -= 200 // top
-        if (midBoostRe.test(blob) && !platformRe.test(blob)) s -= 40
-        // stable-ish by name for same score
-        return s
-    }
-
+/** Sort inside one group (101 / AIO / anime / …). */
+export function sortCatalogsWithinGroup(catalogs) {
+    if (!Array.isArray(catalogs) || catalogs.length < 2) return catalogs || []
     return [...catalogs].sort((a, b) => {
-        const d = score(a) - score(b)
+        const d = catalogSortScore(a) - catalogSortScore(b)
         if (d !== 0) return d
         return String(a?.name || '').localeCompare(String(b?.name || ''), 'fa')
     })
 }
+
+/**
+ * Full external order:
+ * 101 → AIO/other → Anime → IPTV (always last)
+ * Inside 101: trend/popular → Korean/Chinese → rest → streaming platforms
+ */
+export function sortExternalCatalogs(catalogs, sourcesWithCatalogs = null) {
+    // Backward-compatible: flat list without source tags — apply within-group score only
+    if (!sourcesWithCatalogs) {
+        return sortCatalogsWithinGroup(catalogs)
+    }
+    return catalogs
+}
+
+export function buildOrderedExternalCatalogs(externalSources, mapFn) {
+    const buckets = {
+        '101': [],
+        aio: [],
+        other: [],
+        anime: [],
+        iptv: [],
+    }
+    for (const source of externalSources || []) {
+        const group = classifyExternalCatalogSource(source)
+        const list = Array.isArray(source.catalogs) ? source.catalogs : []
+        for (const catalog of list) {
+            const mapped = typeof mapFn === 'function' ? mapFn(catalog, source) : catalog
+            if (mapped) buckets[group].push(mapped)
+        }
+    }
+    return [
+        ...sortCatalogsWithinGroup(buckets['101']),
+        ...sortCatalogsWithinGroup(buckets.aio),
+        ...sortCatalogsWithinGroup(buckets.other),
+        ...sortCatalogsWithinGroup(buckets.anime),
+        ...buckets.iptv, // keep IPTV order; always last block
+    ]
+}
+
 
 export async function getTMDBDetails(type, tmdbId, httpClient = axios, apiKey, logger = console) {
     if (!apiKey || !tmdbId) {
@@ -1678,22 +1720,37 @@ export function modifyUrls(value, prepend, seen = new WeakSet()) {
 const LANDING_TMDB_TTL_MS = 60 * 60 * 1000 // 1 hour
 let landingTmdbCache = null
 
-function mapTmdbListItem(item, mediaTypeHint = null) {
+function mapTmdbListItem(item, mediaTypeHint = null, itemEn = null) {
     const mediaType = item.media_type || mediaTypeHint || (item.title ? 'movie' : 'tv')
-    const titleFa = item.title || item.name || null
-    const original = item.original_title || item.original_name || null
-    const year = (item.release_date || item.first_air_date || '').slice(0, 4) || null
+    const title = preferFaThenEn(
+        item.title || item.name,
+        itemEn?.title || itemEn?.name,
+    )
+    const overview = preferFaThenEn(item.overview, itemEn?.overview)
+    const original = item.original_title || item.original_name || itemEn?.original_title || itemEn?.original_name || null
+    const year = (item.release_date || item.first_air_date || itemEn?.release_date || itemEn?.first_air_date || '').slice(0, 4) || null
+    const posterPath = item.poster_path || itemEn?.poster_path
+    const backdropPath = item.backdrop_path || itemEn?.backdrop_path
     return {
         id: item.id,
         mediaType: mediaType === 'tv' ? 'tv' : 'movie',
-        title: titleFa,
-        originalTitle: original && original !== titleFa ? original : null,
-        overview: item.overview || null,
+        title,
+        originalTitle: original && original !== title ? original : null,
+        overview,
         rating: item.vote_average != null ? Math.round(item.vote_average * 10) / 10 : null,
         year,
-        poster: item.poster_path ? `https://image.tmdb.org/t/p/w342${item.poster_path}` : null,
-        backdrop: item.backdrop_path ? `https://image.tmdb.org/t/p/w780${item.backdrop_path}` : null,
+        poster: posterPath ? `https://image.tmdb.org/t/p/w342${posterPath}` : null,
+        backdrop: backdropPath ? `https://image.tmdb.org/t/p/w780${backdropPath}` : null,
     }
+}
+
+async function tmdbListMerged(path, params, httpClient, apiKey) {
+    const [faRows, enRows] = await Promise.all([
+        tmdbList(path, {...params, language: 'fa-IR'}, httpClient, apiKey).catch(() => []),
+        tmdbList(path, {...params, language: 'en-US'}, httpClient, apiKey).catch(() => []),
+    ])
+    const enById = new Map((enRows || []).map((r) => [r.id, r]))
+    return (faRows || []).map((row) => mapTmdbListItem(row, null, enById.get(row.id)))
 }
 
 async function tmdbList(path, params, httpClient, apiKey) {
@@ -1742,15 +1799,13 @@ export async function getLandingTmdbCatalogs(httpClient = axios, apiKey = proces
     }
 
     try {
-        const [dayRaw, weekRaw, nowRaw] = await Promise.all([
-            tmdbList('trending/all/day', {page: 1}, httpClient, apiKey),
-            tmdbList('trending/all/week', {page: 1}, httpClient, apiKey),
-            tmdbList('movie/now_playing', {page: 1, region: 'US'}, httpClient, apiKey),
+        const [trendingDay, trendingWeek, nowPlaying] = await Promise.all([
+            tmdbListMerged('trending/all/day', {page: 1}, httpClient, apiKey).then((rows) => rows.slice(0, 12)),
+            tmdbListMerged('trending/all/week', {page: 1}, httpClient, apiKey).then((rows) => rows.slice(0, 12)),
+            tmdbListMerged('movie/now_playing', {page: 1, region: 'US'}, httpClient, apiKey).then((rows) => (
+                rows.slice(0, 12).map((row) => ({...row, mediaType: 'movie'}))
+            )),
         ])
-
-        const trendingDay = dayRaw.slice(0, 12).map((item) => mapTmdbListItem(item))
-        const trendingWeek = weekRaw.slice(0, 12).map((item) => mapTmdbListItem(item))
-        const nowPlaying = nowRaw.slice(0, 12).map((item) => mapTmdbListItem(item, 'movie'))
 
         // Trailers from top trending day items (limit concurrent video lookups)
         const trailerSource = trendingDay.slice(0, 8)
