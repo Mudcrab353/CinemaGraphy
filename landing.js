@@ -59,14 +59,14 @@ export function renderLandingPage({
   manifestUrl = PUBLIC_INSTALL,
   installUrl,
   logoUrl = '/logo.png',
-  version = '2.1.26',
+  version = '2.1.27',
 } = {}) {
   const m = escapeHtml(manifestUrl || PUBLIC_INSTALL)
   const install = escapeHtml(
     installUrl || `stremio://${String(manifestUrl || PUBLIC_INSTALL).replace(/^https?:\/\//i, '')}`,
   )
   const logo = escapeHtml(logoUrl || LOGO_FALLBACK)
-  const ver = escapeHtml(String(version || '2.1.26'))
+  const ver = escapeHtml(String(version || '2.1.27'))
 
   const addonCards = RECOMMENDED.map(
     (a) => `
@@ -566,11 +566,11 @@ h2{font-size:1.15rem;margin:26px 0 10px}
 
 export function renderConfigurePage({
   logoUrl = '/logo.png',
-  version = '2.1.26',
+  version = '2.1.27',
   origin = PUBLIC_SITE,
 } = {}) {
   const logo = escapeHtml(logoUrl || LOGO_FALLBACK)
-  const ver = escapeHtml(String(version || '2.1.26'))
+  const ver = escapeHtml(String(version || '2.1.27'))
   const originClean = String(origin || PUBLIC_SITE).replace(/\/$/, '')
   const base = escapeHtml(originClean)
   const baseJson = JSON.stringify(originClean)
@@ -746,11 +746,11 @@ export function renderConfigurePage({
 
 export function renderGuidePage({
   logoUrl = '/logo.png',
-  version = '2.1.26',
+  version = '2.1.27',
   manifestUrl = PUBLIC_INSTALL,
 } = {}) {
   const logo = escapeHtml(logoUrl || LOGO_FALLBACK)
-  const ver = escapeHtml(String(version || '2.1.26'))
+  const ver = escapeHtml(String(version || '2.1.27'))
   const install = escapeHtml(
     'stremio://' + String(manifestUrl || PUBLIC_INSTALL).replace(/^https?:\/\//i, ''),
   )
@@ -838,6 +838,27 @@ export function renderGuidePage({
 <div class="gbox glass call">
 <p class="lang-fa" style="margin:0"><b>IP:</b> درخواست به سایت‌های ایرانی از سرور می‌رود؛ IP دیده‌شده معمولاً IP سرور است. جعل هدر انجام نمی‌شود.</p>
 <p class="lang-en" style="margin:0"><b>IP:</b> Fetches are server-side; sites see the server IP. No header spoofing.</p>
+</div>
+
+<div class="gbox glass">
+<h2 class="lang-fa">۴) حذف / مخفی کردن کاتالوگ‌های پیش‌فرض (Cinemeta)</h2>
+<h2 class="lang-en">4) Hide default Stremio catalogs (Cinemeta)</h2>
+<p class="lang-fa muted">استریمیو معمولاً Cinemeta را «Protected» می‌کند و Uninstall کامل نمی‌دهد. برای خلوت‌کردن صفحهٔ اصلی می‌توانید کاتالوگ‌های اضافه را با ابزار رسمی‌مانند زیر مخفی کنید. فقط از لینک زیر استفاده کنید؛ هیچ دسترسی به اکانت شما نمی‌خواهد و افزونهٔ سینماگرافی را دست نمی‌زند.</p>
+<p class="lang-en muted">Stremio often marks Cinemeta as Protected. You can hide extra default catalogs with the tool below. It does not need your password and does not change Cinemagraphy.</p>
+<div class="olist">
+<div class="step glass"><b>1</b> <span class="lang-fa">در مرورگر باز کنید:</span><span class="lang-en">Open in browser:</span> <a href="https://hidden-cinemeta.vercel.app/" target="_blank" rel="noopener">hidden-cinemeta.vercel.app</a></div>
+<div class="step glass"><b>2</b> <span class="lang-fa">طبق راهنمای همان صفحه، کاتالوگ‌های اضافی Cinemeta را مخفی کنید</span><span class="lang-en">Follow that page to hide extra Cinemeta catalogs</span></div>
+<div class="step glass"><b>3</b> <span class="lang-fa">استریمیو را یک‌بار ببندید و دوباره باز کنید</span><span class="lang-en">Restart Stremio once</span></div>
+</div>
+<p class="lang-fa muted" style="margin-top:10px">امنیت: این ابزار فقط تنظیم نمایش کاتالوگ در کلاینت استریمیو است؛ لینک را از همین راهنما باز کنید و سایت‌های ناشناس مشابه را نصب نکنید.</p>
+<p class="lang-en muted" style="margin-top:10px">Security: catalog visibility only — open the link from this guide, avoid unknown clones.</p>
+</div>
+
+<div class="gbox glass">
+<h2 class="lang-fa">نکته Animex (سریال / انیمه)</h2>
+<h2 class="lang-en">Animex note (series / anime)</h2>
+<p class="lang-fa muted">لینک‌های چندقسمتی روی سرور دانلود اغلب فقط با اینترنت ایران لیست می‌شوند. اگر از Vercel لیست خالی آمد، استریم «باز کردن در مرورگر» نشان داده می‌شود تا با IP خودتان پوشه را ببینید. فیلم‌های تک‌فایل معمولاً مستقیم کار می‌کنند.</p>
+<p class="lang-en muted">Multi-episode directory listings are often IR-only. When the server cannot list them, an “open in browser” stream is shown so you can use your own network. Single-file movies usually stream directly.</p>
 </div>
 
 <div class="gbox glass">

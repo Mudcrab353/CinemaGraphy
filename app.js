@@ -21,7 +21,7 @@ import {ID_SEPARATOR, METADATA_SOURCE} from './sources/source.js'
 import {findExternalMetaSource, findExternalStreamSource, formatStreamTitle, getCinemeta, getExternalCatalogSources, getExternalCatalogStatus, invalidateExternalCatalogCache, getKitsuTitle, getSubtitle, getTMDBMetaFa, enrichMetaWithFaTmdb, enrichCatalogMetasWithoutRpdb, getTMDBMetaByTmdbId, getTMDBDetails, getTMDBTitle, getLandingTmdbCatalogs, getTorrentStreams, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxyExternalStream, proxySubtitles, translateCatalogName, buildOrderedExternalCatalogs} from './utils.js'
 
 export const ADDON_PREFIX = 'ip'
-export const ADDON_VERSION = '2.1.26'
+export const ADDON_VERSION = '2.1.27'
 
 
 const PROVIDER_BASEURL_KEYS = [
@@ -588,17 +588,25 @@ async function streamsByTitle(title, type, season, episode, providers) {
 
                 return {
                     key: provider.key,
-                    streams: (Array.isArray(links) ? links : []).map((link) => ({
-                        url: link.url,
-                        title: formatStreamTitle({
-                            providerKey: provider.key,
-                            quality: link.quality,
-                            size: link.size,
-                            audioType: link.audioType,
-                            extraText: link.title,
-                            url: link.url,
-                        }),
-                    })),
+                    streams: (Array.isArray(links) ? links : []).map((link) => {
+                        const stream = {
+                            title: formatStreamTitle({
+                                providerKey: provider.key,
+                                quality: link.quality,
+                                size: link.size,
+                                audioType: link.audioType,
+                                extraText: link.title,
+                                url: link.url,
+                            }),
+                        }
+                        if (link.externalUrl) {
+                            stream.externalUrl = link.externalUrl
+                            stream.name = stream.title
+                        } else if (link.url) {
+                            stream.url = link.url
+                        }
+                        return stream
+                    }).filter((s) => s.url || s.externalUrl),
                 }
             })()
             try {
@@ -1066,17 +1074,25 @@ export function createAddon({
                     ? parsedId.provider.getLinks(type, parsedId.videoId, movieData)
                     : []
                 if (Array.isArray(streams)) {
-                    streams = streams.map((link) => ({
-                        ...link,
-                        title: formatStreamTitle({
-                            providerKey: parsedId.provider.key,
-                            quality: link.quality,
-                            size: link.size,
-                            audioType: link.audioType,
-                            extraText: link.title,
-                        url: link.url,
-                        }),
-                    }))
+                    streams = streams.map((link) => {
+                        const stream = {
+                            title: formatStreamTitle({
+                                providerKey: parsedId.provider.key,
+                                quality: link.quality,
+                                size: link.size,
+                                audioType: link.audioType,
+                                extraText: link.title,
+                                url: link.url,
+                            }),
+                        }
+                        if (link.externalUrl) {
+                            stream.externalUrl = link.externalUrl
+                            stream.name = stream.title
+                        } else if (link.url) {
+                            stream.url = link.url
+                        }
+                        return stream
+                    }).filter((s) => s.url || s.externalUrl)
                 }
                 return res.json({streams: sortByQuality(Array.isArray(streams) ? streams : [])})
             }
