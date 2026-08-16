@@ -117,6 +117,47 @@ async function getTMDBGenreMap(type, httpClient, apiKey, logger) {
  * the English Cinemeta defaults. Requires TMDB_API_KEY; returns null (so the
  * caller can fall back to Cinemeta) if unavailable or nothing is found.
  */
+
+/** True if string contains Persian/Arabic letters. */
+export function hasPersianScript(text) {
+    return /[\u0600-\u06FF]/.test(String(text || ''))
+}
+
+/**
+ * Prefer Persian TMDB text; if missing or not localized, use English — never
+ * fall back to original_title (Korean/Japanese/etc.) for display names.
+ */
+export function preferFaThenEn(faVal, enVal) {
+    const fa = String(faVal || '').trim()
+    const en = String(enVal || '').trim()
+    if (fa && hasPersianScript(fa)) return fa
+    if (en) return en
+    if (fa) return fa
+    return null
+}
+
+/** Prefer Persian genre labels; if TMDB fa list is still Latin, use English list. */
+export function pickFaOrEnGenres(genresFa, genresEn) {
+    const fa = (genresFa || []).filter(Boolean)
+    const en = (genresEn || []).filter(Boolean)
+    if (fa.some((g) => hasPersianScript(g))) return fa
+    if (en.length) return en
+    return fa.length ? fa : undefined
+}
+
+
+async function fetchTmdbDetailLang(kind, tmdbId, lang, httpClient, apiKey) {
+    const response = await httpClient.get(`https://api.themoviedb.org/3/${kind}/${tmdbId}`, {
+        params: {
+            api_key: apiKey,
+            language: lang,
+            append_to_response: 'external_ids',
+        },
+        timeout: REQUEST_TIMEOUT_MS,
+    })
+    return response.data ?? {}
+}
+
 export async function getTMDBMetaFa(type, imdbId, httpClient = axios, apiKey, logger = console) {
     if (!apiKey || !imdbId) {
         return null
@@ -137,41 +178,48 @@ export async function getTMDBMetaFa(type, imdbId, httpClient = axios, apiKey, lo
         }
 
         const kind = type === 'series' ? 'tv' : 'movie'
-        let detail = item
+        let detailFa = item
+        let detailEn = null
         try {
-            const detailResponse = await httpClient.get(
-                `https://api.themoviedb.org/3/${kind}/${item.id}`,
-                {
-                    params: {api_key: apiKey, language: 'fa-IR'},
-                    timeout: REQUEST_TIMEOUT_MS,
-                },
-            )
-            if (detailResponse.data) detail = detailResponse.data
+            const [faRes, enRes] = await Promise.all([
+                fetchTmdbDetailLang(kind, item.id, 'fa-IR', httpClient, apiKey),
+                fetchTmdbDetailLang(kind, item.id, 'en-US', httpClient, apiKey),
+            ])
+            if (faRes) detailFa = faRes
+            detailEn = enRes
         } catch {
-            // keep find() payload
+            try {
+                detailFa = await fetchTmdbDetailLang(kind, item.id, 'fa-IR', httpClient, apiKey)
+            } catch { /* keep find payload */ }
         }
 
         const genreMap = await getTMDBGenreMap(type, httpClient, apiKey, logger)
-        const genreIds = detail.genres?.map((g) => g.id) ?? detail.genre_ids ?? item.genre_ids ?? []
-        const genresFromDetail = (detail.genres ?? []).map((g) => g.name).filter(Boolean)
-        const genres = genresFromDetail.length
-            ? genresFromDetail
-            : genreIds.map((id) => genreMap.get(id)).filter(Boolean)
-        const year = (detail.release_date || detail.first_air_date || item.release_date || item.first_air_date || '')
-            .slice(0, 4) || null
-        const vote = detail.vote_average ?? item.vote_average
+        const genresFa = (detailFa.genres ?? []).map((g) => g.name).filter(Boolean)
+        const genresEn = (detailEn?.genres ?? []).map((g) => g.name).filter(Boolean)
+        const genresFallback = (item.genre_ids ?? []).map((id) => genreMap.get(id)).filter(Boolean)
+        const genres = pickFaOrEnGenres(genresFa, genresEn) || (genresFallback.length ? genresFallback : undefined)
+        const year = (
+            detailFa.release_date || detailFa.first_air_date
+            || detailEn?.release_date || detailEn?.first_air_date
+            || item.release_date || item.first_air_date || ''
+        ).slice(0, 4) || null
+        const vote = detailFa.vote_average ?? detailEn?.vote_average ?? item.vote_average
+
+        const name = preferFaThenEn(
+            detailFa.title || detailFa.name,
+            detailEn?.title || detailEn?.name,
+        )
+        const description = preferFaThenEn(detailFa.overview, detailEn?.overview)
+        const posterPath = detailFa.poster_path || detailEn?.poster_path || item.poster_path
+        const backdropPath = detailFa.backdrop_path || detailEn?.backdrop_path || item.backdrop_path
 
         return {
             id: imdbId,
             type,
-            name: detail.title || detail.name || item.title || item.name || null,
-            poster: (detail.poster_path || item.poster_path)
-                ? `https://image.tmdb.org/t/p/w500${detail.poster_path || item.poster_path}`
-                : null,
-            background: (detail.backdrop_path || item.backdrop_path)
-                ? `https://image.tmdb.org/t/p/original${detail.backdrop_path || item.backdrop_path}`
-                : null,
-            description: detail.overview || item.overview || null,
+            name,
+            poster: posterPath ? `https://image.tmdb.org/t/p/w500${posterPath}` : null,
+            background: backdropPath ? `https://image.tmdb.org/t/p/original${backdropPath}` : null,
+            description,
             releaseInfo: year,
             imdbRating: vote ? String(Math.round(vote * 10) / 10) : null,
             genres: genres.length ? genres : undefined,
@@ -182,11 +230,6 @@ export async function getTMDBMetaFa(type, imdbId, httpClient = axios, apiKey, lo
     }
 }
 
-/**
- * Soft overlay: Persian name/description/genres from TMDB when available.
- * Keeps existing posters (RPDB / Cinemeta / addon) unless missing.
- * Never changes id, videos, links, or stream-related fields.
- */
 export function extractImdbIdFromMeta(meta, fallbackId = '') {
     if (!meta || typeof meta !== 'object') {
         const m = String(fallbackId || '').match(/^(tt\d+)/)
@@ -244,7 +287,7 @@ function isRpdbPosterUrl(url) {
 
 /** Short-lived cache for catalog-list TMDB enrich (avoid N identical finds). */
 const catalogFaCache = new Map()
-const CATALOG_FA_CACHE_TTL_MS = 30 * 60 * 1000
+const CATALOG_FA_CACHE_TTL_MS = 2 * 60 * 60 * 1000 // 2h — protect shared TMDB key
 
 function catalogFaCacheGet(key) {
     const row = catalogFaCache.get(key)
@@ -275,7 +318,7 @@ export async function enrichCatalogMetasWithoutRpdb(
     httpClient = axios,
     apiKey,
     logger = console,
-    {concurrency = 6} = {},
+    {concurrency = 4} = {},
 ) {
     if (!apiKey || !Array.isArray(metas) || !metas.length) {
         return metas
@@ -290,7 +333,7 @@ export async function enrichCatalogMetasWithoutRpdb(
             const my = cursor++
             const {meta, index} = work[my]
             if (!meta || typeof meta !== 'object') continue
-            if (isRpdbPosterUrl(meta.poster)) continue
+            const keepRpdbPoster = isRpdbPosterUrl(meta.poster)
 
             const imdbId = extractImdbIdFromMeta(meta, meta.id)
             let tmdbNumeric = null
@@ -319,7 +362,8 @@ export async function enrichCatalogMetasWithoutRpdb(
                 if (!fa) continue
 
                 const row = out[index]
-                if (fa.poster) row.poster = fa.poster
+                // RPDB poster (ratings) stays; otherwise TMDB poster
+                if (!keepRpdbPoster && fa.poster) row.poster = fa.poster
                 if (fa.background) row.background = fa.background
                 if (fa.name) row.name = fa.name
                 if (fa.description) row.description = fa.description
@@ -357,31 +401,44 @@ export async function getTMDBMetaByTmdbId(
     }
     const kind = type === 'series' ? 'tv' : 'movie'
     try {
-        const response = await httpClient.get(`https://api.themoviedb.org/3/${kind}/${tmdbId}`, {
-            params: {
-                api_key: apiKey,
-                language: 'fa-IR',
-                append_to_response: 'external_ids',
-            },
-            timeout: REQUEST_TIMEOUT_MS,
-        })
-        const data = response.data ?? {}
-        const imdbId = data.external_ids?.imdb_id || data.imdb_id || null
+        let data = {}
+        let dataEn = null
+        try {
+            const [faRes, enRes] = await Promise.all([
+                fetchTmdbDetailLang(kind, tmdbId, 'fa-IR', httpClient, apiKey),
+                fetchTmdbDetailLang(kind, tmdbId, 'en-US', httpClient, apiKey),
+            ])
+            data = faRes || {}
+            dataEn = enRes
+        } catch {
+            data = await fetchTmdbDetailLang(kind, tmdbId, 'fa-IR', httpClient, apiKey)
+        }
+        const imdbId = data.external_ids?.imdb_id || data.imdb_id || dataEn?.external_ids?.imdb_id || null
         const validImdb = imdbId && /^tt\d+$/.test(imdbId) ? imdbId : null
-        const name = data.title || data.name || data.original_title || data.original_name || null
-        const year = (data.release_date || data.first_air_date || '').slice(0, 4) || null
+        // Never prefer original_title (ko/ja/…) when fa missing — use English
+        const name = preferFaThenEn(
+            data.title || data.name,
+            dataEn?.title || dataEn?.name,
+        )
+        const description = preferFaThenEn(data.overview, dataEn?.overview)
+        const year = (data.release_date || data.first_air_date || dataEn?.release_date || dataEn?.first_air_date || '').slice(0, 4) || null
         const genreMap = await getTMDBGenreMap(type, httpClient, apiKey, logger)
-        const genres = (data.genres ?? []).map((g) => g.name || genreMap.get(g.id)).filter(Boolean)
+        const genresFa = (data.genres ?? []).map((g) => g.name || genreMap.get(g.id)).filter(Boolean)
+        const genresEn = (dataEn?.genres ?? []).map((g) => g.name || genreMap.get(g.id)).filter(Boolean)
+        const genres = pickFaOrEnGenres(genresFa, genresEn)
+        const posterPath = data.poster_path || dataEn?.poster_path
+        const backdropPath = data.backdrop_path || dataEn?.backdrop_path
+        const vote = data.vote_average ?? dataEn?.vote_average
 
         const meta = {
             id: `tmdb:${tmdbId}`,
             type,
             name,
-            poster: data.poster_path ? `https://image.tmdb.org/t/p/w500${data.poster_path}` : null,
-            background: data.backdrop_path ? `https://image.tmdb.org/t/p/original${data.backdrop_path}` : null,
-            description: data.overview || null,
+            poster: posterPath ? `https://image.tmdb.org/t/p/w500${posterPath}` : null,
+            background: backdropPath ? `https://image.tmdb.org/t/p/original${backdropPath}` : null,
+            description,
             releaseInfo: year,
-            imdbRating: data.vote_average != null ? String(Math.round(data.vote_average * 10) / 10) : null,
+            imdbRating: vote != null ? String(Math.round(vote * 10) / 10) : null,
             genres: genres.length ? genres : undefined,
             imdb_id: validImdb || undefined,
         }
@@ -447,7 +504,25 @@ const CATALOG_EXACT_PHRASES = [
     [/iptv\s*series/i, 'سریال‌های ماهواره'],
     [/iptv\s*tv\s*shows?/i, 'سریال‌های ماهواره'],
     [/\biptv\b/i, 'ماهواره'],
+
+    // 101 Catalogs common list titles
+    [/rotten\s*tomatoes\s*certified\s*fresh/i, 'تاییدشده راتن تومیتوز'],
+    [/rt\s*fresh/i, 'تازه راتن تومیتوز'],
+    [/top\s*seeded\s*-\s*all\s*time/i, 'پرطرفدارترین تورنت‌ها — همیشه'],
+    [/top\s*seeded\s*-\s*last\s*month/i, 'پرطرفدارترین تورنت‌ها — ماه قبل'],
+    [/top\s*seeded\s*-\s*last\s*week/i, 'پرطرفدارترین تورنت‌ها — هفته قبل'],
+    [/top\s*seeded\s*-\s*this\s*month/i, 'پرطرفدارترین تورنت‌ها — این ماه'],
+    [/top\s*seeded\s*-\s*this\s*week/i, 'پرطرفدارترین تورنت‌ها — این هفته'],
+    [/top\s*seeded/i, 'پرطرفدارترین تورنت‌ها'],
+    [/latest\s*stand\s*up\s*comedy/i, 'آخرین استندآپ کمدی'],
+    [/all\s*family/i, 'همه خانوادگی'],
+    [/family\s*0-5/i, 'خانوادگی خردسال'],
+    [/hanna\s*barbera/i, 'هانا باربرا'],
+    [/cartoon\s*network/i, 'کارتون نتورک'],
+    [/pixar\s*movies/i, 'فیلم‌های پیکسار'],
+    [/pixar\s*shorts/i, 'کوتاه‌های پیکسار'],
 ]
+
 
 const CATALOG_NAME_PHRASES = [
     [/\bnews\b/i, 'اخبار'],
@@ -506,7 +581,37 @@ const CATALOG_NAME_PHRASES = [
     [/\bclassic\b/i, 'کلاسیک'],
     [/\brated\b/i, 'امتیاز'],
     [/\brating[s]?\b/i, 'امتیاز'],
+
+    [/certified\s*fresh/i, 'تاییدشده تازه'],
+    [/stand\s*up/i, 'استندآپ'],
+    [/torrent/i, 'تورنت'],
+    [/seeded/i, 'سیدشده'],
+    [/streaming/i, 'استریمینگ'],
+    [/netflix/i, 'نتفلیکس'],
+    [/disney\+?/i, 'دیزنی پلاس'],
+    [/hbo\s*max/i, 'اچ‌بی‌او مکس'],
+    [/prime\s*video/i, 'پرایم ویدیو'],
+    [/apple\s*tv\+?/i, 'اپل تی‌وی'],
+    [/paramount\+?/i, 'پارامونت پلاس'],
+    [/year/i, 'سال'],
+
+    [/rt\s*fresh\s*-\s*action/i, 'تازه راتن — اکشن'],
+    [/rt\s*fresh\s*-\s*adventure/i, 'تازه راتن — ماجراجویی'],
+    [/rt\s*fresh\s*-\s*animation/i, 'تازه راتن — انیمیشن'],
+    [/rt\s*fresh\s*-\s*anime/i, 'تازه راتن — انیمه'],
+    [/rt\s*fresh\s*-\s*biography/i, 'تازه راتن — بیوگرافی'],
+    [/k-?drama/i, 'درام کره‌ای'],
+    [/korean/i, 'کره‌ای'],
+    [/indian/i, 'هندی'],
+    [/turkish/i, 'ترکی'],
+    [/hulu/i, 'هولو'],
+    [/peacock/i, 'پیکاک'],
+    [/crunchyroll/i, 'کرانچی‌رول'],
+    [/shudder/i, 'شادر'],
+    [/starz/i, 'استارز'],
+    [/genre/i, 'ژانر'],
 ]
+
 
 export function translateCatalogName(name, type) {
     if (!name) {
@@ -527,9 +632,12 @@ export function translateCatalogName(name, type) {
 
     working = working.replace(/\s*[-–—]\s*/g, ' ').replace(/\s+/g, ' ').trim()
 
-    // Safety net: never leave stray untranslated Latin words in the final name.
+    // Safety net: strip leftover English words, keep years and short tokens
     if (/[a-z]/i.test(working)) {
-        working = working.replace(/[a-z][a-z0-9.'&]*/gi, '').replace(/\s+/g, ' ').trim()
+        working = working
+            .replace(/\b(?!\d{4}\b)[a-z][a-z0-9.'+]{2,}/gi, '')
+            .replace(/\s+/g, ' ')
+            .trim()
     }
 
     const typeWord = CATALOG_TYPE_WORD[type]
