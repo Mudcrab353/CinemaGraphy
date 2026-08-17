@@ -18,10 +18,10 @@ import F2Media from './sources/f2media.js'
 import Peepboxtv from './sources/peepboxtv.js'
 import Serialblog from './sources/serialblog.js'
 import {ID_SEPARATOR, METADATA_SOURCE} from './sources/source.js'
-import {findExternalMetaSource, findExternalStreamSource, formatStreamTitle, getCinemeta, getExternalCatalogSources, getExternalCatalogStatus, invalidateExternalCatalogCache, getKitsuTitle, getSubtitle, getTMDBMetaFa, enrichMetaWithFaTmdb, enrichCatalogMetasWithoutRpdb, getTMDBMetaByTmdbId, getTMDBDetails, getTMDBTitle, getLandingTmdbCatalogs, getTorrentStreams, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxyExternalStream, proxySubtitles, translateCatalogName, buildOrderedExternalCatalogs, rewriteTmdbImageUrls, parseTmdbImageProxyPath, tmdbRequest} from './utils.js'
+import {findExternalMetaSource, findExternalStreamSource, formatStreamTitle, getCinemeta, getExternalCatalogSources, getExternalCatalogStatus, invalidateExternalCatalogCache, getKitsuTitle, getSubtitle, getTMDBMetaFa, enrichMetaWithFaTmdb, enrichCatalogMetasWithoutRpdb, getTMDBMetaByTmdbId, getTMDBDetails, getTMDBTitle, getLandingTmdbCatalogs, getTorrentStreams, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxyExternalStream, proxySubtitles, translateCatalogName, buildOrderedExternalCatalogs, rewriteTmdbImageUrls, parseTmdbImageProxyPath, tmdbRequest, setMetaLangPref} from './utils.js'
 
 export const ADDON_PREFIX = 'ip'
-export const ADDON_VERSION = '2.1.38'
+export const ADDON_VERSION = '2.1.39'
 
 
 const PROVIDER_BASEURL_KEYS = [
@@ -68,6 +68,8 @@ const CONFIG_ALLOW = new Set([
     'DISABLE_SUBTITLES',
     'STREAMS_ONLY',
     'ADDON_NAME_SUFFIX',
+    'META_LANG',
+    'ADDON_LANG',
     ...PROVIDER_BASEURL_KEYS,
 ])
 
@@ -212,15 +214,33 @@ export function createManifest(env = process.env) {
         ? 'com.cinemagraphy.stremio.streams'
         : 'com.cinemagraphy.stremio'
 
+    const addonLang = String(env.ADDON_LANG || 'fa').trim().toLowerCase() === 'en' ? 'en' : 'fa'
+    const nameBase = addonLang === 'en' ? 'CinemaGraphy' : 'سینماگرافی'
+    let suffix = nameSuffix
+    if (addonLang === 'en') {
+        if (streamsOnly || (disableMeta && disableCatalog)) suffix = String(env.ADDON_NAME_SUFFIX || '').trim() || ' · Streams'
+        else if (disableMeta) suffix = String(env.ADDON_NAME_SUFFIX || '').trim() || ' · No meta'
+        else if (disableCatalog) suffix = String(env.ADDON_NAME_SUFFIX || '').trim() || ' · No catalogs'
+        else suffix = String(env.ADDON_NAME_SUFFIX || '').trim()
+    }
+    let description
+    if (addonLang === 'en') {
+        description = (disableMeta && disableCatalog)
+            ? 'CinemaGraphy — streams only from Iranian sources (use another addon for meta/catalogs).'
+            : 'CinemaGraphy — movies & series from Iranian and international sources.'
+    } else {
+        description = (disableMeta && disableCatalog)
+            ? 'سینماگرافی — فقط استریم از منابع ایرانی (متا/کاتالوگ از افزونه‌های دیگر).'
+            : 'سینماگرافی — دانلود و تماشای فیلم و سریال از منابع ایرانی و بین‌المللی.'
+    }
+
     return {
         id: instanceId,
         version: ADDON_VERSION,
         contactEmail: 'thenerdcow@gmail.com',
-        description: (disableMeta && disableCatalog)
-            ? 'سینماگرافی — فقط استریم از منابع ایرانی (متا/کاتالوگ از افزونه‌های دیگر).'
-            : 'سینماگرافی — دانلود و تماشای فیلم و سریال از منابع ایرانی و بین‌المللی.',
+        description,
         logo: 'https://raw.githubusercontent.com/TheNerdCow/CinemaGraphy/refs/heads/master/logo.png',
-        name: `سینماگرافی${nameSuffix}${developmentSuffix}`,
+        name: `${nameBase}${suffix}${developmentSuffix}`,
         catalogs,
         resources,
         types: ['movie', 'series', 'tv'],
@@ -796,6 +816,9 @@ export function createAddon({
 
     function requestScope(req) {
         const e = mergeEnv(env, req?.addonConfig)
+        try {
+            setMetaLangPref(e.META_LANG || env.META_LANG || 'fa')
+        } catch { /* ignore */ }
         const p = req?.addonConfig ? createProviders({env: e, logger}) : providers
         return {env: e, providers: p}
     }

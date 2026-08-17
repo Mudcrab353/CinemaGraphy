@@ -59,14 +59,14 @@ export function renderLandingPage({
   manifestUrl = PUBLIC_INSTALL,
   installUrl,
   logoUrl = '/logo.png',
-  version = '2.1.38',
+  version = '2.1.39',
 } = {}) {
   const m = escapeHtml(manifestUrl || PUBLIC_INSTALL)
   const install = escapeHtml(
     installUrl || `stremio://${String(manifestUrl || PUBLIC_INSTALL).replace(/^https?:\/\//i, '')}`,
   )
   const logo = escapeHtml(logoUrl || LOGO_FALLBACK)
-  const ver = escapeHtml(String(version || '2.1.38'))
+  const ver = escapeHtml(String(version || '2.1.39'))
 
   const addonCards = RECOMMENDED.map(
     (a) => `
@@ -110,7 +110,7 @@ background-image:radial-gradient(1.5px 1.5px at 10% 20%,#fff,transparent),radial
 .tile .hov a{margin:0!important;width:100%;display:block}
 .tile .hov .s-nuvio{background:linear-gradient(135deg,#6a9dff,#4a7ae0);color:#fff}
 
-.lang-en{display:none}html[lang=en] .lang-fa{display:none}html[lang=en] .lang-en{display:block}html[lang=en] body{direction:ltr}
+.lang-en{display:none!important}.lang-fa{display:initial}html[lang=en] .lang-fa{display:none!important}html[lang=en] .lang-en{display:initial!important}html[lang=en] body{direction:ltr}
 header{position:sticky;top:0;z-index:50;display:flex;justify-content:space-between;align-items:center;padding:14px 5vw;background:rgba(5,5,8,.45);backdrop-filter:blur(20px);border-bottom:1px solid rgba(255,255,255,.06)}
 .brand{display:flex;gap:12px;align-items:center;color:var(--t);text-decoration:none;font-weight:800;font-size:1.15rem}
 .brand img{width:40px;height:40px;border-radius:12px;box-shadow:0 0 20px var(--gl)}
@@ -589,7 +589,7 @@ h2{font-size:1.05rem;margin:0 0 10px;overflow-wrap:anywhere}
 .bp.ok{background:linear-gradient(135deg,#5dcea0,#3aa87a)}
 .ghost{background:rgba(255,255,255,.08);color:var(--t);border:1px solid var(--gb)}
 .row{display:flex;flex-wrap:wrap;gap:10px;margin:12px 0;max-width:100%}
-.lang-en{display:none}html[lang=en] .lang-fa{display:none}html[lang=en] .lang-en{display:block}html[lang=en] body{direction:ltr}
+.lang-en{display:none!important}html[lang=en] .lang-fa{display:none!important}html[lang=en] .lang-en{display:initial!important}html[lang=en] body{direction:ltr}
 .cfg-item{padding:14px 16px;margin-bottom:10px;max-width:100%;overflow:hidden}
 .cfg-item .top{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;margin-bottom:6px}
 .cfg-item code,code,pre{direction:ltr;font-size:.78rem;color:var(--a2);overflow-wrap:anywhere;word-break:break-all;max-width:100%}
@@ -622,11 +622,11 @@ h2{font-size:1.05rem;margin:0 0 10px;overflow-wrap:anywhere}
 
 export function renderConfigurePage({
   logoUrl = '/logo.png',
-  version = '2.1.38',
+  version = '2.1.39',
   origin = PUBLIC_SITE,
 } = {}) {
   const logo = escapeHtml(logoUrl || LOGO_FALLBACK)
-  const ver = escapeHtml(String(version || '2.1.38'))
+  const ver = escapeHtml(String(version || '2.1.39'))
   const originClean = String(origin || PUBLIC_SITE).replace(/\/$/, '')
   const base = escapeHtml(originClean)
   const baseJson = JSON.stringify(originClean)
@@ -683,43 +683,85 @@ export function renderConfigurePage({
 <p class="note" id="loadMsg"></p>
 </div>
 
-<div class="toggle-grid">
-<label class="tog glass">
+<div class="glass" style="padding:16px;margin-bottom:16px">
+<h2 class="lang-fa" style="margin-top:0">حالت افزونه</h2>
+<h2 class="lang-en" style="margin-top:0">Addon mode</h2>
+<div class="toggle-grid" style="margin:0">
+<label class="tog" style="background:rgba(0,0,0,.2);border-radius:12px;border:1px solid var(--gb)">
 <input type="checkbox" id="optStreamsOnly"/>
 <div>
 <b class="lang-fa">فقط استریم <span class="pill">STREAMS_ONLY</span></b>
 <b class="lang-en">Streams only <span class="pill">STREAMS_ONLY</span></b>
-<span class="hint lang-fa">متا و کاتالوگ این افزونه خاموش می‌شود؛ فقط لینک پخش می‌دهد. مناسب اگر AIOMetadata یا Cinemeta دارید.</span>
-<span class="hint lang-en">Disables this addon's meta &amp; catalogs — streams only. Ideal if you already use AIOMetadata / Cinemeta.</span>
+<span class="hint lang-fa">متا و کاتالوگ این افزونه خاموش؛ فقط پخش. اگر AIOMetadata دارید مناسب است. باید حداقل یک پروایدر انتخاب شود.</span>
+<span class="hint lang-en">Meta &amp; catalogs off — streams only. Requires at least one provider.</span>
 </div>
 </label>
-<label class="tog glass">
+<label class="tog" style="background:rgba(0,0,0,.2);border-radius:12px;border:1px solid var(--gb)">
 <input type="checkbox" id="optDisableMeta"/>
 <div>
 <b class="lang-fa">غیرفعال کردن متا</b>
 <b class="lang-en">Disable metadata</b>
-<span class="hint lang-fa">فقط resource متا حذف می‌شود؛ کاتالوگ‌ها می‌مانند مگر جدا خاموش شوند.</span>
-<span class="hint lang-en">Removes meta resource only; catalogs stay unless disabled separately.</span>
+<span class="hint lang-fa">فقط متا حذف می‌شود.</span>
+<span class="hint lang-en">Removes meta resource only.</span>
 </div>
 </label>
-<label class="tog glass">
+<label class="tog" style="background:rgba(0,0,0,.2);border-radius:12px;border:1px solid var(--gb)">
 <input type="checkbox" id="optDisableCatalog"/>
 <div>
 <b class="lang-fa">غیرفعال کردن کاتالوگ‌ها</b>
 <b class="lang-en">Disable catalogs</b>
-<span class="hint lang-fa">جستجوی پروایدر و کاتالوگ‌های خارجی (۱۰۱ / AIO / …) از این نصب حذف می‌شوند.</span>
-<span class="hint lang-en">Hides provider search catalogs and external catalogs for this install.</span>
+<span class="hint lang-fa">کاتالوگ پروایدر و خارجی‌ها حذف می‌شوند.</span>
+<span class="hint lang-en">Hides provider &amp; external catalogs.</span>
 </div>
 </label>
-<label class="tog glass">
+<label class="tog" style="background:rgba(0,0,0,.2);border-radius:12px;border:1px solid var(--gb)">
 <input type="checkbox" id="optDisableSubs"/>
 <div>
-<b class="lang-fa">غیرفعال کردن زیرنویس افزونه</b>
-<b class="lang-en">Disable addon subtitles</b>
-<span class="hint lang-fa">اگر از OpenSubtitles جدا استفاده می‌کنید.</span>
-<span class="hint lang-en">If you already use a dedicated subtitle addon.</span>
+<b class="lang-fa">غیرفعال کردن زیرنویس</b>
+<b class="lang-en">Disable subtitles</b>
+<span class="hint lang-fa">اگر OpenSubtitles جدا دارید.</span>
+<span class="hint lang-en">If you use a separate subtitle addon.</span>
 </div>
 </label>
+</div>
+</div>
+
+<div class="glass" style="padding:16px;margin-bottom:16px">
+<h2 class="lang-fa" style="margin-top:0">زبان متادیتا (TMDB)</h2>
+<h2 class="lang-en" style="margin-top:0">Metadata language (TMDB)</h2>
+<p class="hint lang-fa" style="font-size:.85rem;color:var(--m);margin-bottom:10px">عنوان، توضیح و ژانر. پوسترها همان تصاویر TMDB هستند؛ زبان روی متن اثر دارد.</p>
+<p class="hint lang-en" style="font-size:.85rem;color:var(--m);margin-bottom:10px">Titles, descriptions, genres. Posters are the same TMDB art; this switches text language.</p>
+<div class="sel-row" style="margin:0">
+<label class="tog" style="flex:1;min-width:140px;background:rgba(0,0,0,.22);border-radius:12px;border:1px solid var(--gb);padding:12px 14px;cursor:pointer">
+<input type="radio" name="metaLang" value="fa" checked style="width:16px;height:16px;accent-color:#e8a04a"/>
+<span class="lang-fa"><b>فارسی</b> (پیش‌فرض)</span>
+<span class="lang-en"><b>Persian</b> (default)</span>
+</label>
+<label class="tog" style="flex:1;min-width:140px;background:rgba(0,0,0,.22);border-radius:12px;border:1px solid var(--gb);padding:12px 14px;cursor:pointer">
+<input type="radio" name="metaLang" value="en" style="width:16px;height:16px;accent-color:#e8a04a"/>
+<span class="lang-fa"><b>انگلیسی</b></span>
+<span class="lang-en"><b>English</b></span>
+</label>
+</div>
+</div>
+
+<div class="glass" style="padding:16px;margin-bottom:16px">
+<h2 class="lang-fa" style="margin-top:0">زبان افزونه (نام در لیست)</h2>
+<h2 class="lang-en" style="margin-top:0">Addon language (list name)</h2>
+<p class="hint lang-fa" style="font-size:.85rem;color:var(--m);margin-bottom:10px">نام و توضیح منیفست در استریمیو/Nuvio — فارسی یا انگلیسی.</p>
+<p class="hint lang-en" style="font-size:.85rem;color:var(--m);margin-bottom:10px">Manifest display name &amp; description in Stremio/Nuvio.</p>
+<div class="sel-row" style="margin:0">
+<label class="tog" style="flex:1;min-width:140px;background:rgba(0,0,0,.22);border-radius:12px;border:1px solid var(--gb);padding:12px 14px;cursor:pointer">
+<input type="radio" name="addonLang" value="fa" checked style="width:16px;height:16px;accent-color:#e8a04a"/>
+<span class="lang-fa"><b>فارسی</b> — سینماگرافی</span>
+<span class="lang-en"><b>Persian</b> — سینماگرافی</span>
+</label>
+<label class="tog" style="flex:1;min-width:140px;background:rgba(0,0,0,.22);border-radius:12px;border:1px solid var(--gb);padding:12px 14px;cursor:pointer">
+<input type="radio" name="addonLang" value="en" style="width:16px;height:16px;accent-color:#e8a04a"/>
+<span class="lang-fa"><b>English</b> — CinemaGraphy</span>
+<span class="lang-en"><b>English</b> — CinemaGraphy</span>
+</label>
+</div>
 </div>
 
 <div class="sel-row">
@@ -785,6 +827,7 @@ export function renderConfigurePage({
 <input data-k="ADDON_NAME_SUFFIX" placeholder=" · home" autocomplete="off"/>
 </div>
 
+<p id="cfgWarn" class="glass" style="display:none;padding:12px 14px;margin-bottom:12px;border-color:rgba(224,112,112,.45)!important;color:#e07070;font-size:.9rem"></p>
 <div class="out glass">
 <label class="lang-fa" style="font-size:.8rem;color:var(--m)">منیفست اختصاصی شما</label>
 <label class="lang-en" style="font-size:.8rem;color:var(--m)">Your custom manifest</label>
@@ -851,6 +894,10 @@ export function renderConfigurePage({
     if (dm && dm.checked && !(streams && streams.checked)) o.DISABLE_META = '1';
     if (dc && dc.checked && !(streams && streams.checked)) o.DISABLE_CATALOG = '1';
     if (ds && ds.checked) o.DISABLE_SUBTITLES = '1';
+    var metaR = document.querySelector('input[name="metaLang"]:checked');
+    if (metaR && metaR.value === 'en') o.META_LANG = 'en';
+    var addR = document.querySelector('input[name="addonLang"]:checked');
+    if (addR && addR.value === 'en') o.ADDON_LANG = 'en';
     return o;
   }
   function applyObj(o) {
@@ -874,6 +921,10 @@ export function renderConfigurePage({
     if (dm) dm.checked = streamsOnly || o.DISABLE_META === '1' || o.DISABLE_META === 'true';
     if (dc) dc.checked = streamsOnly || o.DISABLE_CATALOG === '1' || o.DISABLE_CATALOG === 'true';
     if (ds) ds.checked = o.DISABLE_SUBTITLES === '1' || o.DISABLE_SUBTITLES === 'true';
+    var metaVal = (o.META_LANG === 'en') ? 'en' : 'fa';
+    document.querySelectorAll('input[name="metaLang"]').forEach(function (r) { r.checked = r.value === metaVal; });
+    var addVal = (o.ADDON_LANG === 'en') ? 'en' : 'fa';
+    document.querySelectorAll('input[name="addonLang"]').forEach(function (r) { r.checked = r.value === addVal; });
     syncStreamToggles();
   }
   function syncStreamToggles() {
@@ -892,14 +943,32 @@ export function renderConfigurePage({
     syncStreamToggles();
     var o = collect();
     try { localStorage.setItem(STORE, JSON.stringify(o)); } catch (e) {}
-    // Always custom path on this page (even empty object → still /c/e30)
+    var streams = document.getElementById('optStreamsOnly');
+    var needProv = streams && streams.checked;
+    var provCount = (o.ENABLED_PROVIDERS || '').split(',').filter(Boolean).length;
+    var warn = document.getElementById('cfgWarn');
+    var btn = document.getElementById('btnInstall');
+    var btnCopy = document.getElementById('btnCopy');
+    if (needProv && provCount === 0) {
+      if (warn) {
+        warn.style.display = 'block';
+        warn.textContent = r.lang === 'fa'
+          ? 'برای حالت فقط‌استریم حداقل یک پروایدر را انتخاب کنید (مثلاً Animex یا F2Media).'
+          : 'Streams-only requires at least one provider (e.g. Animex or F2Media).';
+      }
+      if (btn) { btn.href = '#'; btn.style.opacity = '0.45'; btn.style.pointerEvents = 'none'; }
+      if (btnCopy) { btnCopy.disabled = true; btnCopy.style.opacity = '0.45'; }
+    } else {
+      if (warn) warn.style.display = 'none';
+      if (btnCopy) { btnCopy.disabled = false; btnCopy.style.opacity = '1'; }
+      if (btn) { btn.style.opacity = '1'; btn.style.pointerEvents = 'auto'; }
+    }
     var cfg = toB64Url(o);
     var manifest = BASE + '/c/' + cfg + '/manifest.json';
     var install = 'stremio://' + stripProto(BASE) + '/c/' + cfg + '/manifest.json';
     var out = document.getElementById('outUrl');
-    var btn = document.getElementById('btnInstall');
     if (out) out.value = manifest;
-    if (btn) btn.href = install;
+    if (btn && !(needProv && provCount === 0)) btn.href = install;
   }
   function setMsg(text, ok) {
     var el = document.getElementById('loadMsg');
@@ -907,7 +976,7 @@ export function renderConfigurePage({
     el.textContent = text || '';
     el.style.color = ok ? '#5dcea0' : 'var(--m)';
   }
-  document.querySelectorAll('[data-prov], [data-k], #optStreamsOnly, #optDisableMeta, #optDisableCatalog, #optDisableSubs').forEach(function (el) {
+  document.querySelectorAll('[data-prov], [data-k], #optStreamsOnly, #optDisableMeta, #optDisableCatalog, #optDisableSubs, input[name="metaLang"], input[name="addonLang"]').forEach(function (el) {
     el.addEventListener('change', refresh);
     el.addEventListener('input', refresh);
   });
@@ -984,11 +1053,11 @@ export function renderConfigurePage({
 
 export function renderGuidePage({
   logoUrl = '/logo.png',
-  version = '2.1.38',
+  version = '2.1.39',
   manifestUrl = PUBLIC_INSTALL,
 } = {}) {
   const logo = escapeHtml(logoUrl || LOGO_FALLBACK)
-  const ver = escapeHtml(String(version || '2.1.38'))
+  const ver = escapeHtml(String(version || '2.1.39'))
   const install = escapeHtml(
     'stremio://' + String(manifestUrl || PUBLIC_INSTALL).replace(/^https?:\/\//i, ''),
   )

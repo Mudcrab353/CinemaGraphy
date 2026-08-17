@@ -253,9 +253,26 @@ export function stripBidi(text) {
  * Prefer Persian TMDB text; if missing or not localized, use English — never
  * fall back to original_title (Korean/Japanese/etc.) for display names.
  */
+/** Request-scoped preference: 'fa' (default) or 'en' for TMDB text. */
+let _metaLangPref = 'fa'
+
+export function setMetaLangPref(lang) {
+    const v = String(lang || 'fa').trim().toLowerCase()
+    _metaLangPref = v === 'en' || v === 'en-us' || v === 'english' ? 'en' : 'fa'
+}
+
+export function getMetaLangPref() {
+    return _metaLangPref
+}
+
 export function preferFaThenEn(faVal, enVal) {
     const fa = String(faVal || '').trim()
     const en = String(enVal || '').trim()
+    if (_metaLangPref === 'en') {
+        if (en) return en
+        if (fa) return fa
+        return null
+    }
     if (fa && hasPersianScript(fa)) return fa
     if (en) return en
     if (fa) return fa
@@ -266,6 +283,10 @@ export function preferFaThenEn(faVal, enVal) {
 export function pickFaOrEnGenres(genresFa, genresEn) {
     const fa = (genresFa || []).filter(Boolean)
     const en = (genresEn || []).filter(Boolean)
+    if (_metaLangPref === 'en') {
+        if (en.length) return en
+        return fa.length ? fa : undefined
+    }
     if (fa.some((g) => hasPersianScript(g))) return fa
     if (en.length) return en
     return fa.length ? fa : undefined
