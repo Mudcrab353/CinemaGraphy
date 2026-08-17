@@ -21,7 +21,7 @@ import {ID_SEPARATOR, METADATA_SOURCE} from './sources/source.js'
 import {findExternalMetaSource, findExternalStreamSource, formatStreamTitle, getCinemeta, getExternalCatalogSources, getExternalCatalogStatus, invalidateExternalCatalogCache, getKitsuTitle, getSubtitle, getTMDBMetaFa, enrichMetaWithFaTmdb, enrichCatalogMetasWithoutRpdb, getTMDBMetaByTmdbId, getTMDBDetails, getTMDBTitle, getLandingTmdbCatalogs, getTorrentStreams, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxyExternalStream, proxySubtitles, translateCatalogName, buildOrderedExternalCatalogs, rewriteTmdbImageUrls, parseTmdbImageProxyPath, tmdbRequest, setMetaLangPref, setUiLangPref} from './utils.js'
 
 export const ADDON_PREFIX = 'ip'
-export const ADDON_VERSION = '2.1.43'
+export const ADDON_VERSION = '2.1.44'
 
 
 const PROVIDER_BASEURL_KEYS = [
@@ -244,7 +244,12 @@ export function createManifest(env = process.env) {
         catalogs,
         resources,
         types: ['movie', 'series', 'tv'],
-        behaviorHints: {p2p: Boolean(env.TORRENT_METEOR_MANIFEST_URL)},
+        behaviorHints: {
+            p2p: Boolean(env.TORRENT_METEOR_MANIFEST_URL),
+            // Shows «Configure» next to Install in Stremio / Nuvio addon list
+            configurable: true,
+            configurationRequired: false,
+        },
         stremioAddonsConfig: {
             issuer: 'https://stremio-addons.net',
             signature: 'eyJhbGciOiJkaXIiLCJlbmMiOiJBMTI4Q0JDLUhTMjU2In0..qYqYdUtntg-bF3wGDjsiww.IBIrE7RSO9aaALvNQROynW-pBh-OQLl3t-nFXqhEAO4AYl2qHvSGJWNP6WTwzU1yD8DjmYbnjDVdgkIDYw75MtInyH_cG0uEYr2VXEIGbHNZVlWlPH-C5go_8UyAMxCc.bM45Z1wp81dep2eCW5dt8A',
