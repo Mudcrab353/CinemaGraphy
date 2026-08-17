@@ -723,8 +723,8 @@ export function renderConfigurePage({
 <div>
 <b class="lang-fa">فقط استریم <span class="pill">STREAMS_ONLY</span></b>
 <b class="lang-en">Streams only <span class="pill">STREAMS_ONLY</span></b>
-<span class="hint lang-fa">متا و کاتالوگ این افزونه خاموش؛ فقط پخش. اگر AIOMetadata دارید مناسب است. باید حداقل یک پروایدر انتخاب شود.</span>
-<span class="hint lang-en">Meta &amp; catalogs off — streams only. Requires at least one provider.</span>
+<span class="hint lang-fa">متا و کاتالوگ فیلم/سریال خاموش؛ فقط پخش. کاتالوگ ماهواره (IPTV) اگر تیک خورده باشد جدا می‌ماند. حداقل یک پروایدر لازم است.</span>
+<span class="hint lang-en">Movie/series meta &amp; catalogs off — streams only. IPTV stays if enabled separately. Needs at least one provider.</span>
 </div>
 </label>
 <label class="tog" style="background:rgba(0,0,0,.2);border-radius:12px;border:1px solid var(--gb)">
@@ -741,8 +741,8 @@ export function renderConfigurePage({
 <div>
 <b class="lang-fa">غیرفعال کردن کاتالوگ‌ها</b>
 <b class="lang-en">Disable catalogs</b>
-<span class="hint lang-fa">کاتالوگ پروایدر و خارجی‌ها حذف می‌شوند.</span>
-<span class="hint lang-en">Hides provider &amp; external catalogs.</span>
+<span class="hint lang-fa">کاتالوگ فیلم/سریال (پروایدر و ۱۰۱/AIO/…) حذف می‌شود — ماهواره جداست.</span>
+<span class="hint lang-en">Hides movie/series catalogs only — IPTV is separate.</span>
 </div>
 </label>
 <label class="tog" style="background:rgba(0,0,0,.2);border-radius:12px;border:1px solid var(--gb)">

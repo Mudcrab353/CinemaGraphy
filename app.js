@@ -18,10 +18,10 @@ import F2Media from './sources/f2media.js'
 import Peepboxtv from './sources/peepboxtv.js'
 import Serialblog from './sources/serialblog.js'
 import {ID_SEPARATOR, METADATA_SOURCE} from './sources/source.js'
-import {findExternalMetaSource, findExternalStreamSource, formatStreamTitle, getCinemeta, getExternalCatalogSources, getExternalCatalogStatus, invalidateExternalCatalogCache, getKitsuTitle, getSubtitle, getTMDBMetaFa, enrichMetaWithFaTmdb, enrichCatalogMetasWithoutRpdb, getTMDBMetaByTmdbId, getTMDBDetails, getTMDBTitle, getLandingTmdbCatalogs, getTorrentStreams, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxyExternalStream, proxySubtitles, translateCatalogName, buildOrderedExternalCatalogs, rewriteTmdbImageUrls, parseTmdbImageProxyPath, tmdbRequest, setMetaLangPref, setUiLangPref} from './utils.js'
+import {findExternalMetaSource, findExternalStreamSource, formatStreamTitle, getCinemeta, getExternalCatalogSources, getExternalCatalogStatus, invalidateExternalCatalogCache, getKitsuTitle, getSubtitle, getTMDBMetaFa, enrichMetaWithFaTmdb, enrichCatalogMetasWithoutRpdb, getTMDBMetaByTmdbId, getTMDBDetails, getTMDBTitle, getLandingTmdbCatalogs, getTorrentStreams, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxyExternalStream, proxySubtitles, translateCatalogName, buildOrderedExternalCatalogs, classifyExternalCatalogSource, rewriteTmdbImageUrls, parseTmdbImageProxyPath, tmdbRequest, setMetaLangPref, setUiLangPref} from './utils.js'
 
 export const ADDON_PREFIX = 'ip'
-export const ADDON_VERSION = '2.1.47'
+export const ADDON_VERSION = '2.1.48'
 
 
 const PROVIDER_BASEURL_KEYS = [
@@ -143,8 +143,7 @@ export function mergeEnv(baseEnv = {}, config) {
         }
     }
 
-    // IPTV / ماهواره — opt-in on custom installs only
-    // unchecked → strip IPTV; checked + empty → server env or built-in default; checked + URL → that URL
+    // IPTV / ماهواره — opt-in on custom installs; independent from movie/series catalogs
     {
         const iptvOn = isConfigFlagOn(config, 'ENABLE_IPTV')
             || Boolean(String(config.CATALOG_IPTVBRIDGE_MANIFEST_URL || '').trim())
@@ -157,6 +156,19 @@ export function mergeEnv(baseEnv = {}, config) {
             const fromServer = String(baseEnv.CATALOG_IPTVBRIDGE_MANIFEST_URL || '').trim()
             e.CATALOG_IPTVBRIDGE_MANIFEST_URL = fromServer || DEFAULT_IPTV_BRIDGE_MANIFEST_URL
         }
+    }
+
+    // STREAMS_ONLY / DISABLE_CATALOG apply to movie-series catalogs only — not IPTV
+    const streamsOnlyCfg = isConfigFlagOn(config, 'STREAMS_ONLY')
+    const disableMovieCatalogs = streamsOnlyCfg || isConfigFlagOn(config, 'DISABLE_CATALOG')
+    if (disableMovieCatalogs) {
+        delete e.CATALOG101_MANIFEST_URL
+        delete e.CATALOG_AIO_MANIFEST_URL
+        delete e.CATALOG_AIOCATALOGS_MANIFEST_URL
+        delete e.CATALOG_TMDB_MANIFEST_URL
+        delete e.CATALOG_ANIME_MANIFEST_URL
+        delete e.EXTERNAL_CATALOG_MANIFEST_URLS
+        // CATALOG_IPTVBRIDGE_MANIFEST_URL intentionally kept when ENABLE_IPTV was set above
     }
 
     return e
@@ -193,6 +205,8 @@ export function createManifest(env = process.env) {
         || (disableMeta ? ' · بدون متا' : '')
         || (disableCatalog ? ' · بدون کاتالوگ' : '')
 
+    const iptvEnabled = Boolean(String(env.CATALOG_IPTVBRIDGE_MANIFEST_URL || '').trim())
+    // Provider search catalogs (movie/series) — not IPTV
     const catalogs = disableCatalog
         ? []
         : CATALOGS.filter((cfg) => {
@@ -209,7 +223,8 @@ export function createManifest(env = process.env) {
         })
 
     const resources = []
-    if (!disableCatalog) resources.push('catalog')
+    // Catalog resource stays if movie catalogs OR IPTV/satellite catalogs are active
+    if (!disableCatalog || iptvEnabled) resources.push('catalog')
     if (!disableMeta) {
         resources.push({
             name: 'meta',
@@ -1019,12 +1034,20 @@ export function createAddon({
         const streamsOnly = isConfigFlagOn(activeEnv, 'STREAMS_ONLY')
         const disableMeta = streamsOnly || isConfigFlagOn(activeEnv, 'DISABLE_META')
         const disableCatalog = streamsOnly || isConfigFlagOn(activeEnv, 'DISABLE_CATALOG')
+        const iptvEnabled = Boolean(String(activeEnv.CATALOG_IPTVBRIDGE_MANIFEST_URL || '').trim())
         try {
             if (String(req.query?.refresh || '') === '1') {
                 invalidateExternalCatalogCache()
             }
-            if (!disableCatalog || !disableMeta) {
-                const externalSources = await getExternalCatalogSources(activeEnv, axios, logger)
+            // Movie/series external catalogs OR IPTV (IPTV is independent of STREAMS_ONLY)
+            if (!disableCatalog || !disableMeta || iptvEnabled) {
+                let externalSources = await getExternalCatalogSources(activeEnv, axios, logger)
+                // When movie catalogs are off, only keep IPTV/satellite sources
+                if (disableCatalog) {
+                    externalSources = (externalSources || []).filter(
+                        (s) => classifyExternalCatalogSource(s) === 'iptv',
+                    )
+                }
                 for (const source of externalSources) {
                     if (!disableMeta && source.hasMeta) {
                         const metaResource = manifest.resources.find((r) => r?.name === 'meta')
@@ -1043,7 +1066,7 @@ export function createAddon({
                         }
                     }
                 }
-                if (!disableCatalog) {
+                if (!disableCatalog || iptvEnabled) {
                     manifest.catalogs.push(...buildOrderedExternalCatalogs(externalSources, (catalog) => ({
                         ...catalog,
                         name: translateCatalogName(catalog.name, catalog.type),
@@ -1062,10 +1085,24 @@ export function createAddon({
     const catalogHandler = async (req, res) => {
         try {
             const {env: activeEnv, providers: activeProviders} = requestScope(req)
-            if (isConfigFlagOn(activeEnv, 'STREAMS_ONLY') || isConfigFlagOn(activeEnv, 'DISABLE_CATALOG')) {
+            const streamsOnly = isConfigFlagOn(activeEnv, 'STREAMS_ONLY')
+            const disableCatalog = streamsOnly || isConfigFlagOn(activeEnv, 'DISABLE_CATALOG')
+            const iptvEnabled = Boolean(String(activeEnv.CATALOG_IPTVBRIDGE_MANIFEST_URL || '').trim())
+            let externalSources = await getExternalCatalogSources(activeEnv, axios, logger)
+            if (disableCatalog) {
+                // Movie/series catalogs off — IPTV still served when enabled
+                externalSources = (externalSources || []).filter(
+                    (s) => classifyExternalCatalogSource(s) === 'iptv',
+                )
+                const externalSource = externalSources.find((source) => source.catalogIds.has(req.params.id))
+                if (externalSource && iptvEnabled) {
+                    const data = await proxyExternalCatalog(
+                        externalSource, req.params.type, req.params.id, req.params.extraArgs, axios, logger,
+                    )
+                    return jsonWithTmdbImages(req, res, data || {metas: []}, 'public, max-age=120')
+                }
                 return res.json({metas: []})
             }
-            const externalSources = await getExternalCatalogSources(activeEnv, axios, logger)
             const externalSource = externalSources.find((source) => source.catalogIds.has(req.params.id))
             if (externalSource) {
                 let data = await proxyExternalCatalog(
