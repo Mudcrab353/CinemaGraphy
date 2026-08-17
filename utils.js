@@ -393,6 +393,19 @@ export async function enrichMetaWithFaTmdb(
         if (!out.poster && fa.poster) out.poster = fa.poster
         // Background: prefer clean TMDB backdrop (no rating badges)
         if (fa.background) out.background = fa.background
+        // Episode titles/overviews (series)
+        if (type === 'series' && Array.isArray(out.videos) && out.videos.length) {
+            try {
+                const tvId = await resolveTmdbTvId(out, httpClient, apiKey, logger)
+                if (tvId) {
+                    out.videos = await enrichSeriesVideosFa(
+                        out.videos, tvId, httpClient, apiKey, logger,
+                    )
+                }
+            } catch (error) {
+                logAxiosError(error, logger, 'enrichMeta videos FA failed')
+            }
+        }
         return out
     } catch (error) {
         logAxiosError(error, logger, 'enrichMetaWithFaTmdb failed')
@@ -540,6 +553,120 @@ export async function enrichCatalogMetasWithoutRpdb(
 
 
 /**
+ * Localize series episode titles/overviews via TMDB (fa-IR then en-US).
+ * Uses one request per season (cached by tmdbRequest). Safe no-op on failure.
+ */
+export async function enrichSeriesVideosFa(
+    videos,
+    tmdbId,
+    httpClient = axios,
+    apiKey = process.env.TMDB_API_KEY,
+    logger = console,
+) {
+    if (!apiKey || !tmdbId || !Array.isArray(videos) || !videos.length) {
+        return videos
+    }
+    const seasons = new Set()
+    for (const v of videos) {
+        const s = Number(v?.season)
+        if (Number.isInteger(s) && s >= 0) seasons.add(s)
+    }
+    if (!seasons.size) return videos
+
+    const bySeason = new Map() // season -> Map(episode -> {name, overview})
+    await Promise.all(
+        [...seasons].map(async (season) => {
+            try {
+                const [fa, en] = await Promise.all([
+                    tmdbRequest(
+                        `tv/${tmdbId}/season/${season}`,
+                        {language: 'fa-IR'},
+                        httpClient,
+                        apiKey,
+                        logger,
+                    ).catch(() => null),
+                    tmdbRequest(
+                        `tv/${tmdbId}/season/${season}`,
+                        {language: 'en-US'},
+                        httpClient,
+                        apiKey,
+                        logger,
+                    ).catch(() => null),
+                ])
+                const enEps = new Map(
+                    (en?.episodes || []).map((ep) => [ep.episode_number, ep]),
+                )
+                const map = new Map()
+                for (const ep of fa?.episodes || []) {
+                    const enEp = enEps.get(ep.episode_number)
+                    const name = preferFaThenEn(ep.name, enEp?.name)
+                    const overview = preferFaThenEn(ep.overview, enEp?.overview)
+                    map.set(ep.episode_number, {name, overview})
+                }
+                // episodes only present in EN
+                for (const [num, ep] of enEps) {
+                    if (!map.has(num)) {
+                        map.set(num, {
+                            name: ep.name || null,
+                            overview: ep.overview || null,
+                        })
+                    }
+                }
+                bySeason.set(season, map)
+            } catch (error) {
+                logAxiosError(error, logger, `TMDB season ${season} FA enrich failed`)
+            }
+        }),
+    )
+
+    if (!bySeason.size) return videos
+
+    return videos.map((v) => {
+        if (!v || typeof v !== 'object') return v
+        const s = Number(v.season)
+        const e = Number(v.episode)
+        if (!Number.isInteger(s) || !Number.isInteger(e)) return v
+        const hit = bySeason.get(s)?.get(e)
+        if (!hit) return v
+        const out = {...v}
+        if (hit.name) out.name = hit.name
+        if (hit.overview) out.overview = hit.overview
+        // Stremio also shows description on some clients
+        if (hit.overview && !out.description) out.description = hit.overview
+        return out
+    })
+}
+
+/** Resolve numeric TMDB tv id from meta / imdb for episode localization. */
+async function resolveTmdbTvId(meta, httpClient, apiKey, logger) {
+    if (!meta || !apiKey) return null
+    const idStr = String(meta.id || '')
+    if (idStr.startsWith('tmdb:')) {
+        const n = idStr.split(':')[1]
+        if (n && /^\d+$/.test(n)) return n
+    }
+    if (meta.tmdb_id || meta.tmdbId) {
+        const n = String(meta.tmdb_id || meta.tmdbId)
+        if (/^\d+$/.test(n)) return n
+    }
+    const imdbId = extractImdbIdFromMeta(meta, meta.id)
+    if (!imdbId) return null
+    try {
+        const findData = await tmdbRequest(
+            `find/${encodeURIComponent(imdbId)}`,
+            {external_source: 'imdb_id', language: 'fa-IR'},
+            httpClient,
+            apiKey,
+            logger,
+        )
+        const item = findData?.tv_results?.[0]
+        return item?.id ? String(item.id) : null
+    } catch {
+        return null
+    }
+}
+
+/**
  * Build Stremio meta for a tmdb: id (used by 101 Catalogs popular/trending).
  * Keeps meta.id as tmdb:<id> so the client requests streams with the same id.
  * When an IMDb id is available, episode lists come from Cinemeta for series.
@@ -617,6 +744,13 @@ export async function getTMDBMetaByTmdbId(
                             }
                             return {...v, id: vid, season, episode}
                         })
+                    try {
+                        meta.videos = await enrichSeriesVideosFa(
+                            meta.videos, tmdbId, httpClient, apiKey, logger,
+                        )
+                    } catch (error) {
+                        logAxiosError(error, logger, 'Episode FA enrich failed')
+                    }
                 }
             } catch (error) {
                 logAxiosError(error, logger, 'Cinemeta videos for TMDB series failed')

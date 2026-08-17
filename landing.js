@@ -59,14 +59,14 @@ export function renderLandingPage({
   manifestUrl = PUBLIC_INSTALL,
   installUrl,
   logoUrl = '/logo.png',
-  version = '2.1.29',
+  version = '2.1.30',
 } = {}) {
   const m = escapeHtml(manifestUrl || PUBLIC_INSTALL)
   const install = escapeHtml(
     installUrl || `stremio://${String(manifestUrl || PUBLIC_INSTALL).replace(/^https?:\/\//i, '')}`,
   )
   const logo = escapeHtml(logoUrl || LOGO_FALLBACK)
-  const ver = escapeHtml(String(version || '2.1.29'))
+  const ver = escapeHtml(String(version || '2.1.30'))
 
   const addonCards = RECOMMENDED.map(
     (a) => `
@@ -254,15 +254,42 @@ overscroll-behavior-x:contain;scrollbar-width:none!important;-ms-overflow-style:
 </div>
 </section>
 <section>
-<h2 class="lang-fa">دانلود Stremio</h2><h2 class="lang-en">Download Stremio</h2>
-<p class="sub lang-fa">اول استریمیو را نصب کنید، بعد افزونه را اضافه کنید.</p>
-<p class="sub lang-en">Install Stremio first, then add the addon.</p>
+<h2 class="lang-fa">دانلود کلاینت</h2><h2 class="lang-en">Download clients</h2>
+<p class="sub lang-fa">سینماگرافی روی <b>Stremio</b> و <b>Nuvio</b> (سازگار با منیفست استریمیو) کار می‌کند. هر دو را می‌توانید نصب کنید.</p>
+<p class="sub lang-en">CinemaGraphy works on <b>Stremio</b> and <b>Nuvio</b> (Stremio-manifest compatible).</p>
+
+<div class="glass" style="padding:14px 16px;margin-bottom:14px">
+<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+<img src="https://www.google.com/s2/favicons?domain=stremio.com&sz=64" width="28" height="28" alt="" style="border-radius:8px"/>
+<b class="lang-fa">Stremio</b><b class="lang-en">Stremio</b>
+<span class="muted" style="font-size:.85rem">— <span class="lang-fa">کلاسیک و پایدار</span><span class="lang-en">classic &amp; stable</span></span>
+</div>
 <div class="g">
 <a class="p glass" href="https://www.stremio.com/downloads" target="_blank" rel="noopener">Windows</a>
 <a class="p glass" href="https://www.stremio.com/downloads" target="_blank" rel="noopener">macOS</a>
 <a class="p glass" href="https://www.stremio.com/downloads" target="_blank" rel="noopener">Linux</a>
 <a class="p glass" href="https://www.stremio.com/downloads" target="_blank" rel="noopener">Android</a>
 <a class="p glass" href="https://apps.apple.com/app/stremio/id1297124690" target="_blank" rel="noopener">iOS / tvOS</a>
+<a class="p glass" href="https://web.stremio.com/" target="_blank" rel="noopener"><span class="lang-fa">وب‌اپ</span><span class="lang-en">Web</span></a>
+</div>
+</div>
+
+<div class="glass" style="padding:14px 16px;margin-bottom:8px">
+<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+<img src="https://nuvio.tv/assets/Logo_1080x1080.png" width="28" height="28" alt="" style="border-radius:8px;object-fit:cover" onerror="this.src='https://www.google.com/s2/favicons?domain=nuvio.tv&sz=64'"/>
+<b>Nuvio</b>
+<span class="muted" style="font-size:.85rem">— <span class="lang-fa">سریع‌تر، قابل‌سفارشی‌سازی، پروفایل چندگانه</span><span class="lang-en">faster, customizable, multi-profile</span></span>
+</div>
+<p class="sub lang-fa" style="margin-bottom:10px">رابط مدرن‌تر از استریمیو؛ منیفست همان افزونه‌ها را می‌گیرد. UI رسمی هنوز فارسی کامل ندارد، ولی محتوای سینماگرافی فارسی است. جزئیات در <a href="/guide">راهنما</a>.</p>
+<p class="sub lang-en" style="margin-bottom:10px">Modern client; same addon manifests. See <a href="/guide">guide</a>.</p>
+<div class="g">
+<a class="p glass" href="https://nuvio.tv" target="_blank" rel="noopener"><span class="lang-fa">سایت رسمی</span><span class="lang-en">Official site</span></a>
+<a class="p glass" href="https://github.com/NuvioMedia/NuvioMobile/releases/latest" target="_blank" rel="noopener">Android</a>
+<a class="p glass" href="https://github.com/NuvioMedia/NuvioTV/releases/latest" target="_blank" rel="noopener">Android TV</a>
+<a class="p glass" href="https://testflight.apple.com/join/u4y7MHK9" target="_blank" rel="noopener">iOS TestFlight</a>
+<a class="p glass" href="https://github.com/NuvioMedia/NuvioDesktop/releases/latest" target="_blank" rel="noopener">Desktop</a>
+<a class="p glass" href="https://play.google.com/store/apps/details?id=com.nuvio.app" target="_blank" rel="noopener">Play Store</a>
+</div>
 </div>
 </section>
 
@@ -403,7 +430,8 @@ function tileHtml(item){
   return '<div class="tile">'+
     '<div class="poster-wrap">'+img+
       '<div class="hov">'+
-        '<a class="s" href="'+esc(L.webApp)+'" target="_blank" rel="noopener">'+(fa?'باز در استریمیو':'Open in Stremio')+'</a>'+
+        '<a class="s" href="'+esc(L.webApp)+'" target="_blank" rel="noopener">'+(fa?'استریمیو وب':'Stremio web')+'</a>'+
+        '<a class="s" href="https://nuvio.tv" target="_blank" rel="noopener" style="margin-top:4px">'+(fa?'Nuvio':'Nuvio')+'</a>'+
         '<a class="w" href="'+esc(L.tmdb)+'" target="_blank" rel="noopener">'+(fa?'TMDB':'TMDB')+'</a>'+
       '</div>'+
     '</div>'+
@@ -435,6 +463,7 @@ function fillTrailers(items){
       '<div class="cap" title="'+title+'">'+title+'</div>'+
       '<div class="actions">'+
         '<a class="s" href="'+esc(L.webApp)+'" target="_blank" rel="noopener">'+(fa?'استریمیو':'Stremio')+'</a>'+
+        '<a class="s" href="https://nuvio.tv" target="_blank" rel="noopener">Nuvio</a>'+
         '<a class="y" href="'+esc(yt)+'" target="_blank" rel="noopener">YT</a>'+
       '</div>'+
     '</div>';
@@ -566,11 +595,11 @@ h2{font-size:1.15rem;margin:26px 0 10px}
 
 export function renderConfigurePage({
   logoUrl = '/logo.png',
-  version = '2.1.29',
+  version = '2.1.30',
   origin = PUBLIC_SITE,
 } = {}) {
   const logo = escapeHtml(logoUrl || LOGO_FALLBACK)
-  const ver = escapeHtml(String(version || '2.1.29'))
+  const ver = escapeHtml(String(version || '2.1.30'))
   const originClean = String(origin || PUBLIC_SITE).replace(/\/$/, '')
   const base = escapeHtml(originClean)
   const baseJson = JSON.stringify(originClean)
@@ -746,11 +775,11 @@ export function renderConfigurePage({
 
 export function renderGuidePage({
   logoUrl = '/logo.png',
-  version = '2.1.29',
+  version = '2.1.30',
   manifestUrl = PUBLIC_INSTALL,
 } = {}) {
   const logo = escapeHtml(logoUrl || LOGO_FALLBACK)
-  const ver = escapeHtml(String(version || '2.1.29'))
+  const ver = escapeHtml(String(version || '2.1.30'))
   const install = escapeHtml(
     'stremio://' + String(manifestUrl || PUBLIC_INSTALL).replace(/^https?:\/\//i, ''),
   )
@@ -882,6 +911,32 @@ export function renderGuidePage({
 <li>Hide catalogs — don’t fully remove Cinemeta (breaks metadata).</li>
 </ul>
 </div>
+</div>
+
+<div class="gbox glass">
+<h2 class="lang-fa">۵) Nuvio — کلاینت جایگزین و به‌روزتر</h2>
+<h2 class="lang-en">5) Nuvio — modern Stremio-compatible client</h2>
+<p class="lang-fa muted"><b>Nuvio</b> اپی شبیه استریمیو است که همان لینک منیفست افزونه‌ها (از جمله سینماگرافی) را می‌پذیرد. ظاهر تمیزتر، سرعت بهتر، چند پروفایل، همگام‌سازی، و چیدن دلخواه ردیف‌ها/کاتالوگ‌ها از نقاط قوتش است. رابط رسمی هنوز فارسی کامل ندارد؛ ولی عنوان و توضیحات محتوای سینماگرافی فارسی می‌ماند.</p>
+<p class="lang-en muted"><b>Nuvio</b> accepts the same Stremio addon manifests. Faster UI, profiles, catalog layout customization. Official UI is not fully Persian yet.</p>
+<div class="olist">
+<div class="step glass"><b>۱</b>
+<span class="lang-fa">از <a href="https://nuvio.tv" target="_blank" rel="noopener">nuvio.tv</a> یا GitHub رسمی دانلود کنید: موبایل، تلویزیون، دسکتاپ، یا نسخه Play Store.</span>
+<span class="lang-en">Download from <a href="https://nuvio.tv" target="_blank" rel="noopener">nuvio.tv</a> / official GitHub releases.</span>
+</div>
+<div class="step glass"><b>۲</b>
+<span class="lang-fa">حساب بسازید یا وارد شوید (برای همگام‌سازی بین دستگاه‌ها).</span>
+<span class="lang-en">Create an account or sign in for sync.</span>
+</div>
+<div class="step glass"><b>۳</b>
+<span class="lang-fa">به بخش افزونه‌ها / Addons بروید و لینک منیفست سینماگرافی را اضافه کنید:<br/><code style="direction:ltr;display:block;margin-top:6px;font-size:.85rem">https://cinemagraphy.vercel.app/manifest.json</code><br/>یا از صفحهٔ شخصی‌سازی، منیفست اختصاصی خودتان را بسازید.</span>
+<span class="lang-en">Add the CinemaGraphy manifest URL in Addons (default or your /configure link).</span>
+</div>
+<div class="step glass"><b>۴</b>
+<span class="lang-fa">در تنظیمات Nuvio می‌توانید ترتیب کاتالوگ‌ها و ظاهر خانه را مطابق سلیقه بچینید — یکی از فرق‌های اصلی با استریمیو.</span>
+<span class="lang-en">Reorder catalogs and home rows in Nuvio settings.</span>
+</div>
+</div>
+<p class="lang-fa muted" style="margin-top:10px">لینک‌های مفید: <a href="https://github.com/NuvioMedia/NuvioMobile/releases/latest" target="_blank" rel="noopener">Android</a> · <a href="https://github.com/NuvioMedia/NuvioTV/releases/latest" target="_blank" rel="noopener">Android TV</a> · <a href="https://testflight.apple.com/join/u4y7MHK9" target="_blank" rel="noopener">iOS TestFlight</a> · <a href="https://github.com/NuvioMedia/NuvioDesktop/releases/latest" target="_blank" rel="noopener">Desktop</a></p>
 </div>
 
 <div class="gbox glass">

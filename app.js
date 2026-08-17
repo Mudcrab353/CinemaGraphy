@@ -21,7 +21,7 @@ import {ID_SEPARATOR, METADATA_SOURCE} from './sources/source.js'
 import {findExternalMetaSource, findExternalStreamSource, formatStreamTitle, getCinemeta, getExternalCatalogSources, getExternalCatalogStatus, invalidateExternalCatalogCache, getKitsuTitle, getSubtitle, getTMDBMetaFa, enrichMetaWithFaTmdb, enrichCatalogMetasWithoutRpdb, getTMDBMetaByTmdbId, getTMDBDetails, getTMDBTitle, getLandingTmdbCatalogs, getTorrentStreams, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxyExternalStream, proxySubtitles, translateCatalogName, buildOrderedExternalCatalogs, rewriteTmdbImageUrls, parseTmdbImageProxyPath, tmdbRequest} from './utils.js'
 
 export const ADDON_PREFIX = 'ip'
-export const ADDON_VERSION = '2.1.29'
+export const ADDON_VERSION = '2.1.30'
 
 
 const PROVIDER_BASEURL_KEYS = [
@@ -1039,12 +1039,35 @@ export function createAddon({
                         req.params.type, req.params.id, axios, env.TMDB_API_KEY, logger,
                     )
                     if (tmdbMeta) {
+                        // Attach episode list from Cinemeta, then FA-localize titles
+                        if (req.params.type === 'series') {
+                            try {
+                                const cin = await services.getCinemeta(req.params.type, req.params.id)
+                                if (Array.isArray(cin?.meta?.videos) && cin.meta.videos.length) {
+                                    tmdbMeta.videos = cin.meta.videos
+                                    const enriched = await enrichMetaWithFaTmdb(
+                                        tmdbMeta,
+                                        req.params.type,
+                                        axios,
+                                        env.TMDB_API_KEY,
+                                        logger,
+                                        req.params.id,
+                                    )
+                                    return jsonWithTmdbImages(req, res, {meta: enriched})
+                                }
+                            } catch { /* keep tmdbMeta without videos */ }
+                        }
                         return jsonWithTmdbImages(req, res, {meta: tmdbMeta})
                     }
                 }
                 try {
                     const cin = await services.getCinemeta(req.params.type, req.params.id)
                     if (cin?.meta) {
+                        if (env.TMDB_API_KEY) {
+                            cin.meta = await enrichMetaWithFaTmdb(
+                                cin.meta, req.params.type, axios, env.TMDB_API_KEY, logger, req.params.id,
+                            )
+                        }
                         return jsonWithTmdbImages(req, res, cin)
                     }
                     if (cin && cin.id) {
