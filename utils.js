@@ -1567,6 +1567,11 @@ export function buildOrderedExternalCatalogs(externalSources, mapFn) {
         anime: [],
         iptv: [],
     }
+    const looksIptv = (cat, sourceGroup) => {
+        if (sourceGroup === 'iptv') return true
+        const blob = `${cat?.name || ''} ${cat?.id || ''} ${cat?._sortKey || ''}`.toLowerCase()
+        return /iptv|ماهواره|satellite|live\s*channels?|پخش\s*زنده|iptvbridge/i.test(blob)
+    }
     for (const source of externalSources || []) {
         const group = classifyExternalCatalogSource(source)
         const list = Array.isArray(source.catalogs) ? source.catalogs : []
@@ -1575,7 +1580,8 @@ export function buildOrderedExternalCatalogs(externalSources, mapFn) {
             if (!mapped) continue
             // Preserve original EN name/id for reliable sort after FA translate
             mapped._sortKey = `${catalog?.name || ''} ${catalog?.id || ''}`
-            buckets[group].push(mapped)
+            const dest = looksIptv(mapped, group) ? 'iptv' : group
+            buckets[dest].push(mapped)
         }
     }
     return [

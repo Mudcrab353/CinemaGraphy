@@ -858,7 +858,9 @@ export function renderConfigurePage({
 <div class="cfg-item" style="margin:0;padding:0;background:transparent;border:none;box-shadow:none">
 <div class="top"><code>CATALOG_IPTVBRIDGE_MANIFEST_URL</code><span class="diff e"><span class="lang-fa">آسان</span><span class="lang-en">Easy</span></span></div>
 <div class="hint"><span class="lang-fa">اختیاری — خالی = پیش‌فرض سرور (وقتی تیک روشن است). پر = جایگزین کامل.</span><span class="lang-en">Optional — empty = server default when enabled; filled = replaces default.</span></div>
-<input id="iptvUrl" data-k="CATALOG_IPTVBRIDGE_MANIFEST_URL" placeholder="https://…/manifest.json  یا خالی بگذارید" autocomplete="off"/>
+<input id="iptvUrl" data-k="CATALOG_IPTVBRIDGE_MANIFEST_URL" placeholder="خالی = پیش‌فرض iptvbridge.vercel.app — یا manifest اختصاصی" autocomplete="off"/>
+<p class="note lang-fa" style="margin-top:8px">کاتالوگ ماهواره جدا از پروایدرهای فیلم است و همیشه <b>آخر لیست</b> می‌آید. تیک را بزنید تا لود شود.</p>
+<p class="note lang-en" style="margin-top:8px">IPTV catalogs are separate from movie providers and always listed <b>last</b>. Enable the checkbox to load them.</p>
 </div>
 </div>
 

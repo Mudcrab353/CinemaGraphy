@@ -21,7 +21,7 @@ import {ID_SEPARATOR, METADATA_SOURCE} from './sources/source.js'
 import {findExternalMetaSource, findExternalStreamSource, formatStreamTitle, getCinemeta, getExternalCatalogSources, getExternalCatalogStatus, invalidateExternalCatalogCache, getKitsuTitle, getSubtitle, getTMDBMetaFa, enrichMetaWithFaTmdb, enrichCatalogMetasWithoutRpdb, getTMDBMetaByTmdbId, getTMDBDetails, getTMDBTitle, getLandingTmdbCatalogs, getTorrentStreams, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxyExternalStream, proxySubtitles, translateCatalogName, buildOrderedExternalCatalogs, rewriteTmdbImageUrls, parseTmdbImageProxyPath, tmdbRequest, setMetaLangPref, setUiLangPref} from './utils.js'
 
 export const ADDON_PREFIX = 'ip'
-export const ADDON_VERSION = '2.1.46'
+export const ADDON_VERSION = '2.1.47'
 
 
 const PROVIDER_BASEURL_KEYS = [
@@ -45,6 +45,9 @@ const PROVIDER_KEY_TO_ENV = {
     donyayeserial: 'DONYAYESERIAL_BASEURL',
     animex: 'ANIMEX_BASEURL',
 }
+
+/** Public default when ENABLE_IPTV is on and no custom URL / env is set. */
+export const DEFAULT_IPTV_BRIDGE_MANIFEST_URL = 'https://iptvbridge.vercel.app/manifest.json'
 
 const CONFIG_ALLOW = new Set([
     'TMDB_API_KEY',
@@ -141,18 +144,18 @@ export function mergeEnv(baseEnv = {}, config) {
     }
 
     // IPTV / ماهواره — opt-in on custom installs only
-    // unchecked → no IPTV catalogs; checked + empty URL → server default; checked + URL → replace
+    // unchecked → strip IPTV; checked + empty → server env or built-in default; checked + URL → that URL
     {
         const iptvOn = isConfigFlagOn(config, 'ENABLE_IPTV')
+            || Boolean(String(config.CATALOG_IPTVBRIDGE_MANIFEST_URL || '').trim())
         const customIptv = String(config.CATALOG_IPTVBRIDGE_MANIFEST_URL || '').trim()
         if (!iptvOn) {
             delete e.CATALOG_IPTVBRIDGE_MANIFEST_URL
         } else if (customIptv) {
             e.CATALOG_IPTVBRIDGE_MANIFEST_URL = customIptv
-        } else if (String(baseEnv.CATALOG_IPTVBRIDGE_MANIFEST_URL || '').trim()) {
-            e.CATALOG_IPTVBRIDGE_MANIFEST_URL = String(baseEnv.CATALOG_IPTVBRIDGE_MANIFEST_URL).trim()
         } else {
-            delete e.CATALOG_IPTVBRIDGE_MANIFEST_URL
+            const fromServer = String(baseEnv.CATALOG_IPTVBRIDGE_MANIFEST_URL || '').trim()
+            e.CATALOG_IPTVBRIDGE_MANIFEST_URL = fromServer || DEFAULT_IPTV_BRIDGE_MANIFEST_URL
         }
     }
 
