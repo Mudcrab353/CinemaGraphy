@@ -59,14 +59,14 @@ export function renderLandingPage({
   manifestUrl = PUBLIC_INSTALL,
   installUrl,
   logoUrl = '/logo.png',
-  version = '2.1.36',
+  version = '2.1.37',
 } = {}) {
   const m = escapeHtml(manifestUrl || PUBLIC_INSTALL)
   const install = escapeHtml(
     installUrl || `stremio://${String(manifestUrl || PUBLIC_INSTALL).replace(/^https?:\/\//i, '')}`,
   )
   const logo = escapeHtml(logoUrl || LOGO_FALLBACK)
-  const ver = escapeHtml(String(version || '2.1.36'))
+  const ver = escapeHtml(String(version || '2.1.37'))
 
   const addonCards = RECOMMENDED.map(
     (a) => `
@@ -243,7 +243,7 @@ overscroll-behavior-x:contain;scrollbar-width:none!important;-ms-overflow-style:
 <p class="lead lang-fa">افزونه استریمیو برای تماشای فیلم و سریال از منابع ایرانی و بین‌المللی — کیفیت، حجم و وضعیت سانسور در یک نگاه.</p>
 <p class="lead lang-en">Stremio addon for Iranian &amp; international sources — quality, size and censor status at a glance.</p>
 <div class="row">
-<a class="btn bp" href="${install}"><span class="lang-fa">نصب در Stremio</span><span class="lang-en">Install in Stremio</span></a>
+<a class="btn bp" href="${install}"><span class="lang-fa">نصب در نوویو و استریمیو</span><span class="lang-en">Install in Nuvio &amp; Stremio</span></a>
 <button class="btn bp" id="manifestCopyBtn" type="button"><span class="lang-fa">لینک منیفست</span><span class="lang-en">Manifest link</span></button>
 <a class="btn bp" href="/configure" style="background:rgba(255,255,255,.1);color:var(--t);box-shadow:none;border:1px solid var(--gb)"><span class="lang-fa">شخصی‌سازی</span><span class="lang-en">Configure</span></a>
 </div>
@@ -622,11 +622,11 @@ h2{font-size:1.05rem;margin:0 0 10px;overflow-wrap:anywhere}
 
 export function renderConfigurePage({
   logoUrl = '/logo.png',
-  version = '2.1.36',
+  version = '2.1.37',
   origin = PUBLIC_SITE,
 } = {}) {
   const logo = escapeHtml(logoUrl || LOGO_FALLBACK)
-  const ver = escapeHtml(String(version || '2.1.36'))
+  const ver = escapeHtml(String(version || '2.1.37'))
   const originClean = String(origin || PUBLIC_SITE).replace(/\/$/, '')
   const base = escapeHtml(originClean)
   const baseJson = JSON.stringify(originClean)
@@ -714,7 +714,7 @@ export function renderConfigurePage({
 <input id="outUrl" readonly value="${base}/manifest.json"/>
 <div class="row">
 <button class="btn bp" type="button" id="btnCopy"><span class="lang-fa">کپی لینک</span><span class="lang-en">Copy link</span></button>
-<a class="btn bp" id="btnInstall" href="#"><span class="lang-fa">نصب در Stremio</span><span class="lang-en">Install in Stremio</span></a>
+<a class="btn bp" id="btnInstall" href="#"><span class="lang-fa">نصب در نوویو و استریمیو</span><span class="lang-en">Install in Nuvio &amp; Stremio</span></a>
 <a class="btn ghost" href="${base}/manifest.json" target="_blank" rel="noopener"><span class="lang-fa">منیفست پیش‌فرض</span><span class="lang-en">Default manifest</span></a>
 </div>
 </div>
@@ -802,11 +802,11 @@ export function renderConfigurePage({
 
 export function renderGuidePage({
   logoUrl = '/logo.png',
-  version = '2.1.36',
+  version = '2.1.37',
   manifestUrl = PUBLIC_INSTALL,
 } = {}) {
   const logo = escapeHtml(logoUrl || LOGO_FALLBACK)
-  const ver = escapeHtml(String(version || '2.1.36'))
+  const ver = escapeHtml(String(version || '2.1.37'))
   const install = escapeHtml(
     'stremio://' + String(manifestUrl || PUBLIC_INSTALL).replace(/^https?:\/\//i, ''),
   )
