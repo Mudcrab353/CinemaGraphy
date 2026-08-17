@@ -1486,6 +1486,11 @@ function catalogSortScore(cat) {
     const isMovie = type === 'movie'
     const isSeries = type === 'series' || type === 'tv'
 
+    // IPTV / satellite always after streaming platforms (even inside same AIO/101 group).
+    // Otherwise "ماهواره" scores as generic (100) and Crunchyroll (400) sinks below it.
+    const iptvRe = /iptv|ماهواره|satellite|live\s*channels?|پخش\s*زنده|iptvbridge|tv\s*channels?/i
+    if (iptvRe.test(blob)) return 900
+
     const platformRe = /netflix|disney\+?|hbo\s*max|(^|[^a-z])max([^a-z]|$)|prime\s*video|amazon\s*prime|apple\s*tv|paramount\+?|hulu|peacock|crunchyroll|starz|showtime|sky\s*showtime|discovery\+?|mubi|shudder|britbox|acorn|hayu|iqiyi|viaplay|canal\+|movistar|zee5|sonyliv|hotstar|jiohotstar|bbc\s*iplayer|itvx|channel\s*4|streaming|پلتفرم|نتفلیکس|دیزنی|اچ‌بی‌او|پرایم|اپل\s*تی‌?وی|پارامونت|هولو|پیکاک|کرانچی|استارز/i
     if (platformRe.test(blob)) return 400
 
@@ -1578,7 +1583,7 @@ export function buildOrderedExternalCatalogs(externalSources, mapFn) {
         ...sortCatalogsWithinGroup(buckets.aio),
         ...sortCatalogsWithinGroup(buckets.other),
         ...sortCatalogsWithinGroup(buckets.anime),
-        ...buckets.iptv,
+        ...sortCatalogsWithinGroup(buckets.iptv),
     ]
 }
 
