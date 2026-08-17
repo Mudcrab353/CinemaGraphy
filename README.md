@@ -98,4 +98,4 @@ Add: `https://cinemagraphy.vercel.app/manifest.json`
 ---
 
 ### License
-ISC — با احترام به پروژهٔ اصلی محبی.
+ISC — با احترام به پروژهٔ اصلی آقای محبی.
