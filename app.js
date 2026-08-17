@@ -21,7 +21,7 @@ import {ID_SEPARATOR, METADATA_SOURCE} from './sources/source.js'
 import {findExternalMetaSource, findExternalStreamSource, formatStreamTitle, getCinemeta, getExternalCatalogSources, getExternalCatalogStatus, invalidateExternalCatalogCache, getKitsuTitle, getSubtitle, getTMDBMetaFa, enrichMetaWithFaTmdb, enrichCatalogMetasWithoutRpdb, getTMDBMetaByTmdbId, getTMDBDetails, getTMDBTitle, getLandingTmdbCatalogs, getTorrentStreams, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxyExternalStream, proxySubtitles, translateCatalogName, buildOrderedExternalCatalogs, rewriteTmdbImageUrls, parseTmdbImageProxyPath, tmdbRequest} from './utils.js'
 
 export const ADDON_PREFIX = 'ip'
-export const ADDON_VERSION = '2.1.37'
+export const ADDON_VERSION = '2.1.38'
 
 
 const PROVIDER_BASEURL_KEYS = [
@@ -63,8 +63,18 @@ const CONFIG_ALLOW = new Set([
     'PROXY_ENABLE',
     'PROXY_URL',
     'PROXY_PATH',
+    'DISABLE_META',
+    'DISABLE_CATALOG',
+    'DISABLE_SUBTITLES',
+    'STREAMS_ONLY',
+    'ADDON_NAME_SUFFIX',
     ...PROVIDER_BASEURL_KEYS,
 ])
+
+function isConfigFlagOn(env, key) {
+    const v = String(env?.[key] ?? '').trim().toLowerCase()
+    return v === '1' || v === 'true' || v === 'yes' || v === 'on'
+}
 
 export function decodeAddonConfig(encoded) {
     if (!encoded) return null
@@ -152,14 +162,18 @@ export function createLogger(env = process.env) {
 
 export function createManifest(env = process.env) {
     const developmentSuffix = env.DEV_MODE === 'true' ? ' - DEV' : ''
-    return {
-        id: 'com.cinemagraphy.stremio',
-        version: ADDON_VERSION,
-        contactEmail: 'thenerdcow@gmail.com',
-        description: 'سینماگرافی — دانلود و تماشای فیلم و سریال از منابع ایرانی و بین‌المللی.',
-        logo: 'https://raw.githubusercontent.com/TheNerdCow/CinemaGraphy/refs/heads/master/logo.png',
-        name: `سینماگرافی${developmentSuffix}`,
-        catalogs: CATALOGS.filter((cfg) => {
+    const streamsOnly = isConfigFlagOn(env, 'STREAMS_ONLY')
+    const disableMeta = streamsOnly || isConfigFlagOn(env, 'DISABLE_META')
+    const disableCatalog = streamsOnly || isConfigFlagOn(env, 'DISABLE_CATALOG')
+    const disableSubs = isConfigFlagOn(env, 'DISABLE_SUBTITLES')
+    const nameSuffix = String(env.ADDON_NAME_SUFFIX || '').trim()
+        || (streamsOnly || (disableMeta && disableCatalog) ? ' · استریم' : '')
+        || (disableMeta ? ' · بدون متا' : '')
+        || (disableCatalog ? ' · بدون کاتالوگ' : '')
+
+    const catalogs = disableCatalog
+        ? []
+        : CATALOGS.filter((cfg) => {
             const envKey = PROVIDER_KEY_TO_ENV[cfg.key]
             return Boolean(envKey && String(env[envKey] || '').trim())
         }).flatMap((cfg) => {
@@ -170,16 +184,46 @@ export function createManifest(env = process.env) {
                 id: `${cfg.key}_${cfg.catalogType === 'tv' ? 'tv' : (type === 'movie' ? 'movies' : 'series')}`,
                 extra: [{name: 'search', isRequired: true}],
             }))
-        }),
-        resources: [
-            'catalog',
-            {name: 'meta', types: ['series', 'movie', 'tv'], idPrefixes: [ADDON_PREFIX, 'tt', 'tmdb:', 'tmdb', 'kitsu:']},
-            {name: 'stream', types: ['series', 'movie', 'tv'], idPrefixes: [ADDON_PREFIX, 'tt', 'kitsu:', 'tmdb:', 'tmdb']},
-            {name: 'subtitles', types: ['series', 'movie'], idPrefixes: [ADDON_PREFIX, 'tt', 'kitsu:', 'tmdb:', 'tmdb']},
-        ],
+        })
+
+    const resources = []
+    if (!disableCatalog) resources.push('catalog')
+    if (!disableMeta) {
+        resources.push({
+            name: 'meta',
+            types: ['series', 'movie', 'tv'],
+            idPrefixes: [ADDON_PREFIX, 'tt', 'tmdb:', 'tmdb', 'kitsu:'],
+        })
+    }
+    resources.push({
+        name: 'stream',
+        types: ['series', 'movie', 'tv'],
+        idPrefixes: [ADDON_PREFIX, 'tt', 'kitsu:', 'tmdb:', 'tmdb'],
+    })
+    if (!disableSubs) {
+        resources.push({
+            name: 'subtitles',
+            types: ['series', 'movie'],
+            idPrefixes: [ADDON_PREFIX, 'tt', 'kitsu:', 'tmdb:', 'tmdb'],
+        })
+    }
+
+    const instanceId = (streamsOnly || (disableMeta && disableCatalog))
+        ? 'com.cinemagraphy.stremio.streams'
+        : 'com.cinemagraphy.stremio'
+
+    return {
+        id: instanceId,
+        version: ADDON_VERSION,
+        contactEmail: 'thenerdcow@gmail.com',
+        description: (disableMeta && disableCatalog)
+            ? 'سینماگرافی — فقط استریم از منابع ایرانی (متا/کاتالوگ از افزونه‌های دیگر).'
+            : 'سینماگرافی — دانلود و تماشای فیلم و سریال از منابع ایرانی و بین‌المللی.',
+        logo: 'https://raw.githubusercontent.com/TheNerdCow/CinemaGraphy/refs/heads/master/logo.png',
+        name: `سینماگرافی${nameSuffix}${developmentSuffix}`,
+        catalogs,
+        resources,
         types: ['movie', 'series', 'tv'],
-        // Torrent streams (infoHash-based) require the addon to explicitly
-        // declare P2P content, or clients hide them without warning.
         behaviorHints: {p2p: Boolean(env.TORRENT_METEOR_MANIFEST_URL)},
         stremioAddonsConfig: {
             issuer: 'https://stremio-addons.net',
@@ -919,35 +963,40 @@ export function createAddon({
     addon.get('/manifest.json', async (req, res) => {
         const {env: activeEnv} = requestScope(req)
         const manifest = createManifest(activeEnv)
+        const streamsOnly = isConfigFlagOn(activeEnv, 'STREAMS_ONLY')
+        const disableMeta = streamsOnly || isConfigFlagOn(activeEnv, 'DISABLE_META')
+        const disableCatalog = streamsOnly || isConfigFlagOn(activeEnv, 'DISABLE_CATALOG')
         try {
             if (String(req.query?.refresh || '') === '1') {
                 invalidateExternalCatalogCache()
             }
-            const externalSources = await getExternalCatalogSources(activeEnv, axios, logger)
-            for (const source of externalSources) {
-                if (source.hasMeta) {
-                    const metaResource = manifest.resources.find((r) => r?.name === 'meta')
-                    for (const prefix of source.idPrefixes) {
-                        if (metaResource && !metaResource.idPrefixes.includes(prefix)) {
-                            metaResource.idPrefixes.push(prefix)
+            if (!disableCatalog || !disableMeta) {
+                const externalSources = await getExternalCatalogSources(activeEnv, axios, logger)
+                for (const source of externalSources) {
+                    if (!disableMeta && source.hasMeta) {
+                        const metaResource = manifest.resources.find((r) => r?.name === 'meta')
+                        for (const prefix of source.idPrefixes) {
+                            if (metaResource && !metaResource.idPrefixes.includes(prefix)) {
+                                metaResource.idPrefixes.push(prefix)
+                            }
+                        }
+                    }
+                    if (source.hasStream) {
+                        const streamResource = manifest.resources.find((r) => r?.name === 'stream')
+                        for (const prefix of source.idPrefixes) {
+                            if (streamResource && !streamResource.idPrefixes.includes(prefix)) {
+                                streamResource.idPrefixes.push(prefix)
+                            }
                         }
                     }
                 }
-                if (source.hasStream) {
-                    const streamResource = manifest.resources.find((r) => r?.name === 'stream')
-                    for (const prefix of source.idPrefixes) {
-                        if (streamResource && !streamResource.idPrefixes.includes(prefix)) {
-                            streamResource.idPrefixes.push(prefix)
-                        }
-                    }
+                if (!disableCatalog) {
+                    manifest.catalogs.push(...buildOrderedExternalCatalogs(externalSources, (catalog) => ({
+                        ...catalog,
+                        name: translateCatalogName(catalog.name, catalog.type),
+                    })))
                 }
             }
-            // Order: own providers (already in manifest) → 101 → AIO/other → Anime → IPTV last
-            // Inside 101: trend/popular → Korean/Chinese → rest → streaming platforms
-            manifest.catalogs.push(...buildOrderedExternalCatalogs(externalSources, (catalog) => ({
-                ...catalog,
-                name: translateCatalogName(catalog.name, catalog.type),
-            })))
         } catch (error) {
             logAxiosError(error, logger, 'External catalogs unavailable, serving own catalogs only')
         }
@@ -960,6 +1009,9 @@ export function createAddon({
     const catalogHandler = async (req, res) => {
         try {
             const {env: activeEnv, providers: activeProviders} = requestScope(req)
+            if (isConfigFlagOn(activeEnv, 'STREAMS_ONLY') || isConfigFlagOn(activeEnv, 'DISABLE_CATALOG')) {
+                return res.json({metas: []})
+            }
             const externalSources = await getExternalCatalogSources(activeEnv, axios, logger)
             const externalSource = externalSources.find((source) => source.catalogIds.has(req.params.id))
             if (externalSource) {
@@ -1039,6 +1091,9 @@ export function createAddon({
             const {env: activeEnv, providers: activeProviders} = requestScope(req)
             const env = activeEnv
             const providers = activeProviders
+            if (isConfigFlagOn(env, 'STREAMS_ONLY') || isConfigFlagOn(env, 'DISABLE_META')) {
+                return res.json({})
+            }
             // Normalize id (Stremio may encode colon)
             req.params.id = decodeURIComponent(String(req.params.id || '')).trim()
             // IMDb ids → Persian TMDB meta (fallback Cinemeta if TMDB misses)

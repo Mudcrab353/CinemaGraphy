@@ -59,14 +59,14 @@ export function renderLandingPage({
   manifestUrl = PUBLIC_INSTALL,
   installUrl,
   logoUrl = '/logo.png',
-  version = '2.1.37',
+  version = '2.1.38',
 } = {}) {
   const m = escapeHtml(manifestUrl || PUBLIC_INSTALL)
   const install = escapeHtml(
     installUrl || `stremio://${String(manifestUrl || PUBLIC_INSTALL).replace(/^https?:\/\//i, '')}`,
   )
   const logo = escapeHtml(logoUrl || LOGO_FALLBACK)
-  const ver = escapeHtml(String(version || '2.1.37'))
+  const ver = escapeHtml(String(version || '2.1.38'))
 
   const addonCards = RECOMMENDED.map(
     (a) => `
@@ -622,11 +622,11 @@ h2{font-size:1.05rem;margin:0 0 10px;overflow-wrap:anywhere}
 
 export function renderConfigurePage({
   logoUrl = '/logo.png',
-  version = '2.1.37',
+  version = '2.1.38',
   origin = PUBLIC_SITE,
 } = {}) {
   const logo = escapeHtml(logoUrl || LOGO_FALLBACK)
-  const ver = escapeHtml(String(version || '2.1.37'))
+  const ver = escapeHtml(String(version || '2.1.38'))
   const originClean = String(origin || PUBLIC_SITE).replace(/\/$/, '')
   const base = escapeHtml(originClean)
   const baseJson = JSON.stringify(originClean)
@@ -643,8 +643,16 @@ export function renderConfigurePage({
 .prov-grid label:has(input:checked){border-color:rgba(232,160,74,.55);background:rgba(232,160,74,.12)}
 .prov-grid input{width:18px;height:18px;accent-color:#e8a04a}
 .prov-grid label.locked{filter:blur(1.2px);opacity:.45;pointer-events:none;cursor:not-allowed;position:relative}
-.prov-grid label.locked::after{content:'';position:absolute;inset:0;border-radius:12px;background:rgba(0,0,0,.15)}
 .sel-row{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px}
+.toggle-grid{display:grid;gap:10px;margin-bottom:16px}
+.toggle-grid label.tog{display:flex;gap:12px;align-items:flex-start;padding:14px 16px;cursor:pointer}
+.toggle-grid label.tog input{width:18px;height:18px;margin-top:3px;accent-color:#e8a04a;flex-shrink:0}
+.toggle-grid label.tog b{display:block;margin-bottom:4px}
+.toggle-grid label.tog span.hint{font-size:.82rem;color:var(--m);font-weight:500}
+.load-box{padding:14px 16px;margin-bottom:16px}
+.load-box .row{margin-top:10px}
+.note{font-size:.82rem;color:var(--m);margin-top:10px}
+.pill{display:inline-block;font-size:.68rem;font-weight:800;padding:3px 8px;border-radius:999px;background:rgba(126,182,255,.15);color:var(--a2);margin-inline-start:6px}
 </style>
 </head>
 <body>
@@ -657,18 +665,72 @@ export function renderConfigurePage({
 </div>
 </header>
 <p style="font-size:.75rem;color:var(--a)">v${ver}</p>
-<h1 class="lang-fa">🔧 شخصی‌سازی افزونه</h1>
-<h1 class="lang-en">🔧 Configure addon</h1>
-<p class="sub lang-fa">پروایدرهایی که می‌خواهید را تیک بزنید، بعد لینک منیفست اختصاصی را کپی یا نصب کنید. بدون تیک = منیفست پیش‌فرض همه منابع.</p>
-<p class="sub lang-en">Check the providers you want, then copy/install the custom manifest. None checked = default (all server providers).</p>
+<h1 class="lang-fa">🔧 شخصی‌سازی پیشرفته</h1>
+<h1 class="lang-en">🔧 Advanced configure</h1>
+<p class="sub lang-fa">این صفحه همیشه <b>منیفست اختصاصی</b> می‌سازد (نه لینک پیش‌فرض عمومی). پیش‌فرض کامل روی <a href="/">صفحهٔ اصلی</a> است. تنظیمات در مرورگر ذخیره می‌شود تا برای ویرایش بعدی کلیدها را دوباره وارد نکنید.</p>
+<p class="sub lang-en">This page always builds a <b>custom</b> manifest (not the public default). Defaults live on the <a href="/">home page</a>. Settings are saved in your browser so you can edit without retyping keys.</p>
+
+<div class="load-box glass">
+<h2 class="lang-fa">بارگذاری تنظیمات قبلی</h2>
+<h2 class="lang-en">Load existing config</h2>
+<p class="hint lang-fa" style="font-size:.85rem;color:var(--m)">لینک منیفست اختصاصی‌تان را بچسبانید (شامل <code>/c/...</code>) تا فیلدها پر شوند — بعد تغییر بدهید و لینک جدید بگیرید.</p>
+<p class="hint lang-en" style="font-size:.85rem;color:var(--m)">Paste your custom manifest URL (with <code>/c/...</code>) to refill the form, edit, then copy a new link.</p>
+<input id="loadUrl" placeholder="https://…/c/xxxxx/manifest.json" autocomplete="off" style="width:100%;margin-top:8px;background:rgba(0,0,0,.28);border:1px solid var(--gb);border-radius:10px;color:var(--t);padding:10px 12px;font-family:ui-monospace,monospace;font-size:.78rem;direction:ltr"/>
+<div class="row">
+<button class="btn ghost" type="button" id="btnLoad"><span class="lang-fa">بارگذاری</span><span class="lang-en">Load</span></button>
+<button class="btn ghost" type="button" id="btnClearLocal"><span class="lang-fa">پاک کردن حافظهٔ محلی</span><span class="lang-en">Clear local save</span></button>
+</div>
+<p class="note" id="loadMsg"></p>
+</div>
+
+<div class="toggle-grid">
+<label class="tog glass">
+<input type="checkbox" id="optStreamsOnly"/>
+<div>
+<b class="lang-fa">فقط استریم <span class="pill">STREAMS_ONLY</span></b>
+<b class="lang-en">Streams only <span class="pill">STREAMS_ONLY</span></b>
+<span class="hint lang-fa">متا و کاتالوگ این افزونه خاموش می‌شود؛ فقط لینک پخش می‌دهد. مناسب اگر AIOMetadata یا Cinemeta دارید.</span>
+<span class="hint lang-en">Disables this addon's meta &amp; catalogs — streams only. Ideal if you already use AIOMetadata / Cinemeta.</span>
+</div>
+</label>
+<label class="tog glass">
+<input type="checkbox" id="optDisableMeta"/>
+<div>
+<b class="lang-fa">غیرفعال کردن متا</b>
+<b class="lang-en">Disable metadata</b>
+<span class="hint lang-fa">فقط resource متا حذف می‌شود؛ کاتالوگ‌ها می‌مانند مگر جدا خاموش شوند.</span>
+<span class="hint lang-en">Removes meta resource only; catalogs stay unless disabled separately.</span>
+</div>
+</label>
+<label class="tog glass">
+<input type="checkbox" id="optDisableCatalog"/>
+<div>
+<b class="lang-fa">غیرفعال کردن کاتالوگ‌ها</b>
+<b class="lang-en">Disable catalogs</b>
+<span class="hint lang-fa">جستجوی پروایدر و کاتالوگ‌های خارجی (۱۰۱ / AIO / …) از این نصب حذف می‌شوند.</span>
+<span class="hint lang-en">Hides provider search catalogs and external catalogs for this install.</span>
+</div>
+</label>
+<label class="tog glass">
+<input type="checkbox" id="optDisableSubs"/>
+<div>
+<b class="lang-fa">غیرفعال کردن زیرنویس افزونه</b>
+<b class="lang-en">Disable addon subtitles</b>
+<span class="hint lang-fa">اگر از OpenSubtitles جدا استفاده می‌کنید.</span>
+<span class="hint lang-en">If you already use a dedicated subtitle addon.</span>
+</div>
+</label>
+</div>
 
 <div class="sel-row">
-<button class="btn ghost" type="button" id="btnAll"><span class="lang-fa">انتخاب همه</span><span class="lang-en">Select all</span></button>
-<button class="btn ghost" type="button" id="btnNone"><span class="lang-fa">حذف همه</span><span class="lang-en">Clear all</span></button>
+<button class="btn ghost" type="button" id="btnAll"><span class="lang-fa">انتخاب همه پروایدرها</span><span class="lang-en">Select all providers</span></button>
+<button class="btn ghost" type="button" id="btnNone"><span class="lang-fa">حذف انتخاب پروایدر</span><span class="lang-en">Clear providers</span></button>
 </div>
 
 <h2 class="lang-fa">پروایدرها</h2>
 <h2 class="lang-en">Providers</h2>
+<p class="sub lang-fa">اگر هیچ‌کدام را نزنید، استریم از <b>همهٔ پروایدرهای فعال سرور</b> می‌آید. با تیک زدن، فقط همان‌ها در این منیفست اختصاصی فعال می‌شوند.</p>
+<p class="sub lang-en">None checked = all server-enabled providers. Checking any limits this custom install to those only.</p>
 <div class="prov-grid glass" id="provGrid">
 <label><input type="checkbox" data-prov="f2media"/> F2Media</label>
 <label><input type="checkbox" data-prov="cinamatic"/> Cinamatic</label>
@@ -676,52 +738,69 @@ export function renderConfigurePage({
 <label><input type="checkbox" data-prov="serialblog"/> SerialBlog</label>
 <label><input type="checkbox" data-prov="donyayeserial"/> DonyayeSerial</label>
 <label><input type="checkbox" data-prov="animex"/> Animex</label>
-<label class="locked" title="به زودی"><input type="checkbox" disabled/> PeepBoxTv <span class="diff h"><span class="lang-fa">به‌زودی</span><span class="lang-en">Soon</span></span></label>
-<label class="locked" title="به زودی"><input type="checkbox" disabled/> DigiMovie <span class="diff h"><span class="lang-fa">به‌زودی</span><span class="lang-en">Soon</span></span></label>
+<label class="locked" title="soon"><input type="checkbox" disabled/> PeepBoxTv <span class="diff h"><span class="lang-fa">به‌زودی</span><span class="lang-en">Soon</span></span></label>
+<label class="locked" title="soon"><input type="checkbox" disabled/> DigiMovie <span class="diff h"><span class="lang-fa">به‌زودی</span><span class="lang-en">Soon</span></span></label>
 </div>
 
-<h2 class="lang-fa">تنظیمات اختیاری</h2>
-<h2 class="lang-en">Optional settings</h2>
+<h2 class="lang-fa">کلیدها و کاتالوگ‌های خارجی</h2>
+<h2 class="lang-en">Keys &amp; external catalogs</h2>
 <div class="cfg-item glass">
 <div class="top"><code>TMDB_API_KEY</code><span class="diff e"><span class="lang-fa">آسان</span><span class="lang-en">Easy</span></span></div>
-<div class="hint"><span class="lang-fa">کلید TMDB — خالی = کلید سرور</span><span class="lang-en">TMDB key — empty = server key</span></div>
+<div class="hint"><span class="lang-fa">اختیاری — خالی = کلید سرور (برای حالت فقط‌استریم معمولاً لازم نیست)</span><span class="lang-en">Optional — empty uses server key (usually unused in streams-only)</span></div>
 <input data-k="TMDB_API_KEY" placeholder="…" autocomplete="off"/>
 </div>
 <div class="cfg-item glass">
 <div class="top"><code>TORRENT_METEOR_MANIFEST_URL</code><span class="diff m"><span class="lang-fa">متوسط</span><span class="lang-en">Medium</span></span></div>
-<div class="hint"><span class="lang-fa">فعال‌سازی تورنت با URL منیفست Meteor</span><span class="lang-en">Enable torrent via Meteor manifest URL</span></div>
+<div class="hint"><span class="lang-fa">منیفست تورنت Meteor</span><span class="lang-en">Meteor torrent manifest URL</span></div>
 <input data-k="TORRENT_METEOR_MANIFEST_URL" placeholder="https://…/manifest.json" autocomplete="off"/>
 </div>
 <div class="cfg-item glass">
 <div class="top"><code>CATALOG_AIO_MANIFEST_URL</code><span class="diff m"><span class="lang-fa">متوسط</span><span class="lang-en">Medium</span></span></div>
-<div class="hint"><span class="lang-fa">لینک کامل manifest.json از صفحه Configure خود AIOCatalogs (نه صفحه /configure)</span><span class="lang-en">AIOCatalogs manifest (after 101, before anime &amp; IPTV)</span></div>
+<div class="hint"><span class="lang-fa">منیفست AIOCatalogs</span><span class="lang-en">AIOCatalogs manifest</span></div>
 <input data-k="CATALOG_AIO_MANIFEST_URL" placeholder="https://…/manifest.json" autocomplete="off"/>
 </div>
 <div class="cfg-item glass">
+<div class="top"><code>CATALOG101_MANIFEST_URL</code><span class="diff m"><span class="lang-fa">متوسط</span><span class="lang-en">Medium</span></span></div>
+<div class="hint"><span class="lang-fa">منیفست ۱۰۱</span><span class="lang-en">101 catalogs manifest</span></div>
+<input data-k="CATALOG101_MANIFEST_URL" placeholder="https://…/manifest.json" autocomplete="off"/>
+</div>
+<div class="cfg-item glass">
+<div class="top"><code>CATALOG_ANIME_MANIFEST_URL</code><span class="diff m"><span class="lang-fa">متوسط</span><span class="lang-en">Medium</span></span></div>
+<div class="hint"><span class="lang-fa">کاتالوگ انیمه</span><span class="lang-en">Anime catalog manifest</span></div>
+<input data-k="CATALOG_ANIME_MANIFEST_URL" placeholder="https://…/manifest.json" autocomplete="off"/>
+</div>
+<div class="cfg-item glass">
 <div class="top"><code>EXTERNAL_CATALOG_MANIFEST_URLS</code><span class="diff m"><span class="lang-fa">متوسط</span><span class="lang-en">Medium</span></span></div>
-<div class="hint"><span class="lang-fa">کاتالوگ‌های خارجی اضافه با ویرگول</span><span class="lang-en">Extra external catalogs, comma-separated</span></div>
+<div class="hint"><span class="lang-fa">کاتالوگ‌های اضافه با ویرگول</span><span class="lang-en">Extra catalogs, comma-separated</span></div>
 <input data-k="EXTERNAL_CATALOG_MANIFEST_URLS" placeholder="https://…/manifest.json" autocomplete="off"/>
 </div>
 <div class="cfg-item glass">
 <div class="top"><code>PROVIDER_TIMEOUT_MS</code><span class="diff m"><span class="lang-fa">متوسط</span><span class="lang-en">Medium</span></span></div>
-<div class="hint"><span class="lang-fa">مهلت هر پروایدر (میلی‌ثانیه)</span><span class="lang-en">Per-provider timeout (ms)</span></div>
+<div class="hint"><span class="lang-fa">مهلت هر پروایدر (ms)</span><span class="lang-en">Per-provider timeout (ms)</span></div>
 <input data-k="PROVIDER_TIMEOUT_MS" placeholder="11000" autocomplete="off"/>
+</div>
+<div class="cfg-item glass">
+<div class="top"><code>ADDON_NAME_SUFFIX</code><span class="diff e"><span class="lang-fa">آسان</span><span class="lang-en">Easy</span></span></div>
+<div class="hint"><span class="lang-fa">پسوند اختیاری نام در لیست افزونه‌ها (مثلاً خانه)</span><span class="lang-en">Optional name suffix in the addon list</span></div>
+<input data-k="ADDON_NAME_SUFFIX" placeholder=" · home" autocomplete="off"/>
 </div>
 
 <div class="out glass">
-<label class="lang-fa" style="font-size:.8rem;color:var(--m)">لینک منیفست اختصاصی</label>
-<label class="lang-en" style="font-size:.8rem;color:var(--m)">Custom manifest URL</label>
-<input id="outUrl" readonly value="${base}/manifest.json"/>
+<label class="lang-fa" style="font-size:.8rem;color:var(--m)">منیفست اختصاصی شما</label>
+<label class="lang-en" style="font-size:.8rem;color:var(--m)">Your custom manifest</label>
+<input id="outUrl" readonly value=""/>
 <div class="row">
 <button class="btn bp" type="button" id="btnCopy"><span class="lang-fa">کپی لینک</span><span class="lang-en">Copy link</span></button>
 <a class="btn bp" id="btnInstall" href="#"><span class="lang-fa">نصب در نوویو و استریمیو</span><span class="lang-en">Install in Nuvio &amp; Stremio</span></a>
-<a class="btn ghost" href="${base}/manifest.json" target="_blank" rel="noopener"><span class="lang-fa">منیفست پیش‌فرض</span><span class="lang-en">Default manifest</span></a>
 </div>
+<p class="note lang-fa">برای به‌روزرسانی: همین صفحه را باز کنید → بارگذاری لینک قبلی یا استفاده از حافظهٔ مرورگر → تغییر → نصب مجدد همان لینک جدید (یا جایگزینی در استریمیو).</p>
+<p class="note lang-en">To update later: reopen this page → load your old URL or use browser memory → edit → install the new link.</p>
 </div>
 </div>
 <script>
 (function () {
   var BASE = ${baseJson};
+  var STORE = 'cg-configure-v2';
   var r = document.documentElement;
   var lb = document.getElementById('langBtn');
   function al(l) {
@@ -738,8 +817,20 @@ export function renderConfigurePage({
     var b64 = btoa(unescape(encodeURIComponent(s)));
     return b64.split('+').join('-').split('/').join('_').split('=').join('');
   }
+  function fromB64Url(str) {
+    try {
+      var b64 = String(str || '').split('-').join('+').split('_').join('/');
+      while (b64.length % 4) b64 += '=';
+      var json = decodeURIComponent(escape(atob(b64)));
+      return JSON.parse(json);
+    } catch (e) { return null; }
+  }
   function stripProto(u) {
     return String(u || '').split('://').slice(1).join('://');
+  }
+  function extractCfgToken(url) {
+    var m = String(url || '').match(/\\/c\\/([^/\\s]+)(?:\\/|$)/i);
+    return m ? decodeURIComponent(m[1]) : null;
   }
   function collect() {
     var o = {};
@@ -752,26 +843,83 @@ export function renderConfigurePage({
       var v = (inp.value || '').trim();
       if (v) o[inp.getAttribute('data-k')] = v;
     });
+    var streams = document.getElementById('optStreamsOnly');
+    var dm = document.getElementById('optDisableMeta');
+    var dc = document.getElementById('optDisableCatalog');
+    var ds = document.getElementById('optDisableSubs');
+    if (streams && streams.checked) o.STREAMS_ONLY = '1';
+    if (dm && dm.checked && !(streams && streams.checked)) o.DISABLE_META = '1';
+    if (dc && dc.checked && !(streams && streams.checked)) o.DISABLE_CATALOG = '1';
+    if (ds && ds.checked) o.DISABLE_SUBTITLES = '1';
     return o;
   }
-  function refresh() {
-    var o = collect();
-    var keys = Object.keys(o);
-    var manifest = BASE + '/manifest.json';
-    var install = 'stremio://' + stripProto(BASE) + '/manifest.json';
-    if (keys.length) {
-      var cfg = toB64Url(o);
-      manifest = BASE + '/c/' + cfg + '/manifest.json';
-      install = 'stremio://' + stripProto(BASE) + '/c/' + cfg + '/manifest.json';
+  function applyObj(o) {
+    if (!o || typeof o !== 'object') return;
+    document.querySelectorAll('[data-prov]').forEach(function (cb) { cb.checked = false; });
+    var list = String(o.ENABLED_PROVIDERS || '').split(',').map(function (s) { return s.trim().toLowerCase(); }).filter(Boolean);
+    list.forEach(function (k) {
+      var el = document.querySelector('[data-prov="'+k+'"]');
+      if (el) el.checked = true;
+    });
+    document.querySelectorAll('[data-k]').forEach(function (inp) {
+      var key = inp.getAttribute('data-k');
+      inp.value = o[key] != null ? String(o[key]) : '';
+    });
+    var streamsOnly = o.STREAMS_ONLY === '1' || o.STREAMS_ONLY === 'true';
+    var so = document.getElementById('optStreamsOnly');
+    var dm = document.getElementById('optDisableMeta');
+    var dc = document.getElementById('optDisableCatalog');
+    var ds = document.getElementById('optDisableSubs');
+    if (so) so.checked = streamsOnly;
+    if (dm) dm.checked = streamsOnly || o.DISABLE_META === '1' || o.DISABLE_META === 'true';
+    if (dc) dc.checked = streamsOnly || o.DISABLE_CATALOG === '1' || o.DISABLE_CATALOG === 'true';
+    if (ds) ds.checked = o.DISABLE_SUBTITLES === '1' || o.DISABLE_SUBTITLES === 'true';
+    syncStreamToggles();
+  }
+  function syncStreamToggles() {
+    var so = document.getElementById('optStreamsOnly');
+    var dm = document.getElementById('optDisableMeta');
+    var dc = document.getElementById('optDisableCatalog');
+    if (so && so.checked) {
+      if (dm) { dm.checked = true; dm.disabled = true; }
+      if (dc) { dc.checked = true; dc.disabled = true; }
+    } else {
+      if (dm) dm.disabled = false;
+      if (dc) dc.disabled = false;
     }
+  }
+  function refresh() {
+    syncStreamToggles();
+    var o = collect();
+    try { localStorage.setItem(STORE, JSON.stringify(o)); } catch (e) {}
+    // Always custom path on this page (even empty object → still /c/e30)
+    var cfg = toB64Url(o);
+    var manifest = BASE + '/c/' + cfg + '/manifest.json';
+    var install = 'stremio://' + stripProto(BASE) + '/c/' + cfg + '/manifest.json';
     var out = document.getElementById('outUrl');
     var btn = document.getElementById('btnInstall');
     if (out) out.value = manifest;
     if (btn) btn.href = install;
   }
-  document.querySelectorAll('[data-prov], [data-k]').forEach(function (el) {
+  function setMsg(text, ok) {
+    var el = document.getElementById('loadMsg');
+    if (!el) return;
+    el.textContent = text || '';
+    el.style.color = ok ? '#5dcea0' : 'var(--m)';
+  }
+  document.querySelectorAll('[data-prov], [data-k], #optStreamsOnly, #optDisableMeta, #optDisableCatalog, #optDisableSubs').forEach(function (el) {
     el.addEventListener('change', refresh);
     el.addEventListener('input', refresh);
+  });
+  var so = document.getElementById('optStreamsOnly');
+  if (so) so.addEventListener('change', function () {
+    if (so.checked) {
+      var dm = document.getElementById('optDisableMeta');
+      var dc = document.getElementById('optDisableCatalog');
+      if (dm) dm.checked = true;
+      if (dc) dc.checked = true;
+    }
+    refresh();
   });
   var btnAll = document.getElementById('btnAll');
   var btnNone = document.getElementById('btnNone');
@@ -782,6 +930,34 @@ export function renderConfigurePage({
   if (btnNone) btnNone.onclick = function () {
     document.querySelectorAll('[data-prov]:not(:disabled)').forEach(function (cb) { cb.checked = false; });
     refresh();
+  };
+  var btnLoad = document.getElementById('btnLoad');
+  if (btnLoad) btnLoad.onclick = function () {
+    var url = (document.getElementById('loadUrl') || {}).value || '';
+    var token = extractCfgToken(url);
+    if (!token) {
+      setMsg(r.lang === 'fa' ? 'لینک باید شامل /c/... باشد.' : 'URL must include /c/...', false);
+      return;
+    }
+    var obj = fromB64Url(token);
+    if (!obj) {
+      setMsg(r.lang === 'fa' ? 'نشد تنظیمات از لینک خوانده شود.' : 'Could not decode config from URL.', false);
+      return;
+    }
+    applyObj(obj);
+    refresh();
+    setMsg(r.lang === 'fa' ? 'بارگذاری شد — می‌توانید ویرایش و دوباره کپی کنید.' : 'Loaded — edit and copy the new link.', true);
+  };
+  var btnClear = document.getElementById('btnClearLocal');
+  if (btnClear) btnClear.onclick = function () {
+    try { localStorage.removeItem(STORE); } catch (e) {}
+    applyObj({});
+    document.querySelectorAll('[data-prov]').forEach(function (cb) { cb.checked = false; });
+    ['optStreamsOnly','optDisableMeta','optDisableCatalog','optDisableSubs'].forEach(function (id) {
+      var el = document.getElementById(id); if (el) { el.checked = false; el.disabled = false; }
+    });
+    refresh();
+    setMsg(r.lang === 'fa' ? 'حافظه پاک شد.' : 'Local save cleared.', true);
   };
   var btnCopy = document.getElementById('btnCopy');
   if (btnCopy) btnCopy.onclick = async function () {
@@ -794,6 +970,12 @@ export function renderConfigurePage({
       setTimeout(function () { btnCopy.classList.remove('ok'); btnCopy.innerHTML = prev; }, 1600);
     } catch (e) { if (inp) inp.select(); }
   };
+
+  // Restore local save
+  try {
+    var saved = JSON.parse(localStorage.getItem(STORE) || 'null');
+    if (saved) applyObj(saved);
+  } catch (e) {}
   refresh();
 })();
 </script>
@@ -802,11 +984,11 @@ export function renderConfigurePage({
 
 export function renderGuidePage({
   logoUrl = '/logo.png',
-  version = '2.1.37',
+  version = '2.1.38',
   manifestUrl = PUBLIC_INSTALL,
 } = {}) {
   const logo = escapeHtml(logoUrl || LOGO_FALLBACK)
-  const ver = escapeHtml(String(version || '2.1.37'))
+  const ver = escapeHtml(String(version || '2.1.38'))
   const install = escapeHtml(
     'stremio://' + String(manifestUrl || PUBLIC_INSTALL).replace(/^https?:\/\//i, ''),
   )
