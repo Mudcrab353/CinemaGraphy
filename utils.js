@@ -589,6 +589,7 @@ export async function enrichSeriesVideosFa(
     httpClient = axios,
     apiKey = process.env.TMDB_API_KEY,
     logger = console,
+    {maxSeasons = 6, budgetMs = 7000} = {},
 ) {
     if (!apiKey || !tmdbId || !Array.isArray(videos) || !videos.length) {
         return videos
@@ -596,13 +597,22 @@ export async function enrichSeriesVideosFa(
     const seasons = new Set()
     for (const v of videos) {
         const {season: s} = parseVideoSeasonEpisode(v)
+        // Skip season 0 specials first-pass to save budget; include if few seasons
         if (s != null && s >= 0) seasons.add(s)
     }
     if (!seasons.size) return videos
 
+    // Prefer regular seasons; limit to avoid Vercel timeout on long-running shows
+    let seasonList = [...seasons].sort((a, b) => a - b)
+    if (seasonList.length > maxSeasons) {
+        seasonList = seasonList.filter((s) => s > 0).slice(0, maxSeasons)
+    }
+
     const bySeason = new Map() // season -> Map(episode -> {name, overview})
+    const started = Date.now()
     await Promise.all(
-        [...seasons].map(async (season) => {
+        seasonList.map(async (season) => {
+            if (Date.now() - started > budgetMs) return
             try {
                 const [fa, en] = await Promise.all([
                     tmdbRequest(
@@ -717,30 +727,59 @@ export async function getTMDBMetaByTmdbId(
     if (!apiKey || !tmdbId) {
         return null
     }
-    const kind = type === 'series' ? 'tv' : 'movie'
+    // Stremio uses series; some catalogs may pass tv
+    const isSeries = type === 'series' || type === 'tv'
+    const stremioType = isSeries ? 'series' : 'movie'
+    let kind = isSeries ? 'tv' : 'movie'
     try {
         let data = {}
         let dataEn = null
-        try {
-            const [faRes, enRes] = await Promise.all([
-                fetchTmdbDetailLang(kind, tmdbId, 'fa-IR', httpClient, apiKey),
-                fetchTmdbDetailLang(kind, tmdbId, 'en-US', httpClient, apiKey),
-            ])
-            data = faRes || {}
-            dataEn = enRes
-        } catch {
-            data = await fetchTmdbDetailLang(kind, tmdbId, 'fa-IR', httpClient, apiKey)
+        async function loadPair(k) {
+            try {
+                const [faRes, enRes] = await Promise.all([
+                    fetchTmdbDetailLang(k, tmdbId, 'fa-IR', httpClient, apiKey),
+                    fetchTmdbDetailLang(k, tmdbId, 'en-US', httpClient, apiKey),
+                ])
+                return {fa: faRes || {}, en: enRes}
+            } catch {
+                try {
+                    const fa = await fetchTmdbDetailLang(k, tmdbId, 'fa-IR', httpClient, apiKey)
+                    return {fa: fa || {}, en: null}
+                } catch {
+                    return {fa: {}, en: null}
+                }
+            }
         }
+
+        let pair = await loadPair(kind)
+        data = pair.fa
+        dataEn = pair.en
+        // Fallback: wrong kind (e.g. movie id in series catalog or vice versa)
+        const hasName = Boolean(data.name || data.title || dataEn?.name || dataEn?.title)
+        if (!hasName) {
+            const alt = kind === 'tv' ? 'movie' : 'tv'
+            pair = await loadPair(alt)
+            if (pair.fa?.name || pair.fa?.title || pair.en?.name || pair.en?.title) {
+                kind = alt
+                data = pair.fa
+                dataEn = pair.en
+            }
+        }
+
         const imdbId = data.external_ids?.imdb_id || data.imdb_id || dataEn?.external_ids?.imdb_id || null
         const validImdb = imdbId && /^tt\d+$/.test(imdbId) ? imdbId : null
-        // Never prefer original_title (ko/ja/…) when fa missing — use English
         const name = preferFaThenEn(
             data.title || data.name,
             dataEn?.title || dataEn?.name,
         )
+        // Still no name → empty meta is useless to Stremio
+        if (!name) {
+            logger.warn?.('TMDB meta empty name', {tmdbId, type, kind})
+            return null
+        }
         const description = preferFaThenEn(data.overview, dataEn?.overview)
         const year = (data.release_date || data.first_air_date || dataEn?.release_date || dataEn?.first_air_date || '').slice(0, 4) || null
-        const genreMap = await getTMDBGenreMap(type, httpClient, apiKey, logger)
+        const genreMap = await getTMDBGenreMap(stremioType, httpClient, apiKey, logger)
         const genresFa = (data.genres ?? []).map((g) => g.name || genreMap.get(g.id)).filter(Boolean)
         const genresEn = (dataEn?.genres ?? []).map((g) => g.name || genreMap.get(g.id)).filter(Boolean)
         const genres = pickFaOrEnGenres(genresFa, genresEn)
@@ -750,7 +789,7 @@ export async function getTMDBMetaByTmdbId(
 
         const meta = {
             id: `tmdb:${tmdbId}`,
-            type,
+            type: stremioType,
             name,
             poster: posterPath ? `https://image.tmdb.org/t/p/w500${posterPath}` : null,
             background: backdropPath ? `https://image.tmdb.org/t/p/original${backdropPath}` : null,
@@ -761,28 +800,43 @@ export async function getTMDBMetaByTmdbId(
             imdb_id: validImdb || undefined,
         }
 
-        if (type === 'series' && validImdb && typeof getCinemetaFn === 'function') {
+        if (isSeries && validImdb && typeof getCinemetaFn === 'function') {
             try {
-                const cin = await getCinemetaFn(type, validImdb)
+                // Cinemeta always uses series for TV
+                const cin = await getCinemetaFn('series', validImdb)
                 const videos = cin?.meta?.videos
                 if (Array.isArray(videos) && videos.length) {
                     meta.videos = videos
                         .filter((v) => v && (v.season != null || v.episode != null || v.id))
                         .map((v) => {
-                            const season = v.season
-                            const episode = v.episode
+                            const season = Number(v.season)
+                            const episode = Number(v.episode)
                             let vid = v.id
                             if (Number.isInteger(season) && Number.isInteger(episode)) {
                                 vid = `tmdb:${tmdbId}:${season}:${episode}`
                             } else if (typeof vid === 'string' && validImdb && vid.startsWith(validImdb)) {
                                 vid = vid.replace(validImdb, `tmdb:${tmdbId}`)
                             }
-                            return {...v, id: vid, season, episode}
+                            return {
+                                ...v,
+                                id: vid,
+                                season: Number.isInteger(season) ? season : v.season,
+                                episode: Number.isInteger(episode) ? episode : v.episode,
+                            }
                         })
+                    // Soft timeout: never block meta on slow multi-season FA enrich
                     try {
-                        meta.videos = await enrichSeriesVideosFa(
+                        const enrichPromise = enrichSeriesVideosFa(
                             meta.videos, tmdbId, httpClient, apiKey, logger,
+                            {maxSeasons: 5, budgetMs: 6000},
                         )
+                        const timeoutPromise = new Promise((resolve) =>
+                            setTimeout(() => resolve(null), 6500),
+                        )
+                        const enriched = await Promise.race([enrichPromise, timeoutPromise])
+                        if (Array.isArray(enriched) && enriched.length) {
+                            meta.videos = enriched
+                        }
                     } catch (error) {
                         logAxiosError(error, logger, 'Episode FA enrich failed')
                     }
@@ -792,7 +846,7 @@ export async function getTMDBMetaByTmdbId(
             }
         }
 
-        if (type === 'movie') {
+        if (stremioType === 'movie') {
             meta.behaviorHints = {defaultVideoId: meta.id}
         }
 
@@ -1275,7 +1329,7 @@ export async function getTMDBDetails(type, tmdbId, httpClient = axios, apiKey, l
     if (!apiKey || !tmdbId) {
         return null
     }
-    const kind = type === 'series' ? 'tv' : 'movie'
+    const kind = (type === 'series' || type === 'tv') ? 'tv' : 'movie'
     try {
         const data = (await tmdbRequest(
             `${kind}/${tmdbId}`,
