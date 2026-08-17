@@ -59,14 +59,14 @@ export function renderLandingPage({
   manifestUrl = PUBLIC_INSTALL,
   installUrl,
   logoUrl = '/logo.png',
-  version = '2.1.35',
+  version = '2.1.36',
 } = {}) {
   const m = escapeHtml(manifestUrl || PUBLIC_INSTALL)
   const install = escapeHtml(
     installUrl || `stremio://${String(manifestUrl || PUBLIC_INSTALL).replace(/^https?:\/\//i, '')}`,
   )
   const logo = escapeHtml(logoUrl || LOGO_FALLBACK)
-  const ver = escapeHtml(String(version || '2.1.35'))
+  const ver = escapeHtml(String(version || '2.1.36'))
 
   const addonCards = RECOMMENDED.map(
     (a) => `
@@ -103,6 +103,13 @@ background-image:radial-gradient(1.5px 1.5px at 10% 20%,#fff,transparent),radial
 .n1{top:-20%;right:-15%;width:70vw;height:70vw;background:radial-gradient(circle,#3d1a6e,transparent 70%)}
 .n2{bottom:-25%;left:-20%;width:70vw;height:70vw;background:radial-gradient(circle,#1a3a6e,transparent 70%)}
 .glass{background:var(--g);backdrop-filter:blur(24px) saturate(1.4);-webkit-backdrop-filter:blur(24px) saturate(1.4);border:1px solid var(--gb);border-radius:20px;box-shadow:0 8px 32px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.08)}
+.rec-nuvio{border-color:rgba(126,182,255,.35)!important;box-shadow:0 0 0 1px rgba(126,182,255,.12),0 12px 40px rgba(20,40,90,.35),inset 0 1px 0 rgba(255,255,255,.1)!important}
+.rec-nuvio::before{content:'';position:absolute;inset:-40% -20%;background:radial-gradient(ellipse at 30% 0%,rgba(126,182,255,.18),transparent 55%);pointer-events:none}
+.rec-badge{position:absolute;top:12px;inset-inline-end:12px;font-size:.68rem;font-weight:800;padding:4px 10px;border-radius:999px;background:linear-gradient(135deg,rgba(126,182,255,.35),rgba(232,160,74,.25));border:1px solid rgba(126,182,255,.4);color:#e8f0ff;letter-spacing:.02em;z-index:1}
+.tile .hov{gap:6px!important;padding:10px 8px!important}
+.tile .hov a{margin:0!important;width:100%;display:block}
+.tile .hov .s-nuvio{background:linear-gradient(135deg,#6a9dff,#4a7ae0);color:#fff}
+
 .lang-en{display:none}html[lang=en] .lang-fa{display:none}html[lang=en] .lang-en{display:block}html[lang=en] body{direction:ltr}
 header{position:sticky;top:0;z-index:50;display:flex;justify-content:space-between;align-items:center;padding:14px 5vw;background:rgba(5,5,8,.45);backdrop-filter:blur(20px);border-bottom:1px solid rgba(255,255,255,.06)}
 .brand{display:flex;gap:12px;align-items:center;color:var(--t);text-decoration:none;font-weight:800;font-size:1.15rem}
@@ -274,14 +281,15 @@ overscroll-behavior-x:contain;scrollbar-width:none!important;-ms-overflow-style:
 </div>
 </div>
 
-<div class="glass" style="padding:14px 16px;margin-bottom:8px">
-<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-<img src="https://nuvio.tv/assets/Logo_1080x1080.png" width="28" height="28" alt="" style="border-radius:8px;object-fit:cover" onerror="this.src='https://www.google.com/s2/favicons?domain=nuvio.tv&sz=64'"/>
-<b>Nuvio</b>
-<span class="muted" style="font-size:.85rem">— <span class="lang-fa">سریع‌تر، قابل‌سفارشی‌سازی، پروفایل چندگانه</span><span class="lang-en">faster, customizable, multi-profile</span></span>
+<div class="glass rec-nuvio" style="padding:16px 18px;margin-bottom:8px;position:relative;overflow:hidden">
+<div class="rec-badge"><span class="lang-fa">پیشنهاد ما</span><span class="lang-en">Recommended</span></div>
+<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+<img src="https://nuvio.tv/assets/Logo_1080x1080.png" width="32" height="32" alt="" style="border-radius:10px;object-fit:cover;box-shadow:0 0 18px rgba(126,182,255,.45)" onerror="this.src='https://www.google.com/s2/favicons?domain=nuvio.tv&sz=64'"/>
+<b style="font-size:1.05rem">Nuvio</b>
+<span class="muted" style="font-size:.85rem">— <span class="lang-fa">سریع‌تر، پایدارتر، قابل‌سفارشی‌سازی</span><span class="lang-en">faster, more stable, customizable</span></span>
 </div>
-<p class="sub lang-fa" style="margin-bottom:10px">رابط مدرن‌تر از استریمیو؛ منیفست همان افزونه‌ها را می‌گیرد. UI رسمی هنوز فارسی کامل ندارد، ولی محتوای سینماگرافی فارسی است. جزئیات در <a href="/guide">راهنما</a>.</p>
-<p class="sub lang-en" style="margin-bottom:10px">Modern client; same addon manifests. See <a href="/guide">guide</a>.</p>
+<p class="sub lang-fa" style="margin-bottom:10px">کلاینت مدرن سازگار با منیفست استریمیو. دانلود داخل اپ، پروفایل چندگانه و چیدمان دلخواه کاتالوگ. UI رسمی هنوز فارسی کامل ندارد؛ محتوای سینماگرافی فارسی است. جزئیات در <a href="/guide">راهنما</a>.</p>
+<p class="sub lang-en" style="margin-bottom:10px">Modern Stremio-compatible client with in-app download and catalog layout control. See <a href="/guide">guide</a>.</p>
 <div class="g">
 <a class="p glass" href="https://nuvio.tv" target="_blank" rel="noopener"><span class="lang-fa">سایت رسمی</span><span class="lang-en">Official site</span></a>
 <a class="p glass" href="https://github.com/NuvioMedia/NuvioMobile/releases/latest" target="_blank" rel="noopener">Android</a>
@@ -340,7 +348,7 @@ ${addonCards}
 </a>
 <a class="gh glass" href="${TELEGRAM_CHANNEL}" target="_blank" rel="noopener" aria-label="Telegram">
 <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22" aria-hidden="true"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zm4.24 6.46-1.55 7.33c-.12.52-.43.65-.87.4l-2.4-1.77-1.16 1.12c-.13.13-.24.24-.49.24l.17-2.45 4.47-4.04c.19-.17-.04-.27-.3-.1l-5.53 3.48-2.38-.74c-.52-.16-.53-.52.11-.77l9.3-3.58c.43-.16.81.1.67.78z"/></svg>
-<span class="label"><span class="lang-fa">کانال</span><span class="lang-en">Channel</span></span>
+<span class="label"><span class="lang-fa">کانال تلگرام سینماگرافی</span><span class="lang-en">CinemaGraphy channel</span></span>
 </a>
 <a class="gh glass" href="${TELEGRAM_SUPPORT}" target="_blank" rel="noopener" aria-label="Support">
 <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22" aria-hidden="true"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.17L4 17.17V4h16v12zM7 9h2v2H7zm4 0h2v2h-2zm4 0h2v2h-2z"/></svg>
@@ -431,8 +439,8 @@ function tileHtml(item){
     '<div class="poster-wrap">'+img+
       '<div class="hov">'+
         '<a class="s" href="'+esc(L.webApp)+'" target="_blank" rel="noopener">'+(fa?'استریمیو وب':'Stremio web')+'</a>'+
-        '<a class="s" href="https://nuvio.tv" target="_blank" rel="noopener" style="margin-top:4px">'+(fa?'Nuvio':'Nuvio')+'</a>'+
-        '<a class="w" href="'+esc(L.tmdb)+'" target="_blank" rel="noopener">'+(fa?'TMDB':'TMDB')+'</a>'+
+        '<a class="s s-nuvio" href="https://nuvio.tv" target="_blank" rel="noopener">Nuvio</a>'+
+        '<a class="w" href="'+esc(L.tmdb)+'" target="_blank" rel="noopener">TMDB</a>'+
       '</div>'+
     '</div>'+
     '<div class="cap">'+title+'</div>'+(sub?'<div class="sub2">'+esc(sub)+'</div>':'')+
@@ -556,22 +564,26 @@ export function landingUrlsFromRequest(requestLike, env = {}) {
 
 /** Shared shell styles for /guide and /configure */
 function shellStyle() {
-  return `:root{--t:#f4f0ea;--m:#a89f94;--a:#e8a04a;--a2:#7eb6ff;--g:rgba(255,255,255,.07);--gb:rgba(255,255,255,.14)}
+  return `:root{--t:#f4f0ea;--m:#a89f94;--a:#e8a04a;--a2:#7eb6ff;--g:rgba(255,255,255,.07);--gb:rgba(255,255,255,.14);--gl:rgba(232,160,74,.35)}
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{max-width:100%;overflow-x:hidden}
-body{font-family:Vazirmatn,Tahoma,Segoe UI,system-ui,sans-serif;color:var(--t);min-height:100vh;line-height:1.65;
-background:radial-gradient(ellipse 80% 50% at 50% -20%,#1a0a2e,transparent),linear-gradient(180deg,#050508,#0a0612 50%,#12081c)}
+body{font-family:Vazirmatn,Tahoma,Segoe UI,system-ui,sans-serif;color:var(--t);min-height:100vh;line-height:1.65;position:relative;
+background:radial-gradient(ellipse 120% 80% at 50% 120%,#1a0a2e 0%,transparent 55%),
+radial-gradient(ellipse 60% 50% at 80% 20%,#0d1b3a 0%,transparent 50%),
+linear-gradient(180deg,#050508,#0a0612 40%,#12081c)}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;opacity:.55;z-index:0;
+background-image:radial-gradient(1.5px 1.5px at 10% 20%,#fff,transparent),radial-gradient(1px 1px at 70% 40%,#fff,transparent),radial-gradient(1.5px 1.5px at 50% 15%,#ffe9c4,transparent)}
 a{color:var(--a2)}
-.wrap{max-width:880px;width:100%;margin:0 auto;padding:20px 4.5vw 48px}
+.wrap{position:relative;z-index:1;max-width:880px;width:100%;margin:0 auto;padding:20px 4.5vw 48px}
 header{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap;max-width:100%}
 .brand{display:flex;gap:10px;align-items:center;color:var(--t);text-decoration:none;font-weight:800;min-width:0}
 .brand span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.brand img{width:36px;height:36px;border-radius:10px;flex-shrink:0}
-.chip{border:1px solid var(--gb);background:var(--g);color:var(--t);border-radius:999px;padding:8px 12px;text-decoration:none;font-weight:600;font-size:.82rem;font-family:inherit;cursor:pointer;white-space:nowrap}
+.brand img{width:36px;height:36px;border-radius:10px;flex-shrink:0;box-shadow:0 0 16px var(--gl)}
+.chip{border:1px solid var(--gb);background:var(--g);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);color:var(--t);border-radius:999px;padding:8px 12px;text-decoration:none;font-weight:600;font-size:.82rem;font-family:inherit;cursor:pointer;white-space:nowrap}
 h1{font-size:clamp(1.25rem,5vw,1.75rem);font-weight:900;margin:8px 0;overflow-wrap:anywhere}
 h2{font-size:1.05rem;margin:0 0 10px;overflow-wrap:anywhere}
 .sub{color:var(--m);margin-bottom:14px;font-size:.92rem;overflow-wrap:anywhere}
-.glass{background:var(--g);backdrop-filter:blur(18px);border:1px solid var(--gb);border-radius:16px}
+.glass{background:var(--g);backdrop-filter:blur(24px) saturate(1.4);-webkit-backdrop-filter:blur(24px) saturate(1.4);border:1px solid var(--gb);border-radius:18px;box-shadow:0 8px 28px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.08)}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 16px;border-radius:12px;font-weight:800;font-size:.88rem;text-decoration:none;border:none;cursor:pointer;font-family:inherit;max-width:100%}
 .bp{background:linear-gradient(135deg,#e8a04a,#d4783a);color:#1a0f05}
 .bp.ok{background:linear-gradient(135deg,#5dcea0,#3aa87a)}
@@ -610,11 +622,11 @@ h2{font-size:1.05rem;margin:0 0 10px;overflow-wrap:anywhere}
 
 export function renderConfigurePage({
   logoUrl = '/logo.png',
-  version = '2.1.35',
+  version = '2.1.36',
   origin = PUBLIC_SITE,
 } = {}) {
   const logo = escapeHtml(logoUrl || LOGO_FALLBACK)
-  const ver = escapeHtml(String(version || '2.1.35'))
+  const ver = escapeHtml(String(version || '2.1.36'))
   const originClean = String(origin || PUBLIC_SITE).replace(/\/$/, '')
   const base = escapeHtml(originClean)
   const baseJson = JSON.stringify(originClean)
@@ -790,11 +802,11 @@ export function renderConfigurePage({
 
 export function renderGuidePage({
   logoUrl = '/logo.png',
-  version = '2.1.35',
+  version = '2.1.36',
   manifestUrl = PUBLIC_INSTALL,
 } = {}) {
   const logo = escapeHtml(logoUrl || LOGO_FALLBACK)
-  const ver = escapeHtml(String(version || '2.1.35'))
+  const ver = escapeHtml(String(version || '2.1.36'))
   const install = escapeHtml(
     'stremio://' + String(manifestUrl || PUBLIC_INSTALL).replace(/^https?:\/\//i, ''),
   )
@@ -879,11 +891,6 @@ export function renderGuidePage({
 <div class="step glass"><b>2</b> <span class="lang-fa">استریم را با کیفیت/حجم/منبع انتخاب کنید</span><span class="lang-en">Pick a stream (quality / size / source)</span></div>
 <div class="step glass"><b>3</b> <span class="lang-fa">در صورت نیاز زیرنویس را بزنید</span><span class="lang-en">Add subtitles if needed</span></div>
 </div>
-</div>
-
-<div class="gbox glass call">
-<p class="lang-fa" style="margin:0"><b>IP:</b> درخواست به سایت‌های ایرانی از سرور می‌رود؛ IP دیده‌شده معمولاً IP سرور است. جعل هدر انجام نمی‌شود.</p>
-<p class="lang-en" style="margin:0"><b>IP:</b> Fetches are server-side; sites see the server IP. No header spoofing.</p>
 </div>
 
 <div class="gbox glass">
