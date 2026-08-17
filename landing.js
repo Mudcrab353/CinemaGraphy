@@ -59,14 +59,14 @@ export function renderLandingPage({
   manifestUrl = PUBLIC_INSTALL,
   installUrl,
   logoUrl = '/logo.png',
-  version = '2.1.30',
+  version = '2.1.31',
 } = {}) {
   const m = escapeHtml(manifestUrl || PUBLIC_INSTALL)
   const install = escapeHtml(
     installUrl || `stremio://${String(manifestUrl || PUBLIC_INSTALL).replace(/^https?:\/\//i, '')}`,
   )
   const logo = escapeHtml(logoUrl || LOGO_FALLBACK)
-  const ver = escapeHtml(String(version || '2.1.30'))
+  const ver = escapeHtml(String(version || '2.1.31'))
 
   const addonCards = RECOMMENDED.map(
     (a) => `
@@ -558,48 +558,63 @@ export function landingUrlsFromRequest(requestLike, env = {}) {
 function shellStyle() {
   return `:root{--t:#f4f0ea;--m:#a89f94;--a:#e8a04a;--a2:#7eb6ff;--g:rgba(255,255,255,.07);--gb:rgba(255,255,255,.14)}
 *{box-sizing:border-box;margin:0;padding:0}
+html,body{max-width:100%;overflow-x:hidden}
 body{font-family:Vazirmatn,Tahoma,Segoe UI,system-ui,sans-serif;color:var(--t);min-height:100vh;line-height:1.65;
 background:radial-gradient(ellipse 80% 50% at 50% -20%,#1a0a2e,transparent),linear-gradient(180deg,#050508,#0a0612 50%,#12081c)}
-a{color:var(--a2)}.wrap{max-width:880px;margin:0 auto;padding:24px 5vw 48px}
-header{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:24px;flex-wrap:wrap}
-.brand{display:flex;gap:10px;align-items:center;color:var(--t);text-decoration:none;font-weight:800}
-.brand img{width:36px;height:36px;border-radius:10px}
-.chip{border:1px solid var(--gb);background:var(--g);color:var(--t);border-radius:999px;padding:8px 14px;text-decoration:none;font-weight:600;font-size:.85rem;font-family:inherit;cursor:pointer}
-h1{font-size:1.75rem;font-weight:900;margin:8px 0}
-h2{font-size:1.15rem;margin:26px 0 10px}
-.sub{color:var(--m);margin-bottom:14px;font-size:.95rem}
+a{color:var(--a2)}
+.wrap{max-width:880px;width:100%;margin:0 auto;padding:20px 4.5vw 48px}
+header{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap;max-width:100%}
+.brand{display:flex;gap:10px;align-items:center;color:var(--t);text-decoration:none;font-weight:800;min-width:0}
+.brand span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.brand img{width:36px;height:36px;border-radius:10px;flex-shrink:0}
+.chip{border:1px solid var(--gb);background:var(--g);color:var(--t);border-radius:999px;padding:8px 12px;text-decoration:none;font-weight:600;font-size:.82rem;font-family:inherit;cursor:pointer;white-space:nowrap}
+h1{font-size:clamp(1.25rem,5vw,1.75rem);font-weight:900;margin:8px 0;overflow-wrap:anywhere}
+h2{font-size:1.05rem;margin:0 0 10px;overflow-wrap:anywhere}
+.sub{color:var(--m);margin-bottom:14px;font-size:.92rem;overflow-wrap:anywhere}
 .glass{background:var(--g);backdrop-filter:blur(18px);border:1px solid var(--gb);border-radius:16px}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 18px;border-radius:12px;font-weight:800;font-size:.9rem;text-decoration:none;border:none;cursor:pointer;font-family:inherit}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 16px;border-radius:12px;font-weight:800;font-size:.88rem;text-decoration:none;border:none;cursor:pointer;font-family:inherit;max-width:100%}
 .bp{background:linear-gradient(135deg,#e8a04a,#d4783a);color:#1a0f05}
 .bp.ok{background:linear-gradient(135deg,#5dcea0,#3aa87a)}
 .ghost{background:rgba(255,255,255,.08);color:var(--t);border:1px solid var(--gb)}
-.row{display:flex;flex-wrap:wrap;gap:10px;margin:12px 0}
+.row{display:flex;flex-wrap:wrap;gap:10px;margin:12px 0;max-width:100%}
 .lang-en{display:none}html[lang=en] .lang-fa{display:none}html[lang=en] .lang-en{display:block}html[lang=en] body{direction:ltr}
-.cfg-item{padding:14px 16px;margin-bottom:10px}
+.cfg-item{padding:14px 16px;margin-bottom:10px;max-width:100%;overflow:hidden}
 .cfg-item .top{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;margin-bottom:6px}
-.cfg-item code{direction:ltr;font-size:.78rem;color:var(--a2)}
-.diff{font-size:.68rem;font-weight:800;padding:3px 8px;border-radius:999px}
+.cfg-item code,code,pre{direction:ltr;font-size:.78rem;color:var(--a2);overflow-wrap:anywhere;word-break:break-all;max-width:100%}
+.diff{font-size:.68rem;font-weight:800;padding:3px 8px;border-radius:999px;flex-shrink:0}
 .diff.e{background:rgba(93,206,160,.15);color:#5dcea0}
 .diff.m{background:rgba(232,160,74,.15);color:var(--a)}
 .diff.h{background:rgba(224,112,112,.15);color:#e07070}
-.cfg-item input{width:100%;margin-top:8px;background:rgba(0,0,0,.28);border:1px solid var(--gb);border-radius:10px;color:var(--t);padding:10px 12px;font-family:ui-monospace,monospace;font-size:.78rem;direction:ltr;outline:none}
-.cfg-item .hint{font-size:.78rem;color:var(--m)}
-.out{margin-top:16px;padding:14px 16px}
-.out input{width:100%;background:rgba(0,0,0,.28);border:1px solid var(--gb);border-radius:10px;color:var(--t);padding:10px 12px;font-family:ui-monospace,monospace;font-size:.75rem;direction:ltr}
-.feat{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin:12px 0}
+.cfg-item input,.out input{width:100%;max-width:100%;margin-top:8px;background:rgba(0,0,0,.28);border:1px solid var(--gb);border-radius:10px;color:var(--t);padding:10px 12px;font-family:ui-monospace,monospace;font-size:.78rem;direction:ltr;outline:none;box-sizing:border-box}
+.cfg-item .hint{font-size:.78rem;color:var(--m);overflow-wrap:anywhere}
+.out{margin-top:16px;padding:14px 16px;max-width:100%;overflow:hidden}
+.feat{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(140px,100%),1fr));gap:10px;margin:12px 0}
 .feat .c{padding:14px;text-align:center}.feat b{display:block;margin:4px 0}.feat span{font-size:.78rem;color:var(--m)}
-.step{padding:14px 16px;margin-bottom:8px}.faq details{padding:12px 16px;margin-bottom:8px}
-.faq summary{cursor:pointer;font-weight:700}.faq p{color:var(--m);margin-top:8px;font-size:.9rem}
-.call{padding:14px 16px;margin:12px 0;border-color:rgba(232,160,74,.35)!important}`
+.step{padding:12px 14px;margin-bottom:8px;display:flex;gap:10px;align-items:flex-start;min-width:0;max-width:100%}
+.step>b{flex-shrink:0}
+.step>span{min-width:0;flex:1;overflow-wrap:anywhere;word-break:break-word}
+.faq details{padding:12px 14px;margin-bottom:8px;max-width:100%;overflow:hidden}
+.faq summary{cursor:pointer;font-weight:700;overflow-wrap:anywhere}.faq p{color:var(--m);margin-top:8px;font-size:.9rem;overflow-wrap:anywhere}
+.call{padding:14px;margin:12px 0;border-color:rgba(232,160,74,.35)!important;max-width:100%;overflow:hidden;overflow-wrap:anywhere}
+.gbox{max-width:100%;overflow:hidden}
+.olist{max-width:100%}
+@media (max-width:480px){
+  .wrap{padding:14px 3.5vw 40px}
+  .chip{padding:6px 10px;font-size:.75rem}
+  .btn{padding:11px 14px;font-size:.84rem}
+  .cfg-item,.out,.gbox,.call,.step{padding:12px}
+  .prov-grid{grid-template-columns:1fr!important}
+}
+`
 }
 
 export function renderConfigurePage({
   logoUrl = '/logo.png',
-  version = '2.1.30',
+  version = '2.1.31',
   origin = PUBLIC_SITE,
 } = {}) {
   const logo = escapeHtml(logoUrl || LOGO_FALLBACK)
-  const ver = escapeHtml(String(version || '2.1.30'))
+  const ver = escapeHtml(String(version || '2.1.31'))
   const originClean = String(origin || PUBLIC_SITE).replace(/\/$/, '')
   const base = escapeHtml(originClean)
   const baseJson = JSON.stringify(originClean)
@@ -775,11 +790,11 @@ export function renderConfigurePage({
 
 export function renderGuidePage({
   logoUrl = '/logo.png',
-  version = '2.1.30',
+  version = '2.1.31',
   manifestUrl = PUBLIC_INSTALL,
 } = {}) {
   const logo = escapeHtml(logoUrl || LOGO_FALLBACK)
-  const ver = escapeHtml(String(version || '2.1.30'))
+  const ver = escapeHtml(String(version || '2.1.31'))
   const install = escapeHtml(
     'stremio://' + String(manifestUrl || PUBLIC_INSTALL).replace(/^https?:\/\//i, ''),
   )
@@ -790,12 +805,14 @@ export function renderGuidePage({
 <title>راهنما — سینماگرافی</title>
 <link rel="icon" href="${logo}"/>
 <style>${shellStyle()}
-.gbox{padding:18px 18px 16px;margin-bottom:14px}
-.gbox h2{margin:0 0 10px;font-size:1.05rem}
+.gbox{padding:16px;margin-bottom:12px;max-width:100%;overflow:hidden}
+.gbox h2{margin:0 0 10px;font-size:1.02rem}
 .gbox .row{margin-top:12px}
-.olist{display:grid;gap:8px;margin-top:8px}
+.olist{display:grid;gap:8px;margin-top:8px;max-width:100%}
 .olist .step{margin:0}
-.muted{color:var(--m);font-size:.9rem}
+.muted{color:var(--m);font-size:.9rem;overflow-wrap:anywhere;word-break:break-word}
+.gbox p,.gbox li{overflow-wrap:anywhere;word-break:break-word;max-width:100%}
+.gbox code{display:inline-block;max-width:100%;overflow-wrap:anywhere;word-break:break-all}
 </style>
 </head>
 <body>
@@ -937,6 +954,11 @@ export function renderGuidePage({
 </div>
 </div>
 <p class="lang-fa muted" style="margin-top:10px">لینک‌های مفید: <a href="https://github.com/NuvioMedia/NuvioMobile/releases/latest" target="_blank" rel="noopener">Android</a> · <a href="https://github.com/NuvioMedia/NuvioTV/releases/latest" target="_blank" rel="noopener">Android TV</a> · <a href="https://testflight.apple.com/join/u4y7MHK9" target="_blank" rel="noopener">iOS TestFlight</a> · <a href="https://github.com/NuvioMedia/NuvioDesktop/releases/latest" target="_blank" rel="noopener">Desktop</a></p>
+</div>
+
+<div class="gbox glass call">
+<p class="lang-fa" style="margin:0"><b>اسم فارسی قسمت‌ها:</b> سینماگرافی عنوان/توضیح قسمت را از TMDB فارسی می‌گیرد. اگر بعد از یک لحظه دوباره انگلیسی شد، معمولاً <b>Cinemeta</b> متا را دوباره می‌نویسد. در لیست افزونه‌های استریمیو، <b>سینماگرافی را بالاتر از Cinemeta</b> بکشید (یا کاتالوگ‌های شلوغ Cinemeta را مخفی کنید). برای شناسه‌های <code>tmdb:</code> معمولاً پایدارتر است.</p>
+<p class="lang-en" style="margin:0;margin-top:8px"><b>Persian episode titles:</b> If they flash then revert to English, reorder addons so CinemaGraphy is above Cinemeta.</p>
 </div>
 
 <div class="gbox glass">

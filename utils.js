@@ -556,6 +556,33 @@ export async function enrichCatalogMetasWithoutRpdb(
  * Localize series episode titles/overviews via TMDB (fa-IR then en-US).
  * Uses one request per season (cached by tmdbRequest). Safe no-op on failure.
  */
+function parseVideoSeasonEpisode(v) {
+    let s = Number(v?.season)
+    let e = Number(v?.episode)
+    if (!Number.isInteger(s) || !Number.isInteger(e)) {
+        const m = String(v?.id || '').match(/:(\d+):(\d+)\s*$/)
+        if (m) {
+            s = Number(m[1])
+            e = Number(m[2])
+        }
+    }
+    return {
+        season: Number.isInteger(s) ? s : null,
+        episode: Number.isInteger(e) ? e : null,
+    }
+}
+
+/** Prefer FA episode title; generic "Episode 5" → «قسمت ۵» when FA missing. */
+function localizeEpisodeName(faName, enName, episodeNum) {
+    const picked = preferFaThenEn(faName, enName)
+    if (picked && hasPersianScript(picked)) return picked
+    const eng = String(picked || enName || faName || '').trim()
+    if (!eng || /^(episode|ep\.?|part)\s*\d+$/i.test(eng) || /^e\d+$/i.test(eng)) {
+        if (Number.isInteger(episodeNum) && episodeNum >= 0) return `قسمت ${episodeNum}`
+    }
+    return picked || eng || null
+}
+
 export async function enrichSeriesVideosFa(
     videos,
     tmdbId,
@@ -568,8 +595,8 @@ export async function enrichSeriesVideosFa(
     }
     const seasons = new Set()
     for (const v of videos) {
-        const s = Number(v?.season)
-        if (Number.isInteger(s) && s >= 0) seasons.add(s)
+        const {season: s} = parseVideoSeasonEpisode(v)
+        if (s != null && s >= 0) seasons.add(s)
     }
     if (!seasons.size) return videos
 
@@ -599,15 +626,14 @@ export async function enrichSeriesVideosFa(
                 const map = new Map()
                 for (const ep of fa?.episodes || []) {
                     const enEp = enEps.get(ep.episode_number)
-                    const name = preferFaThenEn(ep.name, enEp?.name)
+                    const name = localizeEpisodeName(ep.name, enEp?.name, ep.episode_number)
                     const overview = preferFaThenEn(ep.overview, enEp?.overview)
                     map.set(ep.episode_number, {name, overview})
                 }
-                // episodes only present in EN
                 for (const [num, ep] of enEps) {
                     if (!map.has(num)) {
                         map.set(num, {
-                            name: ep.name || null,
+                            name: localizeEpisodeName(null, ep.name, num),
                             overview: ep.overview || null,
                         })
                     }
@@ -623,16 +649,25 @@ export async function enrichSeriesVideosFa(
 
     return videos.map((v) => {
         if (!v || typeof v !== 'object') return v
-        const s = Number(v.season)
-        const e = Number(v.episode)
-        if (!Number.isInteger(s) || !Number.isInteger(e)) return v
+        const {season: s, episode: e} = parseVideoSeasonEpisode(v)
+        if (s == null || e == null) return v
         const hit = bySeason.get(s)?.get(e)
-        if (!hit) return v
-        const out = {...v}
-        if (hit.name) out.name = hit.name
-        if (hit.overview) out.overview = hit.overview
-        // Stremio also shows description on some clients
-        if (hit.overview && !out.description) out.description = hit.overview
+        const out = {...v, season: s, episode: e}
+        if (hit?.name) {
+            out.name = hit.name
+            out.title = hit.name
+        } else if (!hasPersianScript(out.name)) {
+            // last resort: generic label so UI is not stuck on English "Episode N"
+            const fallback = localizeEpisodeName(null, out.name, e)
+            if (fallback) {
+                out.name = fallback
+                out.title = fallback
+            }
+        }
+        if (hit?.overview) {
+            out.overview = hit.overview
+            out.description = hit.overview
+        }
         return out
     })
 }
