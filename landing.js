@@ -842,6 +842,26 @@ export function renderConfigurePage({
 <div class="hint"><span class="lang-fa">کاتالوگ انیمه</span><span class="lang-en">Anime catalog manifest</span></div>
 <input data-k="CATALOG_ANIME_MANIFEST_URL" placeholder="https://…/manifest.json" autocomplete="off"/>
 </div>
+
+<div class="glass" style="padding:16px;margin-bottom:16px">
+<h2 class="lang-fa" style="margin-top:0">ماهواره / IPTV</h2>
+<h2 class="lang-en" style="margin-top:0">Satellite / IPTV</h2>
+<label class="tog" style="display:flex;gap:12px;align-items:flex-start;padding:12px 0;cursor:pointer">
+<input type="checkbox" id="optIptv" style="width:18px;height:18px;margin-top:3px;accent-color:#e8a04a;flex-shrink:0"/>
+<div>
+<b class="lang-fa">فعال‌سازی کاتالوگ ماهواره (IPTV Bridge)</b>
+<b class="lang-en">Enable IPTV / satellite catalogs</b>
+<span class="hint lang-fa" style="display:block;font-size:.82rem;color:var(--m);font-weight:500;margin-top:4px">بدون تیک = ماهواره در این منیفست نیست. با تیک = پیش‌فرض سرور لود می‌شود مگر لینک زیر را عوض کنید.</span>
+<span class="hint lang-en" style="display:block;font-size:.82rem;color:var(--m);font-weight:500;margin-top:4px">Off = no IPTV in this install. On = server default, or your URL below.</span>
+</div>
+</label>
+<div class="cfg-item" style="margin:0;padding:0;background:transparent;border:none;box-shadow:none">
+<div class="top"><code>CATALOG_IPTVBRIDGE_MANIFEST_URL</code><span class="diff e"><span class="lang-fa">آسان</span><span class="lang-en">Easy</span></span></div>
+<div class="hint"><span class="lang-fa">اختیاری — خالی = پیش‌فرض سرور (وقتی تیک روشن است). پر = جایگزین کامل.</span><span class="lang-en">Optional — empty = server default when enabled; filled = replaces default.</span></div>
+<input id="iptvUrl" data-k="CATALOG_IPTVBRIDGE_MANIFEST_URL" placeholder="https://…/manifest.json  یا خالی بگذارید" autocomplete="off"/>
+</div>
+</div>
+
 <div class="cfg-item glass">
 <div class="top"><code>EXTERNAL_CATALOG_MANIFEST_URLS</code><span class="diff m"><span class="lang-fa">متوسط</span><span class="lang-en">Medium</span></span></div>
 <div class="hint"><span class="lang-fa">کاتالوگ‌های اضافه با ویرگول</span><span class="lang-en">Extra catalogs, comma-separated</span></div>
@@ -925,6 +945,8 @@ export function renderConfigurePage({
     if (dm && dm.checked && !(streams && streams.checked)) o.DISABLE_META = '1';
     if (dc && dc.checked && !(streams && streams.checked)) o.DISABLE_CATALOG = '1';
     if (ds && ds.checked) o.DISABLE_SUBTITLES = '1';
+    var iptv = document.getElementById('optIptv');
+    if (iptv && iptv.checked) o.ENABLE_IPTV = '1';
     var metaR = document.querySelector('input[name="metaLang"]:checked');
     if (metaR && metaR.value === 'en') o.META_LANG = 'en';
     var addR = document.querySelector('input[name="addonLang"]:checked');
@@ -952,6 +974,8 @@ export function renderConfigurePage({
     if (dm) dm.checked = streamsOnly || o.DISABLE_META === '1' || o.DISABLE_META === 'true';
     if (dc) dc.checked = streamsOnly || o.DISABLE_CATALOG === '1' || o.DISABLE_CATALOG === 'true';
     if (ds) ds.checked = o.DISABLE_SUBTITLES === '1' || o.DISABLE_SUBTITLES === 'true';
+    var iptvEl = document.getElementById('optIptv');
+    if (iptvEl) iptvEl.checked = o.ENABLE_IPTV === '1' || o.ENABLE_IPTV === 'true' || Boolean(o.CATALOG_IPTVBRIDGE_MANIFEST_URL);
     var metaVal = (o.META_LANG === 'en') ? 'en' : 'fa';
     document.querySelectorAll('input[name="metaLang"]').forEach(function (r) { r.checked = r.value === metaVal; });
     var addVal = (o.ADDON_LANG === 'en') ? 'en' : 'fa';
@@ -1007,7 +1031,7 @@ export function renderConfigurePage({
     el.textContent = text || '';
     el.style.color = ok ? '#5dcea0' : 'var(--m)';
   }
-  document.querySelectorAll('[data-prov], [data-k], #optStreamsOnly, #optDisableMeta, #optDisableCatalog, #optDisableSubs, input[name="metaLang"], input[name="addonLang"]').forEach(function (el) {
+  document.querySelectorAll('[data-prov], [data-k], #optStreamsOnly, #optDisableMeta, #optDisableCatalog, #optDisableSubs, #optIptv, input[name="metaLang"], input[name="addonLang"]').forEach(function (el) {
     el.addEventListener('change', refresh);
     el.addEventListener('input', refresh);
   });
@@ -1053,7 +1077,7 @@ export function renderConfigurePage({
     try { localStorage.removeItem(STORE); } catch (e) {}
     applyObj({});
     document.querySelectorAll('[data-prov]').forEach(function (cb) { cb.checked = false; });
-    ['optStreamsOnly','optDisableMeta','optDisableCatalog','optDisableSubs'].forEach(function (id) {
+    ['optStreamsOnly','optDisableMeta','optDisableCatalog','optDisableSubs','optIptv'].forEach(function (id) {
       var el = document.getElementById(id); if (el) { el.checked = false; el.disabled = false; }
     });
     refresh();

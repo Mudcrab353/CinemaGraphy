@@ -21,7 +21,7 @@ import {ID_SEPARATOR, METADATA_SOURCE} from './sources/source.js'
 import {findExternalMetaSource, findExternalStreamSource, formatStreamTitle, getCinemeta, getExternalCatalogSources, getExternalCatalogStatus, invalidateExternalCatalogCache, getKitsuTitle, getSubtitle, getTMDBMetaFa, enrichMetaWithFaTmdb, enrichCatalogMetasWithoutRpdb, getTMDBMetaByTmdbId, getTMDBDetails, getTMDBTitle, getLandingTmdbCatalogs, getTorrentStreams, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxyExternalStream, proxySubtitles, translateCatalogName, buildOrderedExternalCatalogs, rewriteTmdbImageUrls, parseTmdbImageProxyPath, tmdbRequest, setMetaLangPref, setUiLangPref} from './utils.js'
 
 export const ADDON_PREFIX = 'ip'
-export const ADDON_VERSION = '2.1.44'
+export const ADDON_VERSION = '2.1.45'
 
 
 const PROVIDER_BASEURL_KEYS = [
@@ -70,6 +70,7 @@ const CONFIG_ALLOW = new Set([
     'ADDON_NAME_SUFFIX',
     'META_LANG',
     'ADDON_LANG',
+    'ENABLE_IPTV',
     ...PROVIDER_BASEURL_KEYS,
 ])
 
@@ -136,6 +137,22 @@ export function mergeEnv(baseEnv = {}, config) {
             if (!('TORRENT_METEOR_MANIFEST_URL' in config)) {
                 delete e.TORRENT_METEOR_MANIFEST_URL
             }
+        }
+    }
+
+    // IPTV / ماهواره — opt-in on custom installs only
+    // unchecked → no IPTV catalogs; checked + empty URL → server default; checked + URL → replace
+    {
+        const iptvOn = isConfigFlagOn(config, 'ENABLE_IPTV')
+        const customIptv = String(config.CATALOG_IPTVBRIDGE_MANIFEST_URL || '').trim()
+        if (!iptvOn) {
+            delete e.CATALOG_IPTVBRIDGE_MANIFEST_URL
+        } else if (customIptv) {
+            e.CATALOG_IPTVBRIDGE_MANIFEST_URL = customIptv
+        } else if (String(baseEnv.CATALOG_IPTVBRIDGE_MANIFEST_URL || '').trim()) {
+            e.CATALOG_IPTVBRIDGE_MANIFEST_URL = String(baseEnv.CATALOG_IPTVBRIDGE_MANIFEST_URL).trim()
+        } else {
+            delete e.CATALOG_IPTVBRIDGE_MANIFEST_URL
         }
     }
 
