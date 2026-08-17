@@ -79,17 +79,60 @@ function extractSeasonNumber(...texts) {
     return null
 }
 
-/** Attack on Titan S3 - 01 → ep 1; E12; قسمت ۱۲ */
+/**
+ * "Toukutsu Ou - 01.[SS][1080p][x265].mkv" → 1
+ * "Name - 02 " / S01E03 / E12 / قسمت ۱۲
+ */
 function extractEpisodeNumber(name) {
     const s = String(name ?? '')
         .replace(/[۰-۹]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)))
-    let m = s.match(/S\s*\d+\s*[-._\s]*E?\s*(\d{1,3})\b/i)
-        || s.match(/S\d+\s*-\s*(\d{1,3})\b/i)
+
+    // Prefer explicit " - 01." / " - 01[" / " - 01 " before quality tags
+    let m = s.match(/\s[-–—]\s*0*(\d{1,3})\s*[.\[\(\s_]/)
+        || s.match(/\s[-–—]\s*0*(\d{1,3})\.(?:mkv|mp4|avi)/i)
+        || s.match(/S\s*\d+\s*[-._\s]*E\s*(\d{1,3})\b/i)
         || s.match(/\bE(?:P)?\s*(\d{1,3})\b/i)
-        || s.match(/(?:قسمت|قسمت\s*[:\-]?)\s*(\d{1,3})/i)
-        || s.match(/[-_\s](\d{1,3})\s*\[\s*(?:SS|WEB|1080|720|480)/i)
-        || s.match(/[-_\s](\d{1,3})\.(?:mkv|mp4)/i)
+        || s.match(/(?:قسمت|ep(?:isode)?)\s*[:.\-]?\s*(\d{1,3})/i)
+        || s.match(/[-_\s]0*(\d{1,3})\s*\[\s*(?:SS|WEB|1080|720|480|2160|x26)/i)
+        || s.match(/[-_\s]0*(\d{1,3})\.(?:mkv|mp4)/i)
     return m ? Number(m[1]) : null
+}
+
+function qualityFromText(...texts) {
+    const blob = texts.filter(Boolean).join(' ')
+    const m = blob.match(/\b(2160p|1080p|720p|480p|360p|4k)\b/i)
+        || blob.match(/\b(1080|720|480)\s*x?\s*265\b/i)
+    if (!m) return null
+    const raw = m[1].toLowerCase()
+    if (raw === '4k' || raw === '2160p') return '2160p'
+    if (raw.startsWith('1080')) return '1080p'
+    if (raw.startsWith('720')) return '720p'
+    if (raw.startsWith('480')) return '480p'
+    if (raw.startsWith('360')) return '360p'
+    return m[1]
+}
+
+/** Build direct file URL from a directory listing base + filename. */
+function resolveListingFileUrl(directoryUrl, hrefOrName) {
+    const raw = String(hrefOrName || '').trim()
+    if (!raw) return null
+    if (/^https?:\/\//i.test(raw)) return raw
+    try {
+        const base = new URL(directoryUrl)
+        // Query-style file browsers: keep host, join path under dir=
+        if (/[?&]dir=/i.test(directoryUrl) && !raw.includes('/') && !raw.startsWith('?')) {
+            // Try path-style under same origin: /{dir}/{file}
+            const dir = base.searchParams.get('dir') || ''
+            if (dir) {
+                const pathJoin = `/${dir.split('/').map(encodeURIComponent).join('/').replace(/%2F/gi, '/')}/${encodeURIComponent(raw)}`
+                // Many rdl hosts serve files as absolute path (not ?dir=)
+                return `${base.origin}${pathJoin.replace(/\/+/g, '/')}`
+            }
+        }
+        return new URL(raw, directoryUrl).toString()
+    } catch {
+        return null
+    }
 }
 
 export default class Animex extends HtmlSource {
@@ -181,68 +224,167 @@ export default class Animex extends HtmlSource {
     }
 
     /**
-     * Directory listing (multi-episode). Often only reachable from IR IP.
-     * Tries several parsers; returns [] on network block.
+     * Directory listing (multi-episode / multi-quality folder).
+     * Often IR-only; tries HTML table + li + JSON endpoints.
      */
     async fetchDirectoryFiles(directoryUrl, groupLabel, defaultSeason = null) {
+        const headers = {
+            ...(this.requestConfig()?.headers || {}),
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+            Accept: 'text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'fa-IR,fa;q=0.9,en;q=0.8',
+            Referer: this.baseUrl || 'https://animex.click/',
+        }
+        const timeout = Math.max(this.requestConfig()?.timeout || 15000, 22000)
+
+        const files = []
+        const pushFile = (name, url, size) => {
+            const fileName = normalizeText(name) || String(name || '')
+            let absolute = url
+            if (!absolute || !isHttpUrl(absolute)) {
+                absolute = resolveListingFileUrl(directoryUrl, url || fileName)
+            }
+            if (!absolute || !isHttpUrl(absolute)) return
+            // Must look like a video (url or name)
+            if (!isDirectVideoUrl(absolute) && !/\.(mkv|mp4|avi|m4v)(\?|$)/i.test(fileName)) return
+            // If URL is still a directory, skip
+            if (isDirectoryUrl(absolute) && !isDirectVideoUrl(absolute)) return
+            const episode = extractEpisodeNumber(fileName) ?? extractEpisodeNumber(absolute)
+            const season = extractSeasonNumber(fileName, groupLabel) ?? defaultSeason
+            const quality = qualityFromText(groupLabel, fileName) || groupLabel || null
+            files.push({
+                url: absolute,
+                season,
+                episode,
+                quality,
+                size: size || null,
+                title: fileName,
+            })
+        }
+
+        // 1) Try JSON-style APIs some directory frontends expose
+        const jsonCandidates = []
+        try {
+            const u = new URL(directoryUrl)
+            jsonCandidates.push(`${directoryUrl}${directoryUrl.includes('?') ? '&' : '?'}format=json`)
+            jsonCandidates.push(`${directoryUrl}${directoryUrl.includes('?') ? '&' : '?'}json=1`)
+            if (u.searchParams.get('dir')) {
+                const api = new URL('/api/list', u.origin)
+                api.searchParams.set('dir', u.searchParams.get('dir'))
+                jsonCandidates.push(api.toString())
+            }
+        } catch { /* ignore */ }
+
+        for (const jsonUrl of jsonCandidates.slice(0, 3)) {
+            try {
+                const response = await this.httpClient.get(jsonUrl, {
+                    ...this.requestConfig(),
+                    timeout,
+                    maxRedirects: 5,
+                    headers: {...headers, Accept: 'application/json,text/plain,*/*'},
+                    validateStatus: (s) => s >= 200 && s < 400,
+                })
+                let data = response.data
+                if (typeof data === 'string') {
+                    try { data = JSON.parse(data) } catch { data = null }
+                }
+                const rows = Array.isArray(data) ? data
+                    : Array.isArray(data?.files) ? data.files
+                        : Array.isArray(data?.data) ? data.data
+                            : Array.isArray(data?.items) ? data.items
+                                : []
+                for (const row of rows) {
+                    if (!row || typeof row !== 'object') continue
+                    const name = row.name || row.filename || row.file || row.title
+                    const url = row.url || row.href || row.link || row.download || name
+                    const size = row.size || row.filesize || row.length || null
+                    const type = String(row.type || row.kind || '')
+                    if (/dir|folder/i.test(type) && !isDirectVideoUrl(String(url))) continue
+                    pushFile(name, url, size != null ? String(size) : null)
+                }
+                if (files.length) return files
+            } catch {
+                /* try next */
+            }
+        }
+
+        // 2) HTML listing
         try {
             const response = await this.httpClient.get(directoryUrl, {
                 ...this.requestConfig(),
-                timeout: Math.max(this.requestConfig()?.timeout || 15000, 20000),
+                timeout,
                 maxRedirects: 5,
-                headers: {
-                    ...(this.requestConfig()?.headers || {}),
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-                    Accept: 'text/html,application/xhtml+xml',
-                    'Accept-Language': 'fa-IR,fa;q=0.9,en;q=0.8',
-                },
+                headers,
             })
             const html = typeof response.data === 'string' ? response.data : ''
-            if (!html || html.length < 50) {
-                return []
+            if (!html || html.length < 40) {
+                return files
             }
             const {load} = await import('cheerio')
             const $ = load(html)
 
-            const files = []
-            const pushFile = (name, url, size) => {
-                if (!url || !isHttpUrl(url)) return
-                if (!isDirectVideoUrl(url) && !/\.(mkv|mp4)/i.test(name)) return
-                const absolute = url.startsWith('http') ? url : new URL(url, directoryUrl).toString()
-                const episode = extractEpisodeNumber(name)
-                const season = extractSeasonNumber(name, groupLabel) ?? defaultSeason
-                files.push({
-                    url: absolute,
-                    season,
-                    episode,
-                    quality: groupLabel || null,
-                    size: size || null,
-                    title: name,
-                })
-            }
-
-            $('li[data-type="file"]').each((_, item) => {
-                const name = $(item).attr('data-name') ?? $(item).find('.name-text, .file-name').first().text()
+            // Structured file rows (various directory UIs)
+            $('li[data-type="file"], tr[data-type="file"], .file-row, .file, li.file').each((_, item) => {
+                const name = $(item).attr('data-name')
+                    || $(item).find('.name-text, .file-name, .name, a').first().text()
                 const href = $(item).find('a[href]').first().attr('href')
-                const size = normalizeText($(item).find('.file-size').first().text()) || null
+                    || $(item).attr('data-href')
+                    || $(item).attr('data-url')
+                const size = normalizeText(
+                    $(item).find('.file-size, .size, [data-size]').first().text()
+                    || $(item).attr('data-size')
+                    || '',
+                ) || null
                 pushFile(normalizeText(name), href, size)
             })
 
-            // Fallback: any video link in listing
+            // Table rows with a video-looking link or filename cell
+            if (!files.length) {
+                $('table tr').each((_, tr) => {
+                    const $tr = $(tr)
+                    const anchor = $tr.find('a[href]').first()
+                    const href = anchor.attr('href')
+                    const name = normalizeText(
+                        anchor.attr('data-name')
+                        || anchor.text()
+                        || $tr.find('td').first().text()
+                        || '',
+                    )
+                    if (!name && !href) return
+                    if (!/\.(mkv|mp4|avi)/i.test(name) && !(href && isDirectVideoUrl(href))) return
+                    const size = normalizeText($tr.find('td').eq(1).text()) || null
+                    pushFile(name, href || name, size)
+                })
+            }
+
+            // Any direct video anchors
             if (!files.length) {
                 $('a[href]').each((_, a) => {
                     const href = $(a).attr('href')
                     const name = normalizeText($(a).attr('data-name') || $(a).text() || href)
-                    if (href && isDirectVideoUrl(href)) {
+                    if (href && (isDirectVideoUrl(href) || /\.(mkv|mp4)/i.test(name))) {
                         pushFile(name, href, null)
                     }
                 })
             }
 
+            // Regex fallback over raw HTML for ".mkv" filenames
+            if (!files.length) {
+                const re = /([A-Za-z0-9][^<>"'\\\n\r]*?\.(?:mkv|mp4|avi|m4v))/gi
+                let match
+                const seen = new Set()
+                while ((match = re.exec(html)) !== null) {
+                    const name = match[1].replace(/&amp;/g, '&').trim()
+                    if (seen.has(name) || name.length > 240) continue
+                    seen.add(name)
+                    pushFile(name, name, null)
+                }
+            }
+
             return files
         } catch (error) {
             logAxiosError(error, this.logger, 'Animex directory listing fetch failed')
-            return []
+            return files
         }
     }
 
@@ -288,8 +430,9 @@ export default class Animex extends HtmlSource {
                 if (isDirectVideoUrl(token.target)) {
                     links.push({
                         url: token.target,
-                        quality: groupLabel || null,
+                        quality: groupLabel || qualityFromText(token.target) || null,
                         title: groupLabel,
+                        size: token.size || null,
                         season: seasonHint,
                         episode: extractEpisodeNumber(token.target) || extractEpisodeNumber(groupLabel),
                     })
@@ -298,10 +441,10 @@ export default class Animex extends HtmlSource {
 
                 // Multi-episode directory (series / anime seasons)
                 if (resolvedType === 'series' || isDirectoryUrl(token.target)) {
-                    if (directoryJobs.length < 6) {
+                    if (directoryJobs.length < 8) {
                         directoryJobs.push(
                             this.fetchDirectoryFiles(token.target, groupLabel, seasonHint)
-                                .then((files) => ({files, token, groupLabel, seasonHint})),
+                                .then((fetched) => ({files: fetched, token, groupLabel, seasonHint})),
                         )
                     }
                 }
@@ -311,17 +454,16 @@ export default class Animex extends HtmlSource {
                 const settled = await Promise.allSettled(directoryJobs)
                 for (const result of settled) {
                     if (result.status !== 'fulfilled') continue
-                    const {files, token, groupLabel, seasonHint} = result.value
-                    if (files.length) {
-                        links.push(...files)
+                    const {files: fetched, token, groupLabel, seasonHint} = result.value
+                    if (fetched.length) {
+                        links.push(...fetched)
                     } else if (token?.target) {
-                        // CDN blocked from non-IR IP — give user a browser open
-                        // so they can use their own (often IR) network.
+                        // CDN blocked from non-IR IP — browser open for the user
                         externalFallbacks.push({
                             url: token.target,
                             externalUrl: token.target,
                             quality: groupLabel || null,
-                            title: `${groupLabel || 'دانلود'} — باز کردن در مرورگر`,
+                            title: `${groupLabel || 'دانلود'} — لیست فایل‌ها (مرورگر)`,
                             season: seasonHint,
                             episode: null,
                             behaviorHints: {notWebReady: true},
@@ -330,7 +472,6 @@ export default class Animex extends HtmlSource {
                 }
             }
 
-            // Deduplicate by url
             const merged = uniqueLinks([...links, ...externalFallbacks])
 
             return {
@@ -360,23 +501,31 @@ export default class Animex extends HtmlSource {
             return []
         }
         const links = this.getMovieLinks(movieData)
+
         const matched = links.filter((item) => {
-            if (item.externalUrl && (item.episode == null || item.episode === episode)) {
-                // directory fallback — only show on ep 1 to avoid spam, or always
-                return item.episode == null || item.episode === episode
+            // Prefer real file URLs matched to this episode
+            if (item.externalUrl && !isDirectVideoUrl(item.url)) {
+                return false
             }
             const s = item.season != null ? Number(item.season) : movieData?.pageSeason
             const e = item.episode != null ? Number(item.episode) : null
             if (e == null) return false
-            // If season missing on file, accept episode match when page is that season
             if (s == null) return e === episode
             return s === season && e === episode
         })
-        // If nothing matched but we only have external directory links, surface them
-        if (!matched.length) {
-            return links.filter((item) => item.externalUrl)
+
+        if (matched.length) {
+            return matched
         }
-        return matched
+
+        // Episode number missing on files but single-episode page → allow all direct files
+        const directs = links.filter((item) => item.url && isDirectVideoUrl(item.url) && !item.externalUrl)
+        if (directs.length === 1) {
+            return directs
+        }
+
+        // Last resort: external directory links (user opens in browser — not playable in-app)
+        return links.filter((item) => item.externalUrl)
     }
 
     getLinks(type, videoId, movieData) {
