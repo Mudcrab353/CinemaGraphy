@@ -2463,29 +2463,41 @@ let landingTmdbCache = null
 
 function mapTmdbListItem(item, mediaTypeHint = null, itemEn = null) {
     const mediaType = item.media_type || mediaTypeHint || (item.title ? 'movie' : 'tv')
-    const title = preferFaThenEn(
-        item.title || item.name,
-        itemEn?.title || itemEn?.name,
-    )
-    const overview = preferFaThenEn(item.overview, itemEn?.overview)
+    const titleFa = String(item.title || item.name || '').trim() || null
+    const titleEn = String(itemEn?.title || itemEn?.name || titleFa || '').trim() || null
+    const title = preferFaThenEn(titleFa, titleEn)
+    const overviewFa = String(item.overview || '').trim() || null
+    const overviewEn = String(itemEn?.overview || overviewFa || '').trim() || null
+    const overview = preferFaThenEn(overviewFa, overviewEn)
     const original = item.original_title || item.original_name || itemEn?.original_title || itemEn?.original_name || null
     const year = (item.release_date || item.first_air_date || itemEn?.release_date || itemEn?.first_air_date || '').slice(0, 4) || null
-    const posterPath = _metaLangPref === 'en'
-        ? (itemEn?.poster_path || item.poster_path)
-        : (item.poster_path || itemEn?.poster_path)
-    const backdropPath = _metaLangPref === 'en'
-        ? (itemEn?.backdrop_path || item.backdrop_path)
-        : (item.backdrop_path || itemEn?.backdrop_path)
+    const pathFa = item.poster_path || itemEn?.poster_path || null
+    const pathEn = itemEn?.poster_path || item.poster_path || null
+    const bgFa = item.backdrop_path || itemEn?.backdrop_path || null
+    const bgEn = itemEn?.backdrop_path || item.backdrop_path || null
+    // Default fields follow server meta pref; client landing can switch via *Fa/*En
+    const posterPath = _metaLangPref === 'en' ? pathEn : pathFa
+    const backdropPath = _metaLangPref === 'en' ? bgEn : bgFa
+    const toPoster = (p) => (p ? `https://image.tmdb.org/t/p/w342${p}` : null)
+    const toBg = (p) => (p ? `https://image.tmdb.org/t/p/w780${p}` : null)
     return {
         id: item.id,
         mediaType: mediaType === 'tv' ? 'tv' : 'movie',
         title,
+        titleFa: titleFa || title,
+        titleEn: titleEn || title,
         originalTitle: original && original !== title ? original : null,
         overview,
+        overviewFa: overviewFa || overview,
+        overviewEn: overviewEn || overview,
         rating: item.vote_average != null ? Math.round(item.vote_average * 10) / 10 : null,
         year,
-        poster: posterPath ? `https://image.tmdb.org/t/p/w342${posterPath}` : null,
-        backdrop: backdropPath ? `https://image.tmdb.org/t/p/w780${backdropPath}` : null,
+        poster: toPoster(posterPath),
+        posterFa: toPoster(pathFa),
+        posterEn: toPoster(pathEn),
+        backdrop: toBg(backdropPath),
+        backdropFa: toBg(bgFa),
+        backdropEn: toBg(bgEn),
     }
 }
 

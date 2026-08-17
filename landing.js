@@ -360,8 +360,14 @@ ${addonCards}
 (function(){
 const r=document.documentElement,lb=document.getElementById('langBtn');
 let L=localStorage.getItem('cg-lang')||'fa';
-function al(l){r.lang=l;r.dir=l==='fa'?'rtl':'ltr';lb.textContent=l==='fa'?'EN':'FA';localStorage.setItem('cg-lang',l)}
-al(L);lb.onclick=()=>al(r.lang==='fa'?'en':'fa');
+var tmdbCache=null;
+function al(l){
+  r.lang=l;r.dir=l==='fa'?'rtl':'ltr';
+  if(lb)lb.textContent=l==='fa'?'EN':'FA';
+  localStorage.setItem('cg-lang',l);
+  if(tmdbCache) renderTmdb(tmdbCache);
+}
+al(L);if(lb)lb.onclick=()=>al(r.lang==='fa'?'en':'fa');
 const inp=document.getElementById('manifestUrl');
 async function copyManifest(btn){
   if(!inp)return;
@@ -416,18 +422,36 @@ function detailId(item){
   if(item.imdbId) return String(item.imdbId);
   return 'tmdb:'+item.id;
 }
+function localizeItem(item){
+  var en=document.documentElement.lang==='en';
+  var o=Object.assign({}, item);
+  o.title = en
+    ? (item.titleEn || item.title || item.originalTitle || '')
+    : (item.titleFa || item.title || item.originalTitle || '');
+  o.poster = en
+    ? (item.posterEn || item.poster || item.posterFa || '')
+    : (item.posterFa || item.poster || item.posterEn || '');
+  o.backdrop = en
+    ? (item.backdropEn || item.backdrop || item.backdropFa || '')
+    : (item.backdropFa || item.backdrop || item.backdropEn || '');
+  o.overview = en
+    ? (item.overviewEn || item.overview || '')
+    : (item.overviewFa || item.overview || '');
+  return o;
+}
 function stremioDetailLinks(item){
   var mt=item.mediaType==='tv'?'series':'movie';
   var id=detailId(item);
-  // web.stremio.com opens the title board (not the install flow)
   var webApp='https://web.stremio.com/#/detail/'+mt+'/'+encodeURIComponent(id);
   var app='stremio://detail/'+mt+'/'+id;
+  var lang=document.documentElement.lang==='en'?'en-US':'fa-IR';
   var tmdb=item.mediaType==='tv'
-    ?('https://www.themoviedb.org/tv/'+item.id+'?language=fa-IR')
-    :('https://www.themoviedb.org/movie/'+item.id+'?language=fa-IR');
+    ?('https://www.themoviedb.org/tv/'+item.id+'?language='+lang)
+    :('https://www.themoviedb.org/movie/'+item.id+'?language='+lang);
   return {mt:mt,id:id,webApp:webApp,app:app,tmdb:tmdb};
 }
-function tileHtml(item){
+function tileHtml(raw){
+  var item=localizeItem(raw);
   var title=esc(item.title||item.originalTitle||'');
   var sub=[item.year,item.rating!=null?('★ '+item.rating):''].filter(Boolean).join(' · ');
   var L=stremioDetailLinks(item);
@@ -457,7 +481,8 @@ function fillTrailers(items){
   if(!el)return;
   if(!items||!items.length){el.innerHTML='<p class="sub">—</p>';return;}
   var fa=document.documentElement.lang==='fa';
-  el.innerHTML=items.map(function(item){
+  el.innerHTML=items.map(function(raw){
+    var item=localizeItem(raw);
     var title=esc(item.title||item.originalTitle||'');
     var bg=item.backdrop||item.poster||'';
     var key=item.trailer&&item.trailer.key;
@@ -477,6 +502,13 @@ function fillTrailers(items){
     '</div>';
   }).join('');
 }
+function renderTmdb(data){
+  if(!data)return;
+  fillRail('railDay', data.trendingDay);
+  fillRail('railWeek', data.trendingWeek);
+  fillRail('railNow', data.nowPlaying);
+  fillTrailers(data.trailers);
+}
 (function(){
   var modal=document.getElementById('trailerModal');
   var frame=document.getElementById('trailerFrame');
@@ -490,11 +522,10 @@ async function loadTmdb(){
     var res=await fetch('/tmdb/landing.json',{credentials:'omit'});
     if(!res.ok)throw new Error('bad');
     var data=await res.json();
-    fillRail('railDay', data.trendingDay);
-    fillRail('railWeek', data.trendingWeek);
-    fillRail('railNow', data.nowPlaying);
-    fillTrailers(data.trailers);
+    tmdbCache=data;
+    renderTmdb(data);
   }catch(e){
+    tmdbCache=null;
     ['railDay','railWeek','railNow','railTrailers'].forEach(function(id){
       var el=document.getElementById(id); if(el) el.innerHTML='';
     });
