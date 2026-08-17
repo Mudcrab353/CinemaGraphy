@@ -1492,7 +1492,19 @@ function catalogSortScore(cat) {
     if (iptvRe.test(blob)) return 900
 
     const platformRe = /netflix|disney\+?|hbo\s*max|(^|[^a-z])max([^a-z]|$)|prime\s*video|amazon\s*prime|apple\s*tv|paramount\+?|hulu|peacock|crunchyroll|starz|showtime|sky\s*showtime|discovery\+?|mubi|shudder|britbox|acorn|hayu|iqiyi|viaplay|canal\+|movistar|zee5|sonyliv|hotstar|jiohotstar|bbc\s*iplayer|itvx|channel\s*4|streaming|پلتفرم|نتفلیکس|دیزنی|اچ‌بی‌او|پرایم|اپل\s*تی‌?وی|پارامونت|هولو|پیکاک|کرانچی|استارز/i
-    if (platformRe.test(blob)) return 400
+    if (platformRe.test(blob)) {
+        // Keep streaming platforms together; Netflix → Crunchyroll → rest
+        let base = 420
+        if (/netflix|نتفلیکس/i.test(blob)) base = 400
+        else if (/crunchyroll|کرانچی/i.test(blob)) base = 402
+        else if (/disney|دیزنی/i.test(blob)) base = 404
+        else if (/prime|پرایم|amazon/i.test(blob)) base = 406
+        else if (/apple|اپل/i.test(blob)) base = 408
+        else if (/hbo|(^|[^a-z])max([^a-z]|$)|اچ‌بی‌او/i.test(blob)) base = 410
+        if (isMovie) return base
+        if (isSeries) return base + 1
+        return base + 2
+    }
 
     // داغ / trending / popular (not top-rated history)
     const isHistoryish = /top\s*rated|top[_\s-]*all[_\s-]*time|all[_\s-]*time|برترین.*تاریخ|برترین‌های تاریخ|top[_\s-]*airing|در حال پخش/i.test(blob)

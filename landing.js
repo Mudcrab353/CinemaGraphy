@@ -110,18 +110,19 @@ background-image:radial-gradient(1.5px 1.5px at 10% 20%,#fff,transparent),radial
 .tile .hov a{margin:0!important;width:100%;display:block}
 .tile .hov .s-nuvio{background:linear-gradient(135deg,#6a9dff,#4a7ae0);color:#fff}
 
-.lang-en{display:none!important}.lang-fa{display:initial}html[lang=en] .lang-fa{display:none!important}html[lang=en] .lang-en{display:initial!important}html[lang=en] body{direction:ltr}
+.lang-en{display:none!important}html[lang=en] .lang-fa{display:none!important}html[lang=en] .lang-en{display:revert!important}html[lang=en] body{direction:ltr}/* block-level bilingual nodes stay block when visible */h1.lang-fa,h1.lang-en,p.lang-fa,p.lang-en,h2.lang-fa,h2.lang-en,section .sub.lang-fa,section .sub.lang-en{display:block}html[lang=en] h1.lang-en,html[lang=en] p.lang-en,html[lang=en] h2.lang-en,html[lang=en] section .sub.lang-en{display:block!important}html[lang=en] h1.lang-fa,html[lang=en] p.lang-fa,html[lang=en] h2.lang-fa,html[lang=en] section .sub.lang-fa{display:none!important}
 header{position:sticky;top:0;z-index:50;display:flex;justify-content:space-between;align-items:center;padding:14px 5vw;background:rgba(5,5,8,.45);backdrop-filter:blur(20px);border-bottom:1px solid rgba(255,255,255,.06)}
 .brand{display:flex;gap:12px;align-items:center;color:var(--t);text-decoration:none;font-weight:800;font-size:1.15rem}
 .brand img{width:40px;height:40px;border-radius:12px;box-shadow:0 0 20px var(--gl)}
 .chip{border:1px solid var(--gb);background:var(--g);backdrop-filter:blur(12px);color:var(--t);border-radius:999px;padding:8px 14px;font-weight:600;font-size:.85rem}
-.hero{max-width:1080px;margin:0 auto;padding:48px 5vw 32px;display:grid;grid-template-columns:1.15fr .85fr;gap:40px;align-items:center}
-@media(max-width:860px){.hero{grid-template-columns:1fr;text-align:center}.vis{order:-1}.row{justify-content:center}.badge{align-self:center!important}}
-.badge{display:inline-flex;align-self:flex-start;padding:4px 12px;border-radius:999px;font-size:.72rem;font-weight:700;background:rgba(232,160,74,.15);color:var(--a);border:1px solid rgba(232,160,74,.3)}
-h1{font-size:clamp(2rem,5vw,3.2rem);font-weight:900;line-height:1.15;margin:6px 0 10px;letter-spacing:-.03em}
-h1 span{background:linear-gradient(135deg,var(--a),#ff6b4a 40%,var(--a2));-webkit-background-clip:text;background-clip:text;color:transparent}
-.lead{color:var(--m);font-size:1.02rem;max-width:28rem;margin-bottom:8px}
-@media(max-width:860px){.lead{margin-inline:auto}}
+.hero{max-width:1080px;margin:0 auto;padding:48px 5vw 32px;display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);gap:40px;align-items:center}
+@media(max-width:860px){.hero{grid-template-columns:1fr;text-align:center}.vis{order:-1}.row{justify-content:center}.badge{align-self:center!important}.hero-copy{align-items:center}}
+.hero-copy{display:flex;flex-direction:column;align-items:flex-start;min-width:0;max-width:100%;position:relative;z-index:2}
+.badge{display:inline-flex;align-self:flex-start;padding:4px 12px;border-radius:999px;font-size:.72rem;font-weight:700;background:rgba(232,160,74,.15);color:var(--a);border:1px solid rgba(232,160,74,.3);margin-bottom:4px}
+.hero-copy h1{font-size:clamp(1.85rem,4.6vw,2.85rem);font-weight:900;line-height:1.2;margin:4px 0 12px;letter-spacing:-.03em;max-width:100%;word-break:break-word}
+.hero-copy h1 span{display:inline;background:linear-gradient(135deg,var(--a),#ff6b4a 40%,var(--a2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.lead{color:var(--m);font-size:.98rem;line-height:1.7;max-width:32rem;width:100%;margin:0 0 4px;position:relative;z-index:2}
+@media(max-width:860px){.lead{margin-inline:auto;text-align:center}}
 .row{display:flex;flex-wrap:wrap;gap:10px;margin:16px 0 14px}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:13px 22px;border-radius:14px;font-weight:800;font-size:.95rem;text-decoration:none;border:none;transition:transform .2s,box-shadow .2s;font-family:inherit}
 .btn:hover{transform:translateY(-2px)}
@@ -236,7 +237,7 @@ overscroll-behavior-x:contain;scrollbar-width:none!important;-ms-overflow-style:
 </header>
 <main>
 <div class="hero">
-<div>
+<div class="hero-copy">
 <span class="badge">v${ver}</span>
 <h1 class="lang-fa">سینماگرافی<br/><span>فیلم، سریال، انیمه</span></h1>
 <h1 class="lang-en">Cinemagraphy<br/><span>Movies, Series, Anime</span></h1>
