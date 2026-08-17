@@ -283,9 +283,12 @@ function streamUi() {
             quality: 'Quality',
             encode: 'Encode',
             size: 'Size',
-            statusOk: 'Uncensored',
-            statusBad: 'Censored',
+            statusOk: 'Status: Uncensored',
+            statusBad: 'Status: Censored',
             audioOnly: 'Audio only: Persian dub (no video)',
+            audioDub: 'Audio: Persian dub',
+            audioSub: 'Subtitles: Persian',
+            audioBoth: 'Audio: Persian dub + subtitles',
             seeders: 'Seeders',
             peers: 'Peers',
             torrentLabel: 'CinemaGraphy [P2P]',
@@ -296,9 +299,12 @@ function streamUi() {
         quality: 'کیفیت',
         encode: 'انکد',
         size: 'حجم',
-        statusOk: 'سانسور نشده',
-        statusBad: 'سانسور شده',
+        statusOk: 'وضعیت: سانسور نشده',
+        statusBad: 'وضعیت: سانسور شده',
         audioOnly: 'فقط فایل صوتی: دوبله فارسی (بدون تصویر)',
+        audioDub: 'صدا: دوبله فارسی',
+        audioSub: 'زیرنویس: فارسی',
+        audioBoth: 'صدا: دوبله + زیرنویس فارسی',
         seeders: 'سیدر',
         peers: 'پیر',
         torrentLabel: 'سینماگرافی [P2P]',
@@ -395,8 +401,12 @@ export async function getTMDBMetaFa(type, imdbId, httpClient = axios, apiKey, lo
             detailEn?.title || detailEn?.name,
         )
         const description = preferFaThenEn(detailFa.overview, detailEn?.overview)
-        const posterPath = detailFa.poster_path || detailEn?.poster_path || item.poster_path
-        const backdropPath = detailFa.backdrop_path || detailEn?.backdrop_path || item.backdrop_path
+        const posterPath = _metaLangPref === 'en'
+            ? (detailEn?.poster_path || detailFa.poster_path || item.poster_path)
+            : (detailFa.poster_path || detailEn?.poster_path || item.poster_path)
+        const backdropPath = _metaLangPref === 'en'
+            ? (detailEn?.backdrop_path || detailFa.backdrop_path || item.backdrop_path)
+            : (detailFa.backdrop_path || detailEn?.backdrop_path || item.backdrop_path)
 
         return {
             id: imdbId,
@@ -1030,8 +1040,12 @@ export async function getTMDBMetaByTmdbId(
         const genresFa = (data.genres ?? []).map((g) => g.name || genreMap.get(g.id)).filter(Boolean)
         const genresEn = (dataEn?.genres ?? []).map((g) => g.name || genreMap.get(g.id)).filter(Boolean)
         const genres = pickFaOrEnGenres(genresFa, genresEn)
-        const posterPath = data.poster_path || dataEn?.poster_path
-        const backdropPath = data.backdrop_path || dataEn?.backdrop_path
+        const posterPath = _metaLangPref === 'en'
+            ? (dataEn?.poster_path || data.poster_path)
+            : (data.poster_path || dataEn?.poster_path)
+        const backdropPath = _metaLangPref === 'en'
+            ? (dataEn?.backdrop_path || data.backdrop_path)
+            : (data.backdrop_path || dataEn?.backdrop_path)
         const vote = data.vote_average ?? dataEn?.vote_average
 
         const meta = {
@@ -1746,18 +1760,19 @@ function detectCodec(text) {
 }
 
 function detectAudio(text, audioTypeHint) {
+    const ui = streamUi()
     const hasDub = /دوبله/i.test(text) || /\bdub(bed)?\b/i.test(text)
     const hasSub = /زیرنویس/i.test(text) || /\bsub(bed|title)?\b/i.test(text) || /soft\s?sub|hard\s?sub/i.test(text)
     const isDual = /dual\s?audio/i.test(text) || (hasDub && hasSub)
 
     if (audioTypeHint === 'dubbed' || (hasDub && !isDual)) {
-        return '🗣️ صدا: دوبله فارسی'
+        return `🗣️ ${ui.audioDub}`
     }
     if (audioTypeHint === 'subtitled' || (hasSub && !isDual)) {
-        return '💬 زیرنویس: فارسی'
+        return `💬 ${ui.audioSub}`
     }
     if (isDual) {
-        return '🗣️💬 صدا: دوبله + زیرنویس فارسی'
+        return `🗣️💬 ${ui.audioBoth}`
     }
     return null
 }
@@ -2455,8 +2470,12 @@ function mapTmdbListItem(item, mediaTypeHint = null, itemEn = null) {
     const overview = preferFaThenEn(item.overview, itemEn?.overview)
     const original = item.original_title || item.original_name || itemEn?.original_title || itemEn?.original_name || null
     const year = (item.release_date || item.first_air_date || itemEn?.release_date || itemEn?.first_air_date || '').slice(0, 4) || null
-    const posterPath = item.poster_path || itemEn?.poster_path
-    const backdropPath = item.backdrop_path || itemEn?.backdrop_path
+    const posterPath = _metaLangPref === 'en'
+        ? (itemEn?.poster_path || item.poster_path)
+        : (item.poster_path || itemEn?.poster_path)
+    const backdropPath = _metaLangPref === 'en'
+        ? (itemEn?.backdrop_path || item.backdrop_path)
+        : (item.backdrop_path || itemEn?.backdrop_path)
     return {
         id: item.id,
         mediaType: mediaType === 'tv' ? 'tv' : 'movie',
