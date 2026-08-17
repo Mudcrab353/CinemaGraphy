@@ -1502,7 +1502,7 @@ function catalogSortScore(cat) {
         // Keep streaming platforms together; Netflix → Crunchyroll → rest
         let base = 420
         if (/netflix|نتفلیکس/i.test(blob)) base = 400
-        else if (/crunchyroll|کرانچی/i.test(blob)) base = 402
+        else if (/crunchyroll|crunchy|کرانچی/i.test(blob)) base = 402
         else if (/disney|دیزنی/i.test(blob)) base = 404
         else if (/prime|پرایم|amazon/i.test(blob)) base = 406
         else if (/apple|اپل/i.test(blob)) base = 408
@@ -1577,6 +1577,44 @@ export function sortExternalCatalogs(catalogs, sourcesWithCatalogs = null) {
     return catalogs
 }
 
+
+/** Pull every Netflix catalog, then every Crunchyroll, into one contiguous block
+ *  (Netflix movies/series first, then all Crunchyroll) so order is stable across
+ *  101 / AIO / anime source groups — same in Stremio and Nuvio.
+ */
+function pinNetflixThenCrunchyroll(catalogs) {
+    if (!Array.isArray(catalogs) || catalogs.length < 2) return catalogs || []
+    const netflix = []
+    const crunchy = []
+    const rest = []
+    let insertAt = -1
+    for (const cat of catalogs) {
+        const blob = `${cat?.name || ''} ${cat?.id || ''} ${cat?._sortKey || ''}`.toLowerCase()
+        const isNetflix = /netflix|نتفلیکس/i.test(blob)
+        const isCrunchy = !isNetflix && /crunchyroll|crunchy|کرانچی/i.test(blob)
+        if (isNetflix) {
+            if (insertAt < 0) insertAt = rest.length
+            netflix.push(cat)
+        } else if (isCrunchy) {
+            if (insertAt < 0) insertAt = rest.length
+            crunchy.push(cat)
+        } else {
+            rest.push(cat)
+        }
+    }
+    if (!netflix.length && !crunchy.length) return catalogs
+    const typeRank = (c) => {
+        const t = String(c?.type || '')
+        if (t === 'movie') return 0
+        if (t === 'series' || t === 'tv') return 1
+        return 2
+    }
+    netflix.sort((a, b) => typeRank(a) - typeRank(b) || String(a?.name || '').localeCompare(String(b?.name || ''), 'en'))
+    crunchy.sort((a, b) => typeRank(a) - typeRank(b) || String(a?.name || '').localeCompare(String(b?.name || ''), 'en'))
+    const at = insertAt < 0 ? rest.length : insertAt
+    return [...rest.slice(0, at), ...netflix, ...crunchy, ...rest.slice(at)]
+}
+
 export function buildOrderedExternalCatalogs(externalSources, mapFn) {
     const buckets = {
         '101': [],
@@ -1602,11 +1640,14 @@ export function buildOrderedExternalCatalogs(externalSources, mapFn) {
             buckets[dest].push(mapped)
         }
     }
-    return [
+    const main = pinNetflixThenCrunchyroll([
         ...sortCatalogsWithinGroup(buckets['101']),
         ...sortCatalogsWithinGroup(buckets.aio),
         ...sortCatalogsWithinGroup(buckets.other),
         ...sortCatalogsWithinGroup(buckets.anime),
+    ])
+    return [
+        ...main,
         ...sortCatalogsWithinGroup(buckets.iptv),
     ]
 }
