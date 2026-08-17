@@ -540,7 +540,7 @@ export async function enrichCatalogMetasWithoutRpdb(
                     if (imdbId) {
                         fa = await getTMDBMetaFa(type, imdbId, httpClient, apiKey, logger)
                     } else if (tmdbNumeric) {
-                        fa = await getTMDBMetaByTmdbId(type, tmdbNumeric, httpClient, apiKey, logger, null)
+                        fa = await getTMDBMetaByTmdbId(type, tmdbNumeric, httpClient, apiKey, logger, null, {skipVideos: true})
                     } else if (meta.name) {
                         fa = await searchTmdbMetaByTitle(meta.name, type, httpClient, apiKey, logger)
                     }
@@ -549,6 +549,17 @@ export async function enrichCatalogMetasWithoutRpdb(
                 if (!fa) continue
 
                 const row = out[index]
+                // CRITICAL for Stremio: rewrite tmdb: → imdb tt…
+                // Platform catalogs already use tt and work; داغ/ترند use tmdb: and
+                // Stremio clients often fail to display meta for tmdb: series ids.
+                const faImdb = fa.imdb_id && /^tt\d+$/.test(String(fa.imdb_id)) ? String(fa.imdb_id) : null
+                if (faImdb) {
+                    row.id = faImdb
+                    row.imdb_id = faImdb
+                } else if (fa.id && String(fa.id).startsWith('tt')) {
+                    row.id = fa.id
+                    row.imdb_id = fa.id
+                }
                 // RPDB poster (ratings) stays; otherwise TMDB poster
                 if (!keepRpdbPoster && fa.poster) row.poster = fa.poster
                 if (fa.background) row.background = fa.background
@@ -898,6 +909,7 @@ export async function getTMDBMetaByTmdbId(
     apiKey,
     logger = console,
     getCinemetaFn = null,
+    {skipVideos = false} = {},
 ) {
     if (!apiKey || !tmdbId) {
         return null
@@ -974,8 +986,9 @@ export async function getTMDBMetaByTmdbId(
             imdb_id: validImdb || undefined,
         }
 
-        if (isSeries) {
-            // Primary: TMDB episodes (fast + cached + Iran-friendly stills)
+        // Catalog enrichment only needs id/name/poster — skip heavy videos list
+        if (isSeries && !skipVideos) {
+            // Primary: TMDB episodes (fast skeleton + light enrich)
             try {
                 const tmdbVideos = await raceTimeout(
                     buildSeriesVideosFromTmdb(tmdbId, httpClient, apiKey, logger, {
