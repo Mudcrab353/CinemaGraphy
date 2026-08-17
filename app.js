@@ -21,7 +21,7 @@ import {ID_SEPARATOR, METADATA_SOURCE} from './sources/source.js'
 import {findExternalMetaSource, findExternalStreamSource, formatStreamTitle, getCinemeta, getExternalCatalogSources, getExternalCatalogStatus, invalidateExternalCatalogCache, getKitsuTitle, getSubtitle, getTMDBMetaFa, enrichMetaWithFaTmdb, enrichCatalogMetasWithoutRpdb, getTMDBMetaByTmdbId, getTMDBDetails, getTMDBTitle, getLandingTmdbCatalogs, getTorrentStreams, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxyExternalStream, proxySubtitles, translateCatalogName, buildOrderedExternalCatalogs, rewriteTmdbImageUrls, parseTmdbImageProxyPath, tmdbRequest} from './utils.js'
 
 export const ADDON_PREFIX = 'ip'
-export const ADDON_VERSION = '2.1.33'
+export const ADDON_VERSION = '2.1.34'
 
 
 const PROVIDER_BASEURL_KEYS = [
@@ -173,9 +173,9 @@ export function createManifest(env = process.env) {
         }),
         resources: [
             'catalog',
-            {name: 'meta', types: ['series', 'movie', 'tv'], idPrefixes: [ADDON_PREFIX, 'tt', 'tmdb:', 'kitsu:']},
-            {name: 'stream', types: ['series', 'movie', 'tv'], idPrefixes: [ADDON_PREFIX, 'tt', 'kitsu:', 'tmdb:']},
-            {name: 'subtitles', types: ['series', 'movie'], idPrefixes: [ADDON_PREFIX, 'tt', 'kitsu:', 'tmdb:']},
+            {name: 'meta', types: ['series', 'movie', 'tv'], idPrefixes: [ADDON_PREFIX, 'tt', 'tmdb:', 'tmdb', 'kitsu:']},
+            {name: 'stream', types: ['series', 'movie', 'tv'], idPrefixes: [ADDON_PREFIX, 'tt', 'kitsu:', 'tmdb:', 'tmdb']},
+            {name: 'subtitles', types: ['series', 'movie'], idPrefixes: [ADDON_PREFIX, 'tt', 'kitsu:', 'tmdb:', 'tmdb']},
         ],
         types: ['movie', 'series', 'tv'],
         // Torrent streams (infoHash-based) require the addon to explicitly
@@ -1039,6 +1039,8 @@ export function createAddon({
             const {env: activeEnv, providers: activeProviders} = requestScope(req)
             const env = activeEnv
             const providers = activeProviders
+            // Normalize id (Stremio may encode colon)
+            req.params.id = decodeURIComponent(String(req.params.id || '')).trim()
             // IMDb ids → Persian TMDB meta (fallback Cinemeta if TMDB misses)
             if (req.params.id.startsWith('tt')) {
                 if (env.TMDB_API_KEY) {
@@ -1098,9 +1100,24 @@ export function createAddon({
                     services.getCinemeta,
                 )
                 if (meta) {
-                    return jsonWithTmdbImages(req, res, {meta})
+                    return jsonWithTmdbImages(req, res, {meta}, 'public, max-age=300, s-maxage=600')
                 }
                 return res.json({})
+            }
+
+            // Bare numeric id from some clients → treat as tmdb
+            if (/^\d+$/.test(req.params.id) && env.TMDB_API_KEY) {
+                const meta = await getTMDBMetaByTmdbId(
+                    req.params.type === 'tv' ? 'series' : req.params.type,
+                    req.params.id,
+                    axios,
+                    env.TMDB_API_KEY,
+                    logger,
+                    services.getCinemeta,
+                )
+                if (meta) {
+                    return jsonWithTmdbImages(req, res, {meta}, 'public, max-age=300, s-maxage=600')
+                }
             }
 
             const externalSources = await getExternalCatalogSources(env, axios, logger)

@@ -244,6 +244,11 @@ export function hasPersianScript(text) {
     return /[\u0600-\u06FF]/.test(String(text || ''))
 }
 
+/** Remove bidi control chars that can confuse native Stremio UI. */
+export function stripBidi(text) {
+    return String(text || '').replace(/[\u200E\u200F\u202A-\u202E\u2066-\u2069]/g, '').trim()
+}
+
 /**
  * Prefer Persian TMDB text; if missing or not localized, use English — never
  * fall back to original_title (Korean/Japanese/etc.) for display names.
@@ -608,8 +613,8 @@ function normalizeStremioVideo(v, tmdbId) {
     if (!v || typeof v !== 'object') return null
     const {season, episode} = parseVideoSeasonEpisode(v)
     if (season == null || episode == null) return null
-    const name = v.title || v.name || `قسمت ${episode}`
-    const overview = v.overview || v.description || ''
+    const name = stripBidi(v.title || v.name || `قسمت ${episode}`)
+    const overview = stripBidi(v.overview || v.description || '')
     const id = `tmdb:${tmdbId}:${season}:${episode}`
     const out = {
         id,
@@ -645,78 +650,115 @@ export async function buildSeriesVideosFromTmdb(
     httpClient = axios,
     apiKey = process.env.TMDB_API_KEY,
     logger = console,
-    {maxSeasons = 4, budgetMs = 5500} = {},
+    {maxSeasons = 20, enrichSeasons = 1, budgetMs = 4000} = {},
 ) {
     if (!apiKey || !tmdbId) return []
     const started = Date.now()
-    let seasonCount = maxSeasons
+    let showFa = null
+    let showEn = null
     try {
-        const show = await tmdbRequest(
-            `tv/${tmdbId}`,
-            {language: 'en-US'},
-            httpClient,
-            apiKey,
-            logger,
-        )
-        const n = Number(show?.number_of_seasons)
-        if (Number.isInteger(n) && n > 0) {
-            seasonCount = Math.min(n, maxSeasons)
-        }
-    } catch {
-        /* use default */
+        ;[showFa, showEn] = await Promise.all([
+            tmdbRequest(`tv/${tmdbId}`, {language: 'fa-IR'}, httpClient, apiKey, logger).catch(() => null),
+            tmdbRequest(`tv/${tmdbId}`, {language: 'en-US'}, httpClient, apiKey, logger).catch(() => null),
+        ])
+    } catch (error) {
+        logAxiosError(error, logger, 'TMDB tv detail for videos failed')
+        return []
     }
 
+    const seasonsMeta = Array.isArray(showFa?.seasons) && showFa.seasons.length
+        ? showFa.seasons
+        : (Array.isArray(showEn?.seasons) ? showEn.seasons : [])
+
+    // Instant skeleton from season episode_count — no per-season roundtrips
     const videos = []
-    for (let season = 1; season <= seasonCount; season++) {
-        if (Date.now() - started > budgetMs) break
-        try {
-            const [fa, en] = await Promise.all([
-                tmdbRequest(
-                    `tv/${tmdbId}/season/${season}`,
-                    {language: 'fa-IR'},
-                    httpClient,
-                    apiKey,
-                    logger,
-                ).catch(() => null),
-                tmdbRequest(
-                    `tv/${tmdbId}/season/${season}`,
-                    {language: 'en-US'},
-                    httpClient,
-                    apiKey,
-                    logger,
-                ).catch(() => null),
-            ])
-            const enByNum = new Map((en?.episodes || []).map((ep) => [ep.episode_number, ep]))
-            const faEps = fa?.episodes || []
-            const nums = new Set([
-                ...faEps.map((ep) => ep.episode_number),
-                ...[...enByNum.keys()],
-            ])
-            for (const num of [...nums].sort((a, b) => a - b)) {
-                const faEp = faEps.find((ep) => ep.episode_number === num)
-                const enEp = enByNum.get(num)
-                const name = localizeEpisodeName(faEp?.name, enEp?.name, num)
-                const overview = preferFaThenEn(faEp?.overview, enEp?.overview) || ''
-                const still = faEp?.still_path || enEp?.still_path
-                const air = faEp?.air_date || enEp?.air_date
-                const raw = {
-                    season,
-                    episode: num,
-                    number: num,
-                    name,
-                    title: name,
-                    overview,
-                    description: overview,
-                    still_path: still,
-                    released: air ? `${air}T00:00:00.000Z` : undefined,
-                }
-                const norm = normalizeStremioVideo(raw, tmdbId)
-                if (norm) videos.push(norm)
-            }
-        } catch (error) {
-            logAxiosError(error, logger, `TMDB build season ${season} failed`)
+    for (const s of seasonsMeta) {
+        const season = Number(s?.season_number)
+        if (!Number.isInteger(season) || season < 1) continue
+        if (season > maxSeasons) continue
+        const count = Number(s?.episode_count) || 0
+        if (count <= 0 || count > 80) continue
+        for (let episode = 1; episode <= count; episode++) {
+            const title = `فصل ${season} — قسمت ${episode}`
+            videos.push({
+                id: `tmdb:${tmdbId}:${season}:${episode}`,
+                title,
+                name: title,
+                season,
+                episode,
+            })
         }
     }
+
+    // Optional: enrich first N seasons with real FA titles + stills (time-boxed)
+    if (enrichSeasons > 0 && videos.length && Date.now() - started < budgetMs) {
+        const seasonsToEnrich = [...new Set(videos.map((v) => v.season))]
+            .sort((a, b) => a - b)
+            .slice(0, enrichSeasons)
+        const byKey = new Map(videos.map((v) => [`${v.season}:${v.episode}`, v]))
+        await Promise.all(
+            seasonsToEnrich.map(async (season) => {
+                if (Date.now() - started > budgetMs) return
+                try {
+                    const [fa, en] = await Promise.all([
+                        tmdbRequest(
+                            `tv/${tmdbId}/season/${season}`,
+                            {language: 'fa-IR'},
+                            httpClient,
+                            apiKey,
+                            logger,
+                        ).catch(() => null),
+                        tmdbRequest(
+                            `tv/${tmdbId}/season/${season}`,
+                            {language: 'en-US'},
+                            httpClient,
+                            apiKey,
+                            logger,
+                        ).catch(() => null),
+                    ])
+                    const enBy = new Map((en?.episodes || []).map((ep) => [ep.episode_number, ep]))
+                    for (const ep of fa?.episodes || []) {
+                        const key = `${season}:${ep.episode_number}`
+                        const row = byKey.get(key)
+                        if (!row) continue
+                        const enEp = enBy.get(ep.episode_number)
+                        const name = localizeEpisodeName(ep.name, enEp?.name, ep.episode_number)
+                        if (name) {
+                            row.title = name
+                            row.name = name
+                        }
+                        const overview = preferFaThenEn(ep.overview, enEp?.overview)
+                        if (overview) {
+                            row.overview = overview
+                            row.description = overview
+                        }
+                        const still = ep.still_path || enEp?.still_path
+                        if (still) {
+                            const path = String(still).startsWith('/') ? still : `/${still}`
+                            row.thumbnail = `https://image.tmdb.org/t/p/w300${path}`
+                        }
+                        const air = ep.air_date || enEp?.air_date
+                        if (air) row.released = `${air}T00:00:00.000Z`
+                    }
+                    // EN-only episodes stills/dates
+                    for (const [num, ep] of enBy) {
+                        const row = byKey.get(`${season}:${num}`)
+                        if (!row) continue
+                        if (!row.thumbnail && ep.still_path) {
+                            const path = String(ep.still_path).startsWith('/') ? ep.still_path : `/${ep.still_path}`
+                            row.thumbnail = `https://image.tmdb.org/t/p/w300${path}`
+                        }
+                        if (!row.released && ep.air_date) {
+                            row.released = `${ep.air_date}T00:00:00.000Z`
+                        }
+                    }
+                } catch (error) {
+                    logAxiosError(error, logger, `TMDB enrich season ${season} failed`)
+                }
+            }),
+        )
+    }
+
     return videos
 }
 
@@ -922,13 +964,13 @@ export async function getTMDBMetaByTmdbId(
         const meta = {
             id: `tmdb:${tmdbId}`,
             type: stremioType,
-            name,
+            name: stripBidi(name),
             poster: posterPath ? `https://image.tmdb.org/t/p/w500${posterPath}` : null,
             background: backdropPath ? `https://image.tmdb.org/t/p/original${backdropPath}` : null,
-            description: description || undefined,
+            description: description ? stripBidi(description) : undefined,
             releaseInfo: releaseInfo || undefined,
             imdbRating: vote != null ? String(Math.round(vote * 10) / 10) : undefined,
-            genres: genres?.length ? genres : undefined,
+            genres: genres?.length ? genres.map((g) => stripBidi(g)) : undefined,
             imdb_id: validImdb || undefined,
         }
 
@@ -937,10 +979,11 @@ export async function getTMDBMetaByTmdbId(
             try {
                 const tmdbVideos = await raceTimeout(
                     buildSeriesVideosFromTmdb(tmdbId, httpClient, apiKey, logger, {
-                        maxSeasons: 4,
-                        budgetMs: 5000,
+                        maxSeasons: 30,
+                        enrichSeasons: 2,
+                        budgetMs: 3500,
                     }),
-                    5500,
+                    4000,
                     [],
                 )
                 if (Array.isArray(tmdbVideos) && tmdbVideos.length) {
