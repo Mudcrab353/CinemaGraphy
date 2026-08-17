@@ -255,6 +255,8 @@ export function stripBidi(text) {
  */
 /** Request-scoped preference: 'fa' (default) or 'en' for TMDB text. */
 let _metaLangPref = 'fa'
+/** Stream list labels + short names follow addon UI language. */
+let _uiLangPref = 'fa'
 
 export function setMetaLangPref(lang) {
     const v = String(lang || 'fa').trim().toLowerCase()
@@ -263,6 +265,44 @@ export function setMetaLangPref(lang) {
 
 export function getMetaLangPref() {
     return _metaLangPref
+}
+
+export function setUiLangPref(lang) {
+    const v = String(lang || 'fa').trim().toLowerCase()
+    _uiLangPref = v === 'en' || v === 'en-us' || v === 'english' ? 'en' : 'fa'
+}
+
+export function getUiLangPref() {
+    return _uiLangPref
+}
+
+function streamUi() {
+    if (_uiLangPref === 'en') {
+        return {
+            source: 'Source',
+            quality: 'Quality',
+            encode: 'Encode',
+            size: 'Size',
+            statusOk: 'Uncensored',
+            statusBad: 'Censored',
+            audioOnly: 'Audio only: Persian dub (no video)',
+            seeders: 'Seeders',
+            peers: 'Peers',
+            torrentLabel: 'CinemaGraphy [P2P]',
+        }
+    }
+    return {
+        source: 'منبع',
+        quality: 'کیفیت',
+        encode: 'انکد',
+        size: 'حجم',
+        statusOk: 'سانسور نشده',
+        statusBad: 'سانسور شده',
+        audioOnly: 'فقط فایل صوتی: دوبله فارسی (بدون تصویر)',
+        seeders: 'سیدر',
+        peers: 'پیر',
+        torrentLabel: 'سینماگرافی [P2P]',
+    }
 }
 
 export function preferFaThenEn(faVal, enVal) {
@@ -1759,25 +1799,45 @@ function filenameTextFromUrl(url) {
     }
 }
 
+function providerDisplayLabel(providerKey) {
+    const ui = streamUi()
+    if (providerKey === 'torrent') return ui.torrentLabel
+    return PROVIDER_LABELS[providerKey] || providerKey || 'Unknown'
+}
+
+/** One-line header for Stremio/Nuvio `name` — never multi-line. */
+export function formatStreamName({providerKey, quality, size, extraText, url} = {}) {
+    const emoji = PROVIDER_EMOJI[providerKey] || '📡'
+    const providerLabel = providerDisplayLabel(providerKey)
+    const combinedText = [quality, extraText, filenameTextFromUrl(url)].filter(Boolean).join(' ')
+    const resolution = detectResolution(combinedText) || (quality ? String(quality).trim() : '')
+    const displaySize = cleanSize(size) || detectSize(combinedText)
+    const parts = [providerLabel]
+    if (resolution) parts.push(resolution)
+    if (displaySize) parts.push(displaySize)
+    return `${emoji} ${parts.join(' · ')}`
+}
+
 export function formatStreamTitle({providerKey, quality, size, audioType, extraText, url, seeders, peers} = {}) {
-    const providerLabel = PROVIDER_LABELS[providerKey] || providerKey || 'Unknown'
+    const ui = streamUi()
+    const providerLabel = providerDisplayLabel(providerKey)
     const emoji = PROVIDER_EMOJI[providerKey] || '📡'
     const combinedText = [quality, extraText, filenameTextFromUrl(url)].filter(Boolean).join(' ')
     const displaySize = cleanSize(size) || detectSize(combinedText)
     const isCensored = PROVIDER_CENSORED[providerKey] === true
     const statusLine = providerKey === 'torrent'
         ? null
-        : (isCensored ? '⚠️ وضعیت: سانسور شده' : '✅ وضعیت: سانسور نشده')
+        : (isCensored ? `⚠️ ${ui.statusBad}` : `✅ ${ui.statusOk}`)
     const healthLine = (seeders != null || peers != null)
-        ? ltr([seeders != null ? `🌱 سیدر: ${seeders}` : null, peers != null ? `👤 پیر: ${peers}` : null]
+        ? ltr([seeders != null ? `🌱 ${ui.seeders}: ${seeders}` : null, peers != null ? `👤 ${ui.peers}: ${peers}` : null]
             .filter(Boolean).join(' • '))
         : null
 
     if (isAudioOnlyFile(combinedText)) {
         const lines = [
-            `${emoji} منبع: ${ltr(providerLabel)}`,
-            '🎧 فقط فایل صوتی: دوبله فارسی (بدون تصویر)',
-            displaySize ? `💾 حجم: ${ltr(displaySize)}` : null,
+            `${emoji} ${ui.source}: ${ltr(providerLabel)}`,
+            `🎧 ${ui.audioOnly}`,
+            displaySize ? `💾 ${ui.size}: ${ltr(displaySize)}` : null,
             healthLine,
             statusLine,
         ].filter(Boolean)
@@ -1790,17 +1850,15 @@ export function formatStreamTitle({providerKey, quality, size, audioType, extraT
     const codec = detectCodec(combinedText)
     const audio = detectAudio(combinedText, audioType)
 
-    // Split across two shorter lines instead of one long bullet-joined line —
-    // long single lines were wrapping awkwardly mid-way in some Stremio clients.
     const qualityLine = [resolution, source].filter(Boolean).join(' • ')
     const encodeLine = [...extras, codec].filter(Boolean).join(' • ')
 
     const lines = [
-        `${emoji} منبع: ${ltr(providerLabel)}`,
-        qualityLine ? `🎞️ کیفیت: ${ltr(qualityLine)}` : null,
-        encodeLine ? `⚙️ انکد: ${ltr(encodeLine)}` : null,
+        `${emoji} ${ui.source}: ${ltr(providerLabel)}`,
+        qualityLine ? `🎞️ ${ui.quality}: ${ltr(qualityLine)}` : null,
+        encodeLine ? `⚙️ ${ui.encode}: ${ltr(encodeLine)}` : null,
         audio,
-        displaySize ? `💾 حجم: ${ltr(displaySize)}` : null,
+        displaySize ? `💾 ${ui.size}: ${ltr(displaySize)}` : null,
         healthLine,
         statusLine,
     ].filter(Boolean)
@@ -2349,7 +2407,10 @@ export async function getTorrentStreams(type, id, env = {}, httpClient = axios, 
             // completely untouched. Earlier attempts to reformat them (adding a
             // separate `title` field alongside Meteor's own name/description)
             // caused Stremio to silently drop these streams in every client.
-            name: raw.name ? `سینماگرافی | ${raw.name}` : 'سینماگرافی [P2P]',
+            name: (() => {
+                const brand = getUiLangPref() === 'en' ? 'CinemaGraphy' : 'سینماگرافی'
+                return raw.name ? `${brand} | ${raw.name}` : `${brand} [P2P]`
+            })(),
         }))
     } catch (error) {
         logAxiosError(error, logger, 'Meteor torrent streams fetch failed')

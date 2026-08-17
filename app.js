@@ -18,10 +18,10 @@ import F2Media from './sources/f2media.js'
 import Peepboxtv from './sources/peepboxtv.js'
 import Serialblog from './sources/serialblog.js'
 import {ID_SEPARATOR, METADATA_SOURCE} from './sources/source.js'
-import {findExternalMetaSource, findExternalStreamSource, formatStreamTitle, getCinemeta, getExternalCatalogSources, getExternalCatalogStatus, invalidateExternalCatalogCache, getKitsuTitle, getSubtitle, getTMDBMetaFa, enrichMetaWithFaTmdb, enrichCatalogMetasWithoutRpdb, getTMDBMetaByTmdbId, getTMDBDetails, getTMDBTitle, getLandingTmdbCatalogs, getTorrentStreams, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxyExternalStream, proxySubtitles, translateCatalogName, buildOrderedExternalCatalogs, rewriteTmdbImageUrls, parseTmdbImageProxyPath, tmdbRequest, setMetaLangPref} from './utils.js'
+import {findExternalMetaSource, findExternalStreamSource, formatStreamTitle, formatStreamName, getCinemeta, getExternalCatalogSources, getExternalCatalogStatus, invalidateExternalCatalogCache, getKitsuTitle, getSubtitle, getTMDBMetaFa, enrichMetaWithFaTmdb, enrichCatalogMetasWithoutRpdb, getTMDBMetaByTmdbId, getTMDBDetails, getTMDBTitle, getLandingTmdbCatalogs, getTorrentStreams, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxyExternalStream, proxySubtitles, translateCatalogName, buildOrderedExternalCatalogs, rewriteTmdbImageUrls, parseTmdbImageProxyPath, tmdbRequest, setMetaLangPref, setUiLangPref} from './utils.js'
 
 export const ADDON_PREFIX = 'ip'
-export const ADDON_VERSION = '2.1.39'
+export const ADDON_VERSION = '2.1.40'
 
 
 const PROVIDER_BASEURL_KEYS = [
@@ -653,20 +653,24 @@ async function streamsByTitle(title, type, season, episode, providers) {
                 return {
                     key: provider.key,
                     streams: (Array.isArray(links) ? links : []).map((link) => {
+                        const fmt = {
+                            providerKey: provider.key,
+                            quality: link.quality,
+                            size: link.size,
+                            audioType: link.audioType,
+                            extraText: link.title,
+                            url: link.url || link.externalUrl,
+                        }
+                        // name = short one-liner (Nuvio/Stremio header)
+                        // title = multi-line details (body) — never copy title into name
                         const stream = {
-                            title: formatStreamTitle({
-                                providerKey: provider.key,
-                                quality: link.quality,
-                                size: link.size,
-                                audioType: link.audioType,
-                                extraText: link.title,
-                                url: link.url,
-                            }),
+                            name: formatStreamName(fmt),
+                            title: formatStreamTitle(fmt),
                         }
                         if (link.externalUrl) {
                             stream.externalUrl = link.externalUrl
-                            stream.name = stream.title
-                        } else if (link.url) {
+                        }
+                        if (link.url) {
                             stream.url = link.url
                         }
                         return stream
@@ -818,6 +822,8 @@ export function createAddon({
         const e = mergeEnv(env, req?.addonConfig)
         try {
             setMetaLangPref(e.META_LANG || env.META_LANG || 'fa')
+            // Stream labels follow addon language (ADDON_LANG), not META_LANG
+            setUiLangPref(e.ADDON_LANG || env.ADDON_LANG || 'fa')
         } catch { /* ignore */ }
         const p = req?.addonConfig ? createProviders({env: e, logger}) : providers
         return {env: e, providers: p}
