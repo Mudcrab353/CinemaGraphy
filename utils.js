@@ -398,9 +398,22 @@ export async function enrichMetaWithFaTmdb(
             try {
                 const tvId = await resolveTmdbTvId(out, httpClient, apiKey, logger)
                 if (tvId) {
-                    out.videos = await enrichSeriesVideosFa(
-                        out.videos, tvId, httpClient, apiKey, logger,
+                    const enriched = await raceTimeout(
+                        enrichSeriesVideosFa(
+                            out.videos, tvId, httpClient, apiKey, logger,
+                            {maxSeasons: 3, budgetMs: 4000},
+                        ),
+                        4500,
+                        null,
                     )
+                    if (Array.isArray(enriched) && enriched.length) {
+                        out.videos = enriched
+                    } else {
+                        // At least normalize episode fields for Stremio
+                        out.videos = out.videos
+                            .map((v) => normalizeStremioVideo({...v, episode: v.episode ?? v.number}, tvId))
+                            .filter(Boolean)
+                    }
                 }
             } catch (error) {
                 logAxiosError(error, logger, 'enrichMeta videos FA failed')
@@ -558,7 +571,7 @@ export async function enrichCatalogMetasWithoutRpdb(
  */
 function parseVideoSeasonEpisode(v) {
     let s = Number(v?.season)
-    let e = Number(v?.episode)
+    let e = Number(v?.episode ?? v?.number)
     if (!Number.isInteger(s) || !Number.isInteger(e)) {
         const m = String(v?.id || '').match(/:(\d+):(\d+)\s*$/)
         if (m) {
@@ -583,13 +596,137 @@ function localizeEpisodeName(faName, enName, episodeNum) {
     return picked || eng || null
 }
 
+function raceTimeout(promise, ms, fallback = null) {
+    return Promise.race([
+        promise,
+        new Promise((resolve) => setTimeout(() => resolve(fallback), ms)),
+    ])
+}
+
+/** Stremio-safe video object (integers + title + optional TMDB still). */
+function normalizeStremioVideo(v, tmdbId) {
+    if (!v || typeof v !== 'object') return null
+    const {season, episode} = parseVideoSeasonEpisode(v)
+    if (season == null || episode == null) return null
+    const name = v.title || v.name || `قسمت ${episode}`
+    const overview = v.overview || v.description || ''
+    const id = `tmdb:${tmdbId}:${season}:${episode}`
+    const out = {
+        id,
+        title: name,
+        name,
+        season,
+        episode,
+        overview,
+        description: overview,
+    }
+    if (v.released || v.firstAired) {
+        out.released = v.released || v.firstAired
+    }
+    // Prefer TMDB still (works via our image proxy in Iran); drop metahub if we have still
+    if (v.thumbnail && /image\.tmdb\.org/i.test(String(v.thumbnail))) {
+        out.thumbnail = v.thumbnail
+    } else if (v.still_path) {
+        const path = String(v.still_path).startsWith('/') ? v.still_path : `/${v.still_path}`
+        out.thumbnail = `https://image.tmdb.org/t/p/w300${path}`
+    } else if (v.thumbnail && !/metahub\.space/i.test(String(v.thumbnail))) {
+        out.thumbnail = v.thumbnail
+    }
+    // Skip metahub.space — often blocked in IR and causes empty episode art in Stremio
+    return out
+}
+
+/**
+ * Build episode list from TMDB only (stable, no Cinemeta dependency).
+ * Limited seasons to stay under serverless time limits.
+ */
+export async function buildSeriesVideosFromTmdb(
+    tmdbId,
+    httpClient = axios,
+    apiKey = process.env.TMDB_API_KEY,
+    logger = console,
+    {maxSeasons = 4, budgetMs = 5500} = {},
+) {
+    if (!apiKey || !tmdbId) return []
+    const started = Date.now()
+    let seasonCount = maxSeasons
+    try {
+        const show = await tmdbRequest(
+            `tv/${tmdbId}`,
+            {language: 'en-US'},
+            httpClient,
+            apiKey,
+            logger,
+        )
+        const n = Number(show?.number_of_seasons)
+        if (Number.isInteger(n) && n > 0) {
+            seasonCount = Math.min(n, maxSeasons)
+        }
+    } catch {
+        /* use default */
+    }
+
+    const videos = []
+    for (let season = 1; season <= seasonCount; season++) {
+        if (Date.now() - started > budgetMs) break
+        try {
+            const [fa, en] = await Promise.all([
+                tmdbRequest(
+                    `tv/${tmdbId}/season/${season}`,
+                    {language: 'fa-IR'},
+                    httpClient,
+                    apiKey,
+                    logger,
+                ).catch(() => null),
+                tmdbRequest(
+                    `tv/${tmdbId}/season/${season}`,
+                    {language: 'en-US'},
+                    httpClient,
+                    apiKey,
+                    logger,
+                ).catch(() => null),
+            ])
+            const enByNum = new Map((en?.episodes || []).map((ep) => [ep.episode_number, ep]))
+            const faEps = fa?.episodes || []
+            const nums = new Set([
+                ...faEps.map((ep) => ep.episode_number),
+                ...[...enByNum.keys()],
+            ])
+            for (const num of [...nums].sort((a, b) => a - b)) {
+                const faEp = faEps.find((ep) => ep.episode_number === num)
+                const enEp = enByNum.get(num)
+                const name = localizeEpisodeName(faEp?.name, enEp?.name, num)
+                const overview = preferFaThenEn(faEp?.overview, enEp?.overview) || ''
+                const still = faEp?.still_path || enEp?.still_path
+                const air = faEp?.air_date || enEp?.air_date
+                const raw = {
+                    season,
+                    episode: num,
+                    number: num,
+                    name,
+                    title: name,
+                    overview,
+                    description: overview,
+                    still_path: still,
+                    released: air ? `${air}T00:00:00.000Z` : undefined,
+                }
+                const norm = normalizeStremioVideo(raw, tmdbId)
+                if (norm) videos.push(norm)
+            }
+        } catch (error) {
+            logAxiosError(error, logger, `TMDB build season ${season} failed`)
+        }
+    }
+    return videos
+}
+
 export async function enrichSeriesVideosFa(
     videos,
     tmdbId,
     httpClient = axios,
     apiKey = process.env.TMDB_API_KEY,
     logger = console,
-    {maxSeasons = 6, budgetMs = 7000} = {},
+    {maxSeasons = 4, budgetMs = 5000} = {},
 ) {
     if (!apiKey || !tmdbId || !Array.isArray(videos) || !videos.length) {
         return videos
@@ -597,18 +734,16 @@ export async function enrichSeriesVideosFa(
     const seasons = new Set()
     for (const v of videos) {
         const {season: s} = parseVideoSeasonEpisode(v)
-        // Skip season 0 specials first-pass to save budget; include if few seasons
-        if (s != null && s >= 0) seasons.add(s)
+        if (s != null && s > 0) seasons.add(s)
     }
     if (!seasons.size) return videos
 
-    // Prefer regular seasons; limit to avoid Vercel timeout on long-running shows
     let seasonList = [...seasons].sort((a, b) => a - b)
     if (seasonList.length > maxSeasons) {
-        seasonList = seasonList.filter((s) => s > 0).slice(0, maxSeasons)
+        seasonList = seasonList.slice(0, maxSeasons)
     }
 
-    const bySeason = new Map() // season -> Map(episode -> {name, overview})
+    const bySeason = new Map()
     const started = Date.now()
     await Promise.all(
         seasonList.map(async (season) => {
@@ -636,15 +771,18 @@ export async function enrichSeriesVideosFa(
                 const map = new Map()
                 for (const ep of fa?.episodes || []) {
                     const enEp = enEps.get(ep.episode_number)
-                    const name = localizeEpisodeName(ep.name, enEp?.name, ep.episode_number)
-                    const overview = preferFaThenEn(ep.overview, enEp?.overview)
-                    map.set(ep.episode_number, {name, overview})
+                    map.set(ep.episode_number, {
+                        name: localizeEpisodeName(ep.name, enEp?.name, ep.episode_number),
+                        overview: preferFaThenEn(ep.overview, enEp?.overview),
+                        still_path: ep.still_path || enEp?.still_path || null,
+                    })
                 }
                 for (const [num, ep] of enEps) {
                     if (!map.has(num)) {
                         map.set(num, {
                             name: localizeEpisodeName(null, ep.name, num),
                             overview: ep.overview || null,
+                            still_path: ep.still_path || null,
                         })
                     }
                 }
@@ -655,31 +793,27 @@ export async function enrichSeriesVideosFa(
         }),
     )
 
-    if (!bySeason.size) return videos
+    if (!bySeason.size) {
+        return videos.map((v) => normalizeStremioVideo(v, tmdbId)).filter(Boolean)
+    }
 
     return videos.map((v) => {
-        if (!v || typeof v !== 'object') return v
         const {season: s, episode: e} = parseVideoSeasonEpisode(v)
-        if (s == null || e == null) return v
+        if (s == null || e == null) return normalizeStremioVideo(v, tmdbId)
         const hit = bySeason.get(s)?.get(e)
-        const out = {...v, season: s, episode: e}
-        if (hit?.name) {
-            out.name = hit.name
-            out.title = hit.name
-        } else if (!hasPersianScript(out.name)) {
-            // last resort: generic label so UI is not stuck on English "Episode N"
-            const fallback = localizeEpisodeName(null, out.name, e)
-            if (fallback) {
-                out.name = fallback
-                out.title = fallback
-            }
+        const merged = {
+            ...v,
+            season: s,
+            episode: e,
+            number: e,
+            name: hit?.name || v.name || v.title,
+            title: hit?.name || v.title || v.name,
+            overview: hit?.overview || v.overview || v.description,
+            description: hit?.overview || v.description || v.overview,
+            still_path: hit?.still_path || v.still_path,
         }
-        if (hit?.overview) {
-            out.overview = hit.overview
-            out.description = hit.overview
-        }
-        return out
-    })
+        return normalizeStremioVideo(merged, tmdbId)
+    }).filter(Boolean)
 }
 
 /** Resolve numeric TMDB tv id from meta / imdb for episode localization. */
@@ -713,8 +847,7 @@ async function resolveTmdbTvId(meta, httpClient, apiKey, logger) {
 
 /**
  * Build Stremio meta for a tmdb: id (used by 101 Catalogs popular/trending).
- * Keeps meta.id as tmdb:<id> so the client requests streams with the same id.
- * When an IMDb id is available, episode lists come from Cinemeta for series.
+ * Optimized for serverless time limits — videos from TMDB first, Cinemeta optional.
  */
 export async function getTMDBMetaByTmdbId(
     type,
@@ -727,7 +860,6 @@ export async function getTMDBMetaByTmdbId(
     if (!apiKey || !tmdbId) {
         return null
     }
-    // Stremio uses series; some catalogs may pass tv
     const isSeries = type === 'series' || type === 'tv'
     const stremioType = isSeries ? 'series' : 'movie'
     let kind = isSeries ? 'tv' : 'movie'
@@ -754,7 +886,6 @@ export async function getTMDBMetaByTmdbId(
         let pair = await loadPair(kind)
         data = pair.fa
         dataEn = pair.en
-        // Fallback: wrong kind (e.g. movie id in series catalog or vice versa)
         const hasName = Boolean(data.name || data.title || dataEn?.name || dataEn?.title)
         if (!hasName) {
             const alt = kind === 'tv' ? 'movie' : 'tv'
@@ -772,14 +903,15 @@ export async function getTMDBMetaByTmdbId(
             data.title || data.name,
             dataEn?.title || dataEn?.name,
         )
-        // Still no name → empty meta is useless to Stremio
         if (!name) {
             logger.warn?.('TMDB meta empty name', {tmdbId, type, kind})
             return null
         }
         const description = preferFaThenEn(data.overview, dataEn?.overview)
         const year = (data.release_date || data.first_air_date || dataEn?.release_date || dataEn?.first_air_date || '').slice(0, 4) || null
-        const genreMap = await getTMDBGenreMap(stremioType, httpClient, apiKey, logger)
+        const endYear = (data.last_air_date || dataEn?.last_air_date || '').slice(0, 4) || null
+        const releaseInfo = year && endYear && endYear !== year ? `${year}-${endYear}` : year
+        const genreMap = await getTMDBGenreMap(stremioType, httpClient, apiKey, logger).catch(() => new Map())
         const genresFa = (data.genres ?? []).map((g) => g.name || genreMap.get(g.id)).filter(Boolean)
         const genresEn = (dataEn?.genres ?? []).map((g) => g.name || genreMap.get(g.id)).filter(Boolean)
         const genres = pickFaOrEnGenres(genresFa, genresEn)
@@ -793,56 +925,51 @@ export async function getTMDBMetaByTmdbId(
             name,
             poster: posterPath ? `https://image.tmdb.org/t/p/w500${posterPath}` : null,
             background: backdropPath ? `https://image.tmdb.org/t/p/original${backdropPath}` : null,
-            description,
-            releaseInfo: year,
-            imdbRating: vote != null ? String(Math.round(vote * 10) / 10) : null,
-            genres: genres.length ? genres : undefined,
+            description: description || undefined,
+            releaseInfo: releaseInfo || undefined,
+            imdbRating: vote != null ? String(Math.round(vote * 10) / 10) : undefined,
+            genres: genres?.length ? genres : undefined,
             imdb_id: validImdb || undefined,
         }
 
-        if (isSeries && validImdb && typeof getCinemetaFn === 'function') {
+        if (isSeries) {
+            // Primary: TMDB episodes (fast + cached + Iran-friendly stills)
             try {
-                // Cinemeta always uses series for TV
-                const cin = await getCinemetaFn('series', validImdb)
-                const videos = cin?.meta?.videos
-                if (Array.isArray(videos) && videos.length) {
-                    meta.videos = videos
-                        .filter((v) => v && (v.season != null || v.episode != null || v.id))
-                        .map((v) => {
-                            const season = Number(v.season)
-                            const episode = Number(v.episode)
-                            let vid = v.id
-                            if (Number.isInteger(season) && Number.isInteger(episode)) {
-                                vid = `tmdb:${tmdbId}:${season}:${episode}`
-                            } else if (typeof vid === 'string' && validImdb && vid.startsWith(validImdb)) {
-                                vid = vid.replace(validImdb, `tmdb:${tmdbId}`)
-                            }
-                            return {
-                                ...v,
-                                id: vid,
-                                season: Number.isInteger(season) ? season : v.season,
-                                episode: Number.isInteger(episode) ? episode : v.episode,
-                            }
-                        })
-                    // Soft timeout: never block meta on slow multi-season FA enrich
-                    try {
-                        const enrichPromise = enrichSeriesVideosFa(
-                            meta.videos, tmdbId, httpClient, apiKey, logger,
-                            {maxSeasons: 5, budgetMs: 6000},
-                        )
-                        const timeoutPromise = new Promise((resolve) =>
-                            setTimeout(() => resolve(null), 6500),
-                        )
-                        const enriched = await Promise.race([enrichPromise, timeoutPromise])
-                        if (Array.isArray(enriched) && enriched.length) {
-                            meta.videos = enriched
-                        }
-                    } catch (error) {
-                        logAxiosError(error, logger, 'Episode FA enrich failed')
-                    }
+                const tmdbVideos = await raceTimeout(
+                    buildSeriesVideosFromTmdb(tmdbId, httpClient, apiKey, logger, {
+                        maxSeasons: 4,
+                        budgetMs: 5000,
+                    }),
+                    5500,
+                    [],
+                )
+                if (Array.isArray(tmdbVideos) && tmdbVideos.length) {
+                    meta.videos = tmdbVideos
                 }
             } catch (error) {
-                logAxiosError(error, logger, 'Cinemeta videos for TMDB series failed')
+                logAxiosError(error, logger, 'TMDB videos build failed')
+            }
+
+            // Optional short Cinemeta attempt only if TMDB gave nothing
+            if ((!meta.videos || !meta.videos.length) && validImdb && typeof getCinemetaFn === 'function') {
+                try {
+                    const cin = await raceTimeout(getCinemetaFn('series', validImdb), 2500, null)
+                    const videos = cin?.meta?.videos
+                    if (Array.isArray(videos) && videos.length) {
+                        meta.videos = videos
+                            .map((v) => {
+                                const season = Number(v.season)
+                                const episode = Number(v.episode ?? v.number)
+                                return normalizeStremioVideo(
+                                    {...v, season, episode, number: episode},
+                                    tmdbId,
+                                )
+                            })
+                            .filter(Boolean)
+                    }
+                } catch (error) {
+                    logAxiosError(error, logger, 'Cinemeta videos fallback failed')
+                }
             }
         }
 
