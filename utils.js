@@ -1403,10 +1403,16 @@ function cleanupCatalogFaName(working) {
     return s
 }
 
-export function translateCatalogName(name, type) {
+export function translateCatalogName(name, type, lang = null) {
     if (!name) return name
 
     const original = String(name).trim()
+    // Catalog labels follow addon UI language (ADDON_LANG): EN keeps source names
+    const useEn = String(lang || getUiLangPref() || 'fa').toLowerCase().startsWith('en')
+    if (useEn) {
+        return original.replace(CATALOG_BRAND_STRIP_RE, ' ').replace(/\s+/g, ' ').trim() || original
+    }
+
     let working = original.replace(CATALOG_BRAND_STRIP_RE, ' ').replace(/\s+/g, ' ').trim()
 
     for (const [pattern, replacement] of CATALOG_EXACT_PHRASES) {
