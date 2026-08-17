@@ -21,7 +21,7 @@ import {ID_SEPARATOR, METADATA_SOURCE} from './sources/source.js'
 import {findExternalMetaSource, findExternalStreamSource, formatStreamTitle, getCinemeta, getExternalCatalogSources, getExternalCatalogStatus, invalidateExternalCatalogCache, getKitsuTitle, getSubtitle, getTMDBMetaFa, enrichMetaWithFaTmdb, enrichCatalogMetasWithoutRpdb, getTMDBMetaByTmdbId, getTMDBDetails, getTMDBTitle, getLandingTmdbCatalogs, getTorrentStreams, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxyExternalStream, proxySubtitles, translateCatalogName, buildOrderedExternalCatalogs, classifyExternalCatalogSource, rewriteTmdbImageUrls, parseTmdbImageProxyPath, tmdbRequest, setMetaLangPref, setUiLangPref} from './utils.js'
 
 export const ADDON_PREFIX = 'ip'
-export const ADDON_VERSION = '2.1.49'
+export const ADDON_VERSION = '2.1.50'
 
 
 const PROVIDER_BASEURL_KEYS = [
@@ -229,13 +229,20 @@ export function createManifest(env = process.env) {
         resources.push({
             name: 'meta',
             types: ['series', 'movie', 'tv'],
-            idPrefixes: [ADDON_PREFIX, 'tt', 'tmdb:', 'tmdb', 'kitsu:'],
+            idPrefixes: [ADDON_PREFIX, 'tt', 'tmdb:', 'tmdb', 'kitsu:', ...(iptvEnabled ? ['iptv:'] : [])],
+        })
+    } else if (iptvEnabled) {
+        // STREAMS_ONLY / DISABLE_META must NOT kill IPTV channel meta
+        resources.push({
+            name: 'meta',
+            types: ['tv', 'movie', 'series'],
+            idPrefixes: ['iptv:'],
         })
     }
     resources.push({
         name: 'stream',
         types: ['series', 'movie', 'tv'],
-        idPrefixes: [ADDON_PREFIX, 'tt', 'kitsu:', 'tmdb:', 'tmdb'],
+        idPrefixes: [ADDON_PREFIX, 'tt', 'kitsu:', 'tmdb:', 'tmdb', ...(iptvEnabled ? ['iptv:'] : [])],
     })
     if (!disableSubs) {
         resources.push({
@@ -1181,11 +1188,23 @@ export function createAddon({
             const {env: activeEnv, providers: activeProviders} = requestScope(req)
             const env = activeEnv
             const providers = activeProviders
+            // Normalize id (Stremio may encode colon)
+            req.params.id = decodeURIComponent(String(req.params.id || '')).trim()
+
+            // IPTV / ماهواره — always independent of STREAMS_ONLY / DISABLE_META
+            if (req.params.id.startsWith('iptv:') && String(env.CATALOG_IPTVBRIDGE_MANIFEST_URL || '').trim()) {
+                const externalSources = await getExternalCatalogSources(env, axios, logger)
+                const metaSource = findExternalMetaSource(externalSources, req.params.id)
+                    || (externalSources || []).find((s) => classifyExternalCatalogSource(s) === 'iptv' && s.hasMeta)
+                if (metaSource) {
+                    const data = await proxyExternalMeta(metaSource, req.params.type, req.params.id, axios, logger)
+                    return jsonWithTmdbImages(req, res, data || {})
+                }
+            }
+
             if (isConfigFlagOn(env, 'STREAMS_ONLY') || isConfigFlagOn(env, 'DISABLE_META')) {
                 return res.json({})
             }
-            // Normalize id (Stremio may encode colon)
-            req.params.id = decodeURIComponent(String(req.params.id || '')).trim()
             // IMDb ids → Persian TMDB meta (fallback Cinemeta if TMDB misses)
             if (req.params.id.startsWith('tt')) {
                 if (env.TMDB_API_KEY) {
@@ -1398,9 +1417,18 @@ export function createAddon({
                 return res.json(result)
             }
 
-            // Fallback for id schemes we don't otherwise handle (e.g. IPTV Bridge's
-            // own channel ids) — tried last, so it never intercepts tt/kitsu/tmdb
-            // requests that our own Iranian-providers + torrent pipeline handles.
+            // IPTV Bridge channel / VOD ids — independent of STREAMS_ONLY
+            if (id.startsWith('iptv:') && String(env.CATALOG_IPTVBRIDGE_MANIFEST_URL || '').trim()) {
+                const externalSources = await getExternalCatalogSources(env, axios, logger)
+                const streamSource = findExternalStreamSource(externalSources, id)
+                    || (externalSources || []).find((s) => classifyExternalCatalogSource(s) === 'iptv' && s.hasStream)
+                if (streamSource) {
+                    const result = await proxyExternalStream(streamSource, type, id, null, axios, logger)
+                    return res.json(result || {streams: []})
+                }
+            }
+
+            // Other external stream addons (non-IMDb schemes)
             const externalSources = await getExternalCatalogSources(env, axios, logger)
             const streamSource = findExternalStreamSource(externalSources, id)
             if (streamSource) {

@@ -2144,15 +2144,31 @@ async function fetchOneExternalCatalog(manifestUrl, httpClient, logger, timeoutM
     const streamResource = (manifest.resources ?? []).find((r) => (
         r === 'stream' || r?.name === 'stream'
     ))
+    // Merge top-level + per-resource idPrefixes (IPTV Bridge declares iptv: on meta/stream)
+    const prefixSet = new Set()
+    for (const p of (manifest.idPrefixes ?? [])) {
+        if (p != null && String(p)) prefixSet.add(String(p))
+    }
+    for (const res of (manifest.resources ?? [])) {
+        if (res && typeof res === 'object' && Array.isArray(res.idPrefixes)) {
+            for (const p of res.idPrefixes) {
+                if (p != null && String(p)) prefixSet.add(String(p))
+            }
+        }
+    }
+    const idPrefixes = [...prefixSet]
     return {
         baseUrl: catalogBaseUrl(usedUrl),
         catalogIds: new Set(catalogs.map((catalog) => catalog.id)),
         catalogs,
-        idPrefixes: manifest.idPrefixes ?? [],
+        idPrefixes,
         hasMeta: Boolean(metaResource),
         hasStream: Boolean(streamResource),
+        metaIdPrefixes: Array.isArray(metaResource?.idPrefixes) ? metaResource.idPrefixes.map(String) : idPrefixes,
+        streamIdPrefixes: Array.isArray(streamResource?.idPrefixes) ? streamResource.idPrefixes.map(String) : idPrefixes,
         manifestUrl: primary,
         resolvedUrl: usedUrl,
+        group: null, // filled by caller optionally
     }
 }
 
@@ -2310,45 +2326,67 @@ export async function proxyExternalCatalog(source, type, id, extraPath, httpClie
 // For external sources whose items use a non-IMDb id (e.g. Anime Catalogs'
 // "kitsu:" ids), Cinemeta has no entry, so we pass the meta request straight
 // through to that addon's own /meta endpoint instead.
+function sourceMatchesId(source, id, kind = 'any') {
+    if (!source || !id) return false
+    const prefixes = kind === 'meta'
+        ? (source.metaIdPrefixes || source.idPrefixes || [])
+        : kind === 'stream'
+            ? (source.streamIdPrefixes || source.idPrefixes || [])
+            : (source.idPrefixes || [])
+    if (Array.isArray(prefixes) && prefixes.length) {
+        if (prefixes.some((prefix) => id.startsWith(prefix))) return true
+    }
+    // IPTV Bridge channel ids always use iptv:
+    if (id.startsWith('iptv:') && /iptvbridge|iptv/i.test(`${source.manifestUrl || ''} ${source.baseUrl || ''} ${source.resolvedUrl || ''}`)) {
+        return true
+    }
+    return false
+}
+
 export function findExternalMetaSource(sources, id) {
-    return sources.find((source) => (
-        source.hasMeta && source.idPrefixes.some((prefix) => id.startsWith(prefix))
-    ))
+    return (sources || []).find((source) => source.hasMeta && sourceMatchesId(source, id, 'meta'))
 }
 
 export async function proxyExternalMeta(source, type, id, httpClient = axios, logger = console) {
-    const url = `${source.baseUrl}/meta/${type}/${id}.json`
-    try {
-        const response = await httpClient.get(url, {timeout: REQUEST_TIMEOUT_MS})
-        return response.data ?? {}
-    } catch (error) {
-        logAxiosError(error, logger, 'External meta proxy failed')
-        return {}
+    const encoded = encodeURIComponent(id)
+    const candidates = [
+        `${source.baseUrl}/meta/${type}/${encoded}.json`,
+        `${source.baseUrl}/meta/${type}/${id}.json`,
+    ]
+    for (const url of candidates) {
+        try {
+            const response = await httpClient.get(url, {timeout: REQUEST_TIMEOUT_MS})
+            if (response.data?.meta) return response.data
+            if (response.data && Object.keys(response.data).length) return response.data
+        } catch (error) {
+            logAxiosError(error, logger, `External meta proxy failed (${url})`)
+        }
     }
+    return {}
 }
 
-// Some external catalog addons (e.g. IPTV Bridge) serve their own streams
-// directly — there is no equivalent content in our own scraper providers to
-// search for (live TV channels, not movies/series). For those, we proxy the
-// /stream request straight through, byte-for-byte, so the result is
-// identical to installing that addon on its own. Exact same id/type/extra
-// path Stremio gave us — nothing added, removed, or rewritten.
+// IPTV Bridge and similar: own channel ids — proxy stream byte-for-byte.
 export function findExternalStreamSource(sources, id) {
-    return sources.find((source) => (
-        source.hasStream && source.idPrefixes.some((prefix) => id.startsWith(prefix))
-    ))
+    return (sources || []).find((source) => source.hasStream && sourceMatchesId(source, id, 'stream'))
 }
 
 export async function proxyExternalStream(source, type, id, extraPath, httpClient = axios, logger = console) {
     const suffix = extraPath ? `/${extraPath}` : ''
-    const url = `${source.baseUrl}/stream/${type}/${encodeURIComponent(id)}${suffix}.json`
-    try {
-        const response = await httpClient.get(url, {timeout: REQUEST_TIMEOUT_MS})
-        return response.data ?? {streams: []}
-    } catch (error) {
-        logAxiosError(error, logger, 'External stream proxy failed')
-        return {streams: []}
+    const encoded = encodeURIComponent(id)
+    const candidates = [
+        `${source.baseUrl}/stream/${type}/${encoded}${suffix}.json`,
+        `${source.baseUrl}/stream/${type}/${id}${suffix}.json`,
+    ]
+    for (const url of candidates) {
+        try {
+            const response = await httpClient.get(url, {timeout: REQUEST_TIMEOUT_MS})
+            if (Array.isArray(response.data?.streams)) return response.data
+            if (response.data) return response.data
+        } catch (error) {
+            logAxiosError(error, logger, `External stream proxy failed (${url})`)
+        }
     }
+    return {streams: []}
 }
 
 // ---------------------------------------------------------------------------
