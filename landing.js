@@ -861,6 +861,22 @@ export function renderConfigurePage({
 <div class="hint"><span class="lang-fa">اختیاری — خالی = پیش‌فرض سرور (وقتی تیک روشن است). پر = جایگزین کامل.</span><span class="lang-en">Optional — empty = server default when enabled; filled = replaces default.</span></div>
 <input id="iptvUrl" data-k="CATALOG_IPTVBRIDGE_MANIFEST_URL" placeholder="خالی = پیش‌فرض iptvbridge.vercel.app — یا manifest اختصاصی" autocomplete="off"/>
 <p class="note lang-fa" style="margin-top:8px">کاتالوگ ماهواره جدا از پروایدرهای فیلم است و همیشه <b>آخر لیست</b> می‌آید. تیک را بزنید تا لود شود.</p>
+</div>
+<div class="card" style="margin-top:14px">
+<h2 class="lang-fa" style="margin-top:0">نمکده — محتوای ایرانی</h2>
+<h2 class="lang-en" style="margin-top:0">Namakade — Iranian only</h2>
+<label class="chk" style="display:flex;gap:10px;align-items:flex-start;margin:12px 0">
+<input type="checkbox" id="optNamakade"/>
+<span>
+<b class="lang-fa">فعال‌سازی کاتالوگ نمکده (سریال / نمایش خانگی / فیلم ایرانی)</b>
+<b class="lang-en">Enable Namakade catalogs (series / home shows / Iranian movies)</b>
+<span class="hint lang-fa" style="display:block;font-size:.82rem;color:var(--m);font-weight:500;margin-top:4px">جدا از همه پروایدرها و ماهواره — فقط محتوای ایرانی. پیش‌فرض خاموش است.</span>
+<span class="hint lang-en" style="display:block;font-size:.82rem;color:var(--m);font-weight:500;margin-top:4px">Isolated from other providers — Iranian content only. Off by default.</span>
+</span>
+</label>
+<input id="namakadeUrl" data-k="NAMAKADE_BASEURL" placeholder="خالی = namakade.com" autocomplete="off" style="width:100%;margin-top:6px"/>
+<p class="note lang-fa" style="margin-top:8px">فقط ۳ کاتالوگ: سریال‌ونمایش، فیلم ایرانی، پخش زنده — بدون ترکی/خارجی. پوسترها پروکسی می‌شوند. برای منیفست عمومی در Vercel: <code>ENABLE_NAMAKADE=1</code>.</p>
+
 <p class="note lang-en" style="margin-top:8px">IPTV catalogs are separate from movie providers and always listed <b>last</b>. Enable the checkbox to load them.</p>
 </div>
 </div>
@@ -950,6 +966,8 @@ export function renderConfigurePage({
     if (ds && ds.checked) o.DISABLE_SUBTITLES = '1';
     var iptv = document.getElementById('optIptv');
     if (iptv && iptv.checked) o.ENABLE_IPTV = '1';
+    var nk = document.getElementById('optNamakade');
+    if (nk && nk.checked) o.ENABLE_NAMAKADE = '1';
     var metaR = document.querySelector('input[name="metaLang"]:checked');
     if (metaR && metaR.value === 'en') o.META_LANG = 'en';
     var addR = document.querySelector('input[name="addonLang"]:checked');
@@ -979,6 +997,8 @@ export function renderConfigurePage({
     if (ds) ds.checked = o.DISABLE_SUBTITLES === '1' || o.DISABLE_SUBTITLES === 'true';
     var iptvEl = document.getElementById('optIptv');
     if (iptvEl) iptvEl.checked = o.ENABLE_IPTV === '1' || o.ENABLE_IPTV === 'true' || Boolean(o.CATALOG_IPTVBRIDGE_MANIFEST_URL);
+    var nkEl = document.getElementById('optNamakade');
+    if (nkEl) nkEl.checked = o.ENABLE_NAMAKADE === '1' || o.ENABLE_NAMAKADE === 'true' || Boolean(o.NAMAKADE_BASEURL);
     var metaVal = (o.META_LANG === 'en') ? 'en' : 'fa';
     document.querySelectorAll('input[name="metaLang"]').forEach(function (r) { r.checked = r.value === metaVal; });
     var addVal = (o.ADDON_LANG === 'en') ? 'en' : 'fa';

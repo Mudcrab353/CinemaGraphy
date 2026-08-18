@@ -13,6 +13,15 @@ import Aslmoviez from './sources/aslmoviez.js'
 import Cinamatic from './sources/cinamatic.js'
 import Digimovie from './sources/digimovie.js'
 import Animex from './sources/animex.js'
+import {
+    isNamakadeEnabled,
+    namakadeManifestCatalogs,
+    namakadeListCatalog,
+    namakadeGetMeta,
+    namakadeGetStreams,
+    NAMAKADE_PREFIX,
+    decodeMediaProxyToken,
+} from './sources/namakade.js'
 import Donyayeserial from './sources/donyayeserial.js'
 import F2Media from './sources/f2media.js'
 import Peepboxtv from './sources/peepboxtv.js'
@@ -21,7 +30,7 @@ import {ID_SEPARATOR, METADATA_SOURCE} from './sources/source.js'
 import {findExternalMetaSource, findExternalStreamSource, formatStreamTitle, getCinemeta, getExternalCatalogSources, getExternalCatalogStatus, invalidateExternalCatalogCache, getKitsuTitle, getSubtitle, getTMDBMetaFa, enrichMetaWithFaTmdb, enrichCatalogMetasWithoutRpdb, getTMDBMetaByTmdbId, getTMDBDetails, getTMDBTitle, getLandingTmdbCatalogs, getTorrentStreams, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxyExternalStream, proxySubtitles, translateCatalogName, buildOrderedExternalCatalogs, classifyExternalCatalogSource, rewriteTmdbImageUrls, parseTmdbImageProxyPath, tmdbRequest, setMetaLangPref, setUiLangPref} from './utils.js'
 
 export const ADDON_PREFIX = 'ip'
-export const ADDON_VERSION = '2.1.52'
+export const ADDON_VERSION = '2.1.54'
 
 
 const PROVIDER_BASEURL_KEYS = [
@@ -74,6 +83,8 @@ const CONFIG_ALLOW = new Set([
     'META_LANG',
     'ADDON_LANG',
     'ENABLE_IPTV',
+    'ENABLE_NAMAKADE',
+    'NAMAKADE_BASEURL',
     ...PROVIDER_BASEURL_KEYS,
 ])
 
@@ -159,6 +170,20 @@ export function mergeEnv(baseEnv = {}, config) {
     }
 
     // STREAMS_ONLY / DISABLE_CATALOG apply to movie-series catalogs only — not IPTV
+    // Namakade: isolated Iranian catalogs — only when user enables
+    if (Object.prototype.hasOwnProperty.call(config, 'ENABLE_NAMAKADE')
+        || Object.prototype.hasOwnProperty.call(config, 'NAMAKADE_BASEURL')) {
+        if (isConfigFlagOn(config, 'ENABLE_NAMAKADE') || String(config.NAMAKADE_BASEURL || '').trim()) {
+            e.ENABLE_NAMAKADE = '1'
+            if (String(config.NAMAKADE_BASEURL || '').trim()) {
+                e.NAMAKADE_BASEURL = String(config.NAMAKADE_BASEURL).trim()
+            }
+        } else {
+            delete e.ENABLE_NAMAKADE
+            delete e.NAMAKADE_BASEURL
+        }
+    }
+
     const streamsOnlyCfg = isConfigFlagOn(config, 'STREAMS_ONLY')
     const disableMovieCatalogs = streamsOnlyCfg || isConfigFlagOn(config, 'DISABLE_CATALOG')
     if (disableMovieCatalogs) {
@@ -206,6 +231,7 @@ export function createManifest(env = process.env) {
         || (disableCatalog ? ' · بدون کاتالوگ' : '')
 
     const iptvEnabled = Boolean(String(env.CATALOG_IPTVBRIDGE_MANIFEST_URL || '').trim())
+    const namakadeEnabled = isNamakadeEnabled(env)
     // Provider search catalogs (movie/series) — not IPTV
     const catalogs = disableCatalog
         ? []
@@ -224,25 +250,36 @@ export function createManifest(env = process.env) {
 
     const resources = []
     // Catalog resource stays if movie catalogs OR IPTV/satellite catalogs are active
-    if (!disableCatalog || iptvEnabled) resources.push('catalog')
+    if (!disableCatalog || iptvEnabled || namakadeEnabled) resources.push('catalog')
     if (!disableMeta) {
         resources.push({
             name: 'meta',
             types: ['series', 'movie', 'tv'],
-            idPrefixes: [ADDON_PREFIX, 'tt', 'tmdb:', 'tmdb', 'kitsu:', ...(iptvEnabled ? ['iptv:'] : [])],
+            idPrefixes: [
+                ADDON_PREFIX, 'tt', 'tmdb:', 'tmdb', 'kitsu:',
+                ...(iptvEnabled ? ['iptv:'] : []),
+                ...(namakadeEnabled ? [NAMAKADE_PREFIX] : []),
+            ],
         })
-    } else if (iptvEnabled) {
-        // STREAMS_ONLY / DISABLE_META must NOT kill IPTV channel meta
+    } else if (iptvEnabled || namakadeEnabled) {
+        // STREAMS_ONLY / DISABLE_META must NOT kill IPTV / Namakade meta
+        const prefixes = []
+        if (iptvEnabled) prefixes.push('iptv:')
+        if (namakadeEnabled) prefixes.push(NAMAKADE_PREFIX)
         resources.push({
             name: 'meta',
             types: ['tv', 'movie', 'series'],
-            idPrefixes: ['iptv:'],
+            idPrefixes: prefixes,
         })
     }
     resources.push({
         name: 'stream',
         types: ['series', 'movie', 'tv'],
-        idPrefixes: [ADDON_PREFIX, 'tt', 'kitsu:', 'tmdb:', 'tmdb', ...(iptvEnabled ? ['iptv:'] : [])],
+        idPrefixes: [
+            ADDON_PREFIX, 'tt', 'kitsu:', 'tmdb:', 'tmdb',
+            ...(iptvEnabled ? ['iptv:'] : []),
+            ...(namakadeEnabled ? [NAMAKADE_PREFIX] : []),
+        ],
     })
     if (!disableSubs) {
         resources.push({
@@ -916,7 +953,41 @@ export function createAddon({
 
     // TMDB Image Proxy — client in Iran never hits image.tmdb.org directly
     // GET /api/tmdb-image/w500/abc123.jpg
-    addon.get(/^\/api\/tmdb-image\/([^/]+)\/(.+)$/, async (req, res) => {
+    
+    // Media proxy for Namakade CDN posters (site pages filtered in IR)
+    addon.get(/^\/api\/media-proxy\/(.+)$/, async (req, res) => {
+        try {
+            const token = (req.params && (req.params[0] || req.params[1])) || ''
+            // Express may put capture in req.params[0] for regex routes
+            const raw = token || (req.path || '').split('/api/media-proxy/')[1] || ''
+            const target = decodeMediaProxyToken(decodeURIComponent(raw))
+            if (!target) {
+                res.status(400).json({error: 'invalid media proxy url'})
+                return
+            }
+            const upstream = await axios.get(target, {
+                responseType: 'arraybuffer',
+                timeout: 20_000,
+                maxRedirects: 5,
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (compatible; CinemaGraphy/2.1)',
+                    Accept: 'image/*,*/*',
+                    Referer: 'https://namakade.com/',
+                },
+                validateStatus: (s) => s >= 200 && s < 400,
+            })
+            const ctype = upstream.headers['content-type'] || 'image/jpeg'
+            res.setHeader('Content-Type', ctype)
+            res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800')
+            res.setHeader('Access-Control-Allow-Origin', '*')
+            res.status(200).send(Buffer.from(upstream.data))
+        } catch (err) {
+            logger.warn?.({err: err?.message}, 'media-proxy failed')
+            res.status(502).json({error: 'media proxy failed'})
+        }
+    })
+
+addon.get(/^\/api\/tmdb-image\/([^/]+)\/(.+)$/, async (req, res) => {
         try {
             const size = req.params[0]
             const fileParam = req.params[1]
@@ -1079,6 +1150,12 @@ export function createAddon({
                         ...catalog,
                         name: translateCatalogName(catalog.name, catalog.type, catalogLang),
                     })))
+                    // Namakade always last (after IPTV / platforms) — isolated Iranian catalogs
+                    if (isNamakadeEnabled(activeEnv)) {
+                        const nkLang = String(activeEnv.ADDON_LANG || 'fa').trim().toLowerCase().startsWith('en') ? 'en' : 'fa'
+                        manifest.catalogs.push(...namakadeManifestCatalogs(activeEnv, nkLang))
+                    }
+
                 }
             }
         } catch (error) {
@@ -1095,6 +1172,19 @@ export function createAddon({
             const {env: activeEnv, providers: activeProviders} = requestScope(req)
             const streamsOnly = isConfigFlagOn(activeEnv, 'STREAMS_ONLY')
             const disableCatalog = streamsOnly || isConfigFlagOn(activeEnv, 'DISABLE_CATALOG')
+            // Isolated Namakade catalogs (no external proxy)
+            if (String(req.params.id || '').startsWith('namakade_') && isNamakadeEnabled(activeEnv)) {
+                try {
+                    const search = (req.query || {}).search || ''
+                    const pb = publicBase(req, activeEnv)
+                    const data = await namakadeListCatalog(req.params.id, search, activeEnv, axios, pb)
+                    return res.json(data)
+                } catch (err) {
+                    logger.error?.({err: err?.message}, 'Namakade catalog failed')
+                    return res.json({metas: []})
+                }
+            }
+
             const iptvEnabled = Boolean(String(activeEnv.CATALOG_IPTVBRIDGE_MANIFEST_URL || '').trim())
             let externalSources = await getExternalCatalogSources(activeEnv, axios, logger)
             if (disableCatalog) {
@@ -1193,6 +1283,17 @@ export function createAddon({
             req.params.id = decodeURIComponent(String(req.params.id || '')).trim()
 
             // IPTV / ماهواره — always independent of STREAMS_ONLY / DISABLE_META
+            if (String(req.params.id || '').startsWith(NAMAKADE_PREFIX) && isNamakadeEnabled(env)) {
+                try {
+                    const pb = publicBase(req, env)
+                    const nkLang = String(env.ADDON_LANG || 'fa').trim().toLowerCase().startsWith('en') ? 'en' : 'fa'
+                    const data = await namakadeGetMeta(req.params.id, env, axios, pb, nkLang)
+                    return res.json(data && data.meta ? data : {meta: null})
+                } catch (err) {
+                    logger.error?.({err: err?.message}, 'Namakade meta failed')
+                    return res.json({meta: null})
+                }
+            }
             if (req.params.id.startsWith('iptv:') && String(env.CATALOG_IPTVBRIDGE_MANIFEST_URL || '').trim()) {
                 const externalSources = await getExternalCatalogSources(env, axios, logger)
                 const metaSource = findExternalMetaSource(externalSources, req.params.id)
@@ -1416,6 +1517,17 @@ export function createAddon({
             if (/^tt/.test(id)) {
                 const result = await imdbStreamResponse(type, id, providers, services, env, axios, logger)
                 return res.json(result)
+            }
+
+            // Namakade Iranian content — independent of other providers
+            if (String(id || '').startsWith(NAMAKADE_PREFIX) && isNamakadeEnabled(env)) {
+                try {
+                    const data = await namakadeGetStreams(id, env, axios)
+                    return res.json(data || {streams: []})
+                } catch (err) {
+                    logger.error?.({err: err?.message}, 'Namakade stream failed')
+                    return res.json({streams: []})
+                }
             }
 
             // IPTV Bridge channel / VOD ids — independent of STREAMS_ONLY
