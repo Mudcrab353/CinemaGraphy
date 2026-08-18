@@ -864,30 +864,30 @@ export function renderConfigurePage({
 </div>
 
 <div class="glass" style="padding:16px;margin-bottom:16px">
+<h2 class="lang-fa" style="margin-top:0">سریال ترکی (F2Media)</h2>
+<h2 class="lang-en" style="margin-top:0">Turkish Series (F2Media)</h2>
+<label class="tog" style="display:flex;gap:12px;align-items:flex-start;padding:12px 0;cursor:pointer">
+<input type="checkbox" id="f2turkishOn" style="width:18px;height:18px;margin-top:3px;accent-color:#e8a04a;flex-shrink:0"/>
+<div>
+<b class="lang-fa">فعال‌سازی کاتالوگ سریال ترکی</b>
+<b class="lang-en">Enable Turkish series catalog</b>
+</div>
+</label>
+</div>
+
+<div class="glass" style="padding:16px;margin-bottom:16px">
 <h2 class="lang-fa" style="margin-top:0">نماکده</h2>
 <h2 class="lang-en" style="margin-top:0">Namakade</h2>
 <label class="tog" style="display:flex;gap:12px;align-items:flex-start;padding:12px 0;cursor:pointer">
 <input type="checkbox" id="optNamakade" style="width:18px;height:18px;margin-top:3px;accent-color:#5dcea0;flex-shrink:0"/>
-
-<div class="field glass" style="margin:12px 0;padding:14px 16px;border-radius:14px">
-<label class="lang-fa" style="font-weight:700">کاتالوگ سریال ترکی (F2Media)</label>
-<label class="lang-en" style="font-weight:700">Turkish series catalog (F2Media)</label>
-<label class="chk" style="display:flex;gap:8px;align-items:center;margin-top:8px"><input type="checkbox" id="f2turkishOn"/> <span class="lang-fa">فعال — بعد از ۱۰۱، قبل از انیمه؛ کاملاً جدا</span><span class="lang-en">Enable — after 101, before anime; isolated</span></label>
-<span class="hint lang-fa" style="display:block;margin-top:6px;font-size:.82rem;color:var(--m)">فقط لیست از دسته ترکی سایت. استریم همان F2Media. روی سرور عمومی: <code>ENABLE_F2_TURKISH=1</code></span>
-<span class="hint lang-en" style="display:block;margin-top:6px;font-size:.82rem;color:var(--m)">List only from F2 Turkish category. Streams unchanged. Server: <code>ENABLE_F2_TURKISH=1</code></span>
-</div>
 <div>
 <b class="lang-fa">فعال‌سازی کاتالوگ نماکده</b>
 <b class="lang-en">Enable Namakade catalogs</b>
-<span class="hint lang-fa" style="display:block;font-size:.82rem;color:var(--m);font-weight:500;margin-top:4px">سریال، نمایش خانگی، فیلم، ترکی، خارجی، پخش زنده — کاملاً جدا از ماهواره و پروایدرها. روی منیفست عمومی فقط با <code>ENABLE_NAMAKADE=1</code> در Vercel.</span>
-<span class="hint lang-en" style="display:block;font-size:.82rem;color:var(--m);font-weight:500;margin-top:4px">Series, shows, movies, Turkish, foreign, live — isolated. Public manifest only if <code>ENABLE_NAMAKADE=1</code> on Vercel.</span>
 </div>
 </label>
-<label class="lang-fa" style="display:block;font-size:.85rem;color:var(--m);margin:8px 0 4px">آدرس سایت نماکده (اگر عوض شد)</label>
-<label class="lang-en" style="display:block;font-size:.85rem;color:var(--m);margin:8px 0 4px">Namakade site URL (if domain changes)</label>
-<input id="namakadeUrl" data-k="NAMAKADE_BASEURL" placeholder="پیش‌فرض: https://namakade.com" autocomplete="off"/>
-<p class="note lang-fa" style="margin-top:8px">پیش‌فرض خاموش است. پوستر از خود سایت/TMDB؛ استریم مستقیم.</p>
-<p class="note lang-en" style="margin-top:8px">Off by default. Posters from site/TMDB; direct streams.</p>
+<label class="lang-fa" style="display:block;font-size:.85rem;color:var(--m);margin:8px 0 4px">آدرس سایت (اختیاری)</label>
+<label class="lang-en" style="display:block;font-size:.85rem;color:var(--m);margin:8px 0 4px">Site URL (optional)</label>
+<input id="namakadeUrl" data-k="NAMAKADE_BASEURL" placeholder="https://namakade.com" autocomplete="off"/>
 </div>
 
 <div class="cfg-item glass">
@@ -1067,7 +1067,7 @@ export function renderConfigurePage({
     el.textContent = text || '';
     el.style.color = ok ? '#5dcea0' : 'var(--m)';
   }
-  document.querySelectorAll('[data-prov], [data-k], #optStreamsOnly, #optDisableMeta, #optDisableCatalog, #optDisableSubs, #optIptv, #optNamakade, input[name="metaLang"], input[name="addonLang"]').forEach(function (el) {
+  document.querySelectorAll('[data-prov], [data-k], #optStreamsOnly, #optDisableMeta, #optDisableCatalog, #optDisableSubs, #optIptv, #optNamakade, #f2turkishOn, input[name="metaLang"], input[name="addonLang"]').forEach(function (el) {
     el.addEventListener('change', refresh);
     el.addEventListener('input', refresh);
   });
