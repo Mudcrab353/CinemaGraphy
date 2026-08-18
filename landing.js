@@ -59,14 +59,14 @@ export function renderLandingPage({
   manifestUrl = PUBLIC_INSTALL,
   installUrl,
   logoUrl = '/logo.png',
-  version = '2.1.41',
+  version = '2.1.55',
 } = {}) {
   const m = escapeHtml(manifestUrl || PUBLIC_INSTALL)
   const install = escapeHtml(
     installUrl || `stremio://${String(manifestUrl || PUBLIC_INSTALL).replace(/^https?:\/\//i, '')}`,
   )
   const logo = escapeHtml(logoUrl || LOGO_FALLBACK)
-  const ver = escapeHtml(String(version || '2.1.41'))
+  const ver = escapeHtml(String(version || '2.1.55'))
 
   const addonCards = RECOMMENDED.map(
     (a) => `
@@ -654,11 +654,11 @@ h2{font-size:1.05rem;margin:0 0 10px;overflow-wrap:anywhere}
 
 export function renderConfigurePage({
   logoUrl = '/logo.png',
-  version = '2.1.41',
+  version = '2.1.55',
   origin = PUBLIC_SITE,
 } = {}) {
   const logo = escapeHtml(logoUrl || LOGO_FALLBACK)
-  const ver = escapeHtml(String(version || '2.1.41'))
+  const ver = escapeHtml(String(version || '2.1.55'))
   const originClean = String(origin || PUBLIC_SITE).replace(/\/$/, '')
   const base = escapeHtml(originClean)
   const baseJson = JSON.stringify(originClean)
@@ -852,33 +852,34 @@ export function renderConfigurePage({
 <div>
 <b class="lang-fa">فعال‌سازی کاتالوگ ماهواره (IPTV Bridge)</b>
 <b class="lang-en">Enable IPTV / satellite catalogs</b>
-<span class="hint lang-fa" style="display:block;font-size:.82rem;color:var(--m);font-weight:500;margin-top:4px">بدون تیک = ماهواره در این منیفست نیست. با تیک = پیش‌فرض سرور لود می‌شود مگر لینک زیر را عوض کنید.</span>
-<span class="hint lang-en" style="display:block;font-size:.82rem;color:var(--m);font-weight:500;margin-top:4px">Off = no IPTV in this install. On = server default, or your URL below.</span>
+<span class="hint lang-fa" style="display:block;font-size:.82rem;color:var(--m);font-weight:500;margin-top:4px">بدون تیک = ماهواره در منیفست نیست. با تیک = پیش‌فرض سرور مگر لینک زیر را عوض کنید.</span>
+<span class="hint lang-en" style="display:block;font-size:.82rem;color:var(--m);font-weight:500;margin-top:4px">Off = no satellite catalogs. On = server default unless you set a custom URL.</span>
 </div>
 </label>
-<div class="cfg-item" style="margin:0;padding:0;background:transparent;border:none;box-shadow:none">
-<div class="top"><code>CATALOG_IPTVBRIDGE_MANIFEST_URL</code><span class="diff e"><span class="lang-fa">آسان</span><span class="lang-en">Easy</span></span></div>
-<div class="hint"><span class="lang-fa">اختیاری — خالی = پیش‌فرض سرور (وقتی تیک روشن است). پر = جایگزین کامل.</span><span class="lang-en">Optional — empty = server default when enabled; filled = replaces default.</span></div>
-<input id="iptvUrl" data-k="CATALOG_IPTVBRIDGE_MANIFEST_URL" placeholder="خالی = پیش‌فرض iptvbridge.vercel.app — یا manifest اختصاصی" autocomplete="off"/>
-<p class="note lang-fa" style="margin-top:8px">کاتالوگ ماهواره جدا از پروایدرهای فیلم است و همیشه <b>آخر لیست</b> می‌آید. تیک را بزنید تا لود شود.</p>
+<label class="lang-fa" style="display:block;font-size:.85rem;color:var(--m);margin:8px 0 4px">لینک منیفست IPTV (اختیاری)</label>
+<label class="lang-en" style="display:block;font-size:.85rem;color:var(--m);margin:8px 0 4px">IPTV manifest URL (optional)</label>
+<input id="iptvUrl" data-k="CATALOG_IPTVBRIDGE_MANIFEST_URL" placeholder="خالی = پیش‌فرض iptvbridge.vercel.app" autocomplete="off"/>
+<p class="note lang-fa" style="margin-top:8px">کاتالوگ ماهواره جدا از پروایدرهای فیلم است و <b>آخر لیست</b> می‌آید.</p>
+<p class="note lang-en" style="margin-top:8px">IPTV stays separate from movie providers and is listed <b>last</b>.</p>
 </div>
-<div class="card" style="margin-top:14px">
-<h2 class="lang-fa" style="margin-top:0">نمکده — محتوای ایرانی</h2>
-<h2 class="lang-en" style="margin-top:0">Namakade — Iranian only</h2>
-<label class="chk" style="display:flex;gap:10px;align-items:flex-start;margin:12px 0">
-<input type="checkbox" id="optNamakade"/>
-<span>
-<b class="lang-fa">فعال‌سازی کاتالوگ نمکده (سریال / نمایش خانگی / فیلم ایرانی)</b>
-<b class="lang-en">Enable Namakade catalogs (series / home shows / Iranian movies)</b>
-<span class="hint lang-fa" style="display:block;font-size:.82rem;color:var(--m);font-weight:500;margin-top:4px">جدا از همه پروایدرها و ماهواره — فقط محتوای ایرانی. پیش‌فرض خاموش است.</span>
-<span class="hint lang-en" style="display:block;font-size:.82rem;color:var(--m);font-weight:500;margin-top:4px">Isolated from other providers — Iranian content only. Off by default.</span>
-</span>
-</label>
-<input id="namakadeUrl" data-k="NAMAKADE_BASEURL" placeholder="خالی = namakade.com" autocomplete="off" style="width:100%;margin-top:6px"/>
-<p class="note lang-fa" style="margin-top:8px">فقط ۳ کاتالوگ: سریال‌ونمایش، فیلم ایرانی، پخش زنده — بدون ترکی/خارجی. پوسترها پروکسی می‌شوند. برای منیفست عمومی در Vercel: <code>ENABLE_NAMAKADE=1</code>.</p>
 
-<p class="note lang-en" style="margin-top:8px">IPTV catalogs are separate from movie providers and always listed <b>last</b>. Enable the checkbox to load them.</p>
+<div class="glass" style="padding:16px;margin-bottom:16px">
+<h2 class="lang-fa" style="margin-top:0">نماکده</h2>
+<h2 class="lang-en" style="margin-top:0">Namakade</h2>
+<label class="tog" style="display:flex;gap:12px;align-items:flex-start;padding:12px 0;cursor:pointer">
+<input type="checkbox" id="optNamakade" style="width:18px;height:18px;margin-top:3px;accent-color:#5dcea0;flex-shrink:0"/>
+<div>
+<b class="lang-fa">فعال‌سازی کاتالوگ نماکده</b>
+<b class="lang-en">Enable Namakade catalogs</b>
+<span class="hint lang-fa" style="display:block;font-size:.82rem;color:var(--m);font-weight:500;margin-top:4px">سریال، نمایش خانگی، فیلم، ترکی، خارجی، پخش زنده — کاملاً جدا از ماهواره و پروایدرها. روی منیفست عمومی فقط با <code>ENABLE_NAMAKADE=1</code> در Vercel.</span>
+<span class="hint lang-en" style="display:block;font-size:.82rem;color:var(--m);font-weight:500;margin-top:4px">Series, shows, movies, Turkish, foreign, live — isolated. Public manifest only if <code>ENABLE_NAMAKADE=1</code> on Vercel.</span>
 </div>
+</label>
+<label class="lang-fa" style="display:block;font-size:.85rem;color:var(--m);margin:8px 0 4px">آدرس سایت نماکده (اگر عوض شد)</label>
+<label class="lang-en" style="display:block;font-size:.85rem;color:var(--m);margin:8px 0 4px">Namakade site URL (if domain changes)</label>
+<input id="namakadeUrl" data-k="NAMAKADE_BASEURL" placeholder="پیش‌فرض: https://namakade.com" autocomplete="off"/>
+<p class="note lang-fa" style="margin-top:8px">پیش‌فرض خاموش است. پوستر از خود سایت/TMDB؛ استریم مستقیم.</p>
+<p class="note lang-en" style="margin-top:8px">Off by default. Posters from site/TMDB; direct streams.</p>
 </div>
 
 <div class="cfg-item glass">
@@ -998,7 +999,7 @@ export function renderConfigurePage({
     var iptvEl = document.getElementById('optIptv');
     if (iptvEl) iptvEl.checked = o.ENABLE_IPTV === '1' || o.ENABLE_IPTV === 'true' || Boolean(o.CATALOG_IPTVBRIDGE_MANIFEST_URL);
     var nkEl = document.getElementById('optNamakade');
-    if (nkEl) nkEl.checked = o.ENABLE_NAMAKADE === '1' || o.ENABLE_NAMAKADE === 'true' || Boolean(o.NAMAKADE_BASEURL);
+    if (nkEl) nkEl.checked = o.ENABLE_NAMAKADE === '1' || o.ENABLE_NAMAKADE === 'true';
     var metaVal = (o.META_LANG === 'en') ? 'en' : 'fa';
     document.querySelectorAll('input[name="metaLang"]').forEach(function (r) { r.checked = r.value === metaVal; });
     var addVal = (o.ADDON_LANG === 'en') ? 'en' : 'fa';
@@ -1054,7 +1055,7 @@ export function renderConfigurePage({
     el.textContent = text || '';
     el.style.color = ok ? '#5dcea0' : 'var(--m)';
   }
-  document.querySelectorAll('[data-prov], [data-k], #optStreamsOnly, #optDisableMeta, #optDisableCatalog, #optDisableSubs, #optIptv, input[name="metaLang"], input[name="addonLang"]').forEach(function (el) {
+  document.querySelectorAll('[data-prov], [data-k], #optStreamsOnly, #optDisableMeta, #optDisableCatalog, #optDisableSubs, #optIptv, #optNamakade, input[name="metaLang"], input[name="addonLang"]').forEach(function (el) {
     el.addEventListener('change', refresh);
     el.addEventListener('input', refresh);
   });
@@ -1100,7 +1101,7 @@ export function renderConfigurePage({
     try { localStorage.removeItem(STORE); } catch (e) {}
     applyObj({});
     document.querySelectorAll('[data-prov]').forEach(function (cb) { cb.checked = false; });
-    ['optStreamsOnly','optDisableMeta','optDisableCatalog','optDisableSubs','optIptv'].forEach(function (id) {
+    ['optStreamsOnly','optDisableMeta','optDisableCatalog','optDisableSubs','optIptv','optNamakade'].forEach(function (id) {
       var el = document.getElementById(id); if (el) { el.checked = false; el.disabled = false; }
     });
     refresh();
@@ -1131,11 +1132,11 @@ export function renderConfigurePage({
 
 export function renderGuidePage({
   logoUrl = '/logo.png',
-  version = '2.1.41',
+  version = '2.1.55',
   manifestUrl = PUBLIC_INSTALL,
 } = {}) {
   const logo = escapeHtml(logoUrl || LOGO_FALLBACK)
-  const ver = escapeHtml(String(version || '2.1.41'))
+  const ver = escapeHtml(String(version || '2.1.55'))
   const install = escapeHtml(
     'stremio://' + String(manifestUrl || PUBLIC_INSTALL).replace(/^https?:\/\//i, ''),
   )
