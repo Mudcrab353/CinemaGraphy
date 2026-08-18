@@ -22,6 +22,12 @@ import {
     NAMAKADE_PREFIX,
     decodeMediaProxyToken,
 } from './sources/namakade.js'
+import {
+    isF2TurkishEnabled,
+    f2turkishManifestCatalogs,
+    f2turkishListCatalog,
+    F2TURKISH_CATALOG_ID,
+} from './sources/f2turkish.js'
 import Donyayeserial from './sources/donyayeserial.js'
 import F2Media, {DEFAULT_F2MEDIA_BASEURL} from './sources/f2media.js'
 import Peepboxtv from './sources/peepboxtv.js'
@@ -30,7 +36,7 @@ import {ID_SEPARATOR, METADATA_SOURCE} from './sources/source.js'
 import {findExternalMetaSource, findExternalStreamSource, formatStreamTitle, getCinemeta, getExternalCatalogSources, getExternalCatalogStatus, invalidateExternalCatalogCache, getKitsuTitle, getSubtitle, getTMDBMetaFa, enrichMetaWithFaTmdb, enrichCatalogMetasWithoutRpdb, getTMDBMetaByTmdbId, getTMDBDetails, getTMDBTitle, getLandingTmdbCatalogs, getTorrentStreams, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxyExternalStream, proxySubtitles, translateCatalogName, buildOrderedExternalCatalogs, classifyExternalCatalogSource, rewriteTmdbImageUrls, parseTmdbImageProxyPath, tmdbRequest, setMetaLangPref, setUiLangPref} from './utils.js'
 
 export const ADDON_PREFIX = 'ip'
-export const ADDON_VERSION = '2.1.62'
+export const ADDON_VERSION = '2.1.65'
 
 
 const PROVIDER_BASEURL_KEYS = [
@@ -1154,10 +1160,26 @@ addon.get(/^\/api\/tmdb-image\/([^/]+)\/(.+)$/, async (req, res) => {
                 }
                 if (!disableCatalog || iptvEnabled) {
                     const catalogLang = String(activeEnv.ADDON_LANG || 'fa').trim().toLowerCase().startsWith('en') ? 'en' : 'fa'
-                    manifest.catalogs.push(...buildOrderedExternalCatalogs(externalSources, (catalog) => ({
+                    const orderedExternal = buildOrderedExternalCatalogs(externalSources, (catalog) => ({
                         ...catalog,
                         name: translateCatalogName(catalog.name, catalog.type, catalogLang),
-                    })))
+                    }))
+                    // F2 Turkish: after 101/AIO, before anime — isolated, ENABLE_F2_TURKISH only
+                    if (isF2TurkishEnabled(activeEnv) && !disableCatalog) {
+                        const trLang = catalogLang
+                        const trCats = f2turkishManifestCatalogs(activeEnv, trLang)
+                        let insertAt = orderedExternal.findIndex((c) =>
+                            /anime|انیمه|myanimelist|kitsu|mal[_-]/i.test(`${c?.name || ''} ${c?.id || ''}`),
+                        )
+                        if (insertAt < 0) {
+                            insertAt = orderedExternal.findIndex((c) =>
+                                /iptv|ماهواره|satellite/i.test(`${c?.name || ''} ${c?.id || ''}`),
+                            )
+                        }
+                        if (insertAt < 0) insertAt = orderedExternal.length
+                        orderedExternal.splice(insertAt, 0, ...trCats)
+                    }
+                    manifest.catalogs.push(...orderedExternal)
                     // Namakade always last (after IPTV / platforms) — isolated Iranian catalogs
                     if (isNamakadeEnabled(activeEnv)) {
                         const nkLang = String(activeEnv.ADDON_LANG || 'fa').trim().toLowerCase().startsWith('en') ? 'en' : 'fa'
@@ -1181,6 +1203,17 @@ addon.get(/^\/api\/tmdb-image\/([^/]+)\/(.+)$/, async (req, res) => {
             const streamsOnly = isConfigFlagOn(activeEnv, 'STREAMS_ONLY')
             const disableCatalog = streamsOnly || isConfigFlagOn(activeEnv, 'DISABLE_CATALOG')
             // Isolated Namakade catalogs (no external proxy)
+            if (String(req.params.id || '') === F2TURKISH_CATALOG_ID && isF2TurkishEnabled(activeEnv)) {
+                try {
+                    const search = (req.query || {}).search || ''
+                    const data = await f2turkishListCatalog(req.params.id, search, activeEnv, axios)
+                    return jsonWithTmdbImages(req, res, data || {metas: []}, 'public, max-age=300')
+                } catch (err) {
+                    logger.error?.({err: err?.message}, 'F2Turkish catalog failed')
+                    return res.json({metas: []})
+                }
+            }
+
             if (String(req.params.id || '').startsWith('namakade_') && isNamakadeEnabled(activeEnv)) {
                 try {
                     const search = (req.query || {}).search || ''

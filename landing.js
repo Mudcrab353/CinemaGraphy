@@ -868,6 +868,14 @@ export function renderConfigurePage({
 <h2 class="lang-en" style="margin-top:0">Namakade</h2>
 <label class="tog" style="display:flex;gap:12px;align-items:flex-start;padding:12px 0;cursor:pointer">
 <input type="checkbox" id="optNamakade" style="width:18px;height:18px;margin-top:3px;accent-color:#5dcea0;flex-shrink:0"/>
+
+<div class="field glass" style="margin:12px 0;padding:14px 16px;border-radius:14px">
+<label class="lang-fa" style="font-weight:700">کاتالوگ سریال ترکی (F2Media)</label>
+<label class="lang-en" style="font-weight:700">Turkish series catalog (F2Media)</label>
+<label class="chk" style="display:flex;gap:8px;align-items:center;margin-top:8px"><input type="checkbox" id="f2turkishOn"/> <span class="lang-fa">فعال — بعد از ۱۰۱، قبل از انیمه؛ کاملاً جدا</span><span class="lang-en">Enable — after 101, before anime; isolated</span></label>
+<span class="hint lang-fa" style="display:block;margin-top:6px;font-size:.82rem;color:var(--m)">فقط لیست از دسته ترکی سایت. استریم همان F2Media. روی سرور عمومی: <code>ENABLE_F2_TURKISH=1</code></span>
+<span class="hint lang-en" style="display:block;margin-top:6px;font-size:.82rem;color:var(--m)">List only from F2 Turkish category. Streams unchanged. Server: <code>ENABLE_F2_TURKISH=1</code></span>
+</div>
 <div>
 <b class="lang-fa">فعال‌سازی کاتالوگ نماکده</b>
 <b class="lang-en">Enable Namakade catalogs</b>
@@ -969,6 +977,8 @@ export function renderConfigurePage({
     if (iptv && iptv.checked) o.ENABLE_IPTV = '1';
     var nk = document.getElementById('optNamakade');
     if (nk && nk.checked) o.ENABLE_NAMAKADE = '1';
+    const f2t = document.getElementById('f2turkishOn');
+    if (f2t && f2t.checked) o.ENABLE_F2_TURKISH = '1';
     var metaR = document.querySelector('input[name="metaLang"]:checked');
     if (metaR && metaR.value === 'en') o.META_LANG = 'en';
     var addR = document.querySelector('input[name="addonLang"]:checked');
@@ -1000,6 +1010,8 @@ export function renderConfigurePage({
     if (iptvEl) iptvEl.checked = o.ENABLE_IPTV === '1' || o.ENABLE_IPTV === 'true' || Boolean(o.CATALOG_IPTVBRIDGE_MANIFEST_URL);
     var nkEl = document.getElementById('optNamakade');
     if (nkEl) nkEl.checked = o.ENABLE_NAMAKADE === '1' || o.ENABLE_NAMAKADE === 'true';
+    const f2tEl = document.getElementById('f2turkishOn');
+    if (f2tEl) f2tEl.checked = o.ENABLE_F2_TURKISH === '1' || o.ENABLE_F2_TURKISH === 'true';
     var metaVal = (o.META_LANG === 'en') ? 'en' : 'fa';
     document.querySelectorAll('input[name="metaLang"]').forEach(function (r) { r.checked = r.value === metaVal; });
     var addVal = (o.ADDON_LANG === 'en') ? 'en' : 'fa';
