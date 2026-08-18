@@ -1,3 +1,5 @@
+import http from 'http'
+import https from 'https'
 import {load} from 'cheerio'
 
 import Source from './source.js'
@@ -83,32 +85,103 @@ export default class HtmlSource extends Source {
         const url = new URL(pagePath, `${this.baseUrl}/`).toString()
         const headers = {
             ...defaults.headers,
-            ...config.headers,
+            ...(config.headers || {}),
             'Accept-Language': 'fa-IR,fa;q=0.9,en;q=0.8',
-            Referer: `${this.baseUrl}/`,
+            Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            Referer: `${String(this.baseUrl).replace(/\/+$/, '')}/`,
         }
-        // Series download boxes are large; HTTP/2 from some hosts truncates the body.
-        // Prefer a longer timeout and accept partial HTML rather than failing hard.
-        const timeout = Math.max(Number(config.timeout) || Number(defaults.timeout) || 20_000, 25_000)
-        try {
-            const response = await this.httpClient.get(url, {
-                ...defaults,
-                ...config,
-                headers,
-                timeout,
-                maxContentLength: 8_000_000,
-                maxBodyLength: 8_000_000,
-                // validateStatus: accept 200 only
-                decompress: true,
+        const isSeries = /\/series\//i.test(pagePath)
+        // Series pages are huge; take partial HTML instead of waiting for a clean close.
+        const timeout = Math.max(
+            Number(config.timeout) || 0,
+            isSeries ? 18_000 : Number(defaults.timeout) || REQUEST_TIMEOUT_MS,
+        )
+
+        const html = await this._getHtmlPartial(url, {headers, timeout, isSeries})
+        return html ? load(html) : null
+    }
+
+    /**
+     * HTTP/1.1 read with early resolve once enough media links exist.
+     * Avoids hanging/truncated large F2M series pages.
+     */
+    _getHtmlPartial(url, {headers, timeout, isSeries}) {
+        return new Promise((resolve, reject) => {
+            let settled = false
+            let data = ''
+            const lib = String(url).startsWith('https') ? https : http
+            const req = lib.get(url, {headers, timeout}, (res) => {
+                const status = res.statusCode || 0
+                if (status >= 400) {
+                    settled = true
+                    res.resume()
+                    reject(new Error(`HTTP ${status}`))
+                    return
+                }
+                res.setEncoding('utf8')
+                res.on('data', (chunk) => {
+                    data += chunk
+                    if (!isSeries || settled) return
+                    const mkv = (data.match(/\.mkv/gi) || []).length
+                    if (mkv >= 8 && /download-season|series-downloaditems|S\d{2}E\d{2}/i.test(data)) {
+                        settled = true
+                        try {
+                            res.destroy()
+                        } catch {
+                            /* ignore */
+                        }
+                        try {
+                            req.destroy()
+                        } catch {
+                            /* ignore */
+                        }
+                        resolve(data)
+                    }
+                })
+                res.on('end', () => {
+                    if (!settled) {
+                        settled = true
+                        resolve(data)
+                    }
+                })
+                res.on('error', (err) => {
+                    if (!settled) {
+                        settled = true
+                        if (data.length > 2000) resolve(data)
+                        else reject(err)
+                    }
+                })
             })
-            return typeof response.data === 'string' ? load(response.data) : null
-        } catch (err) {
-            // Axios may throw on truncated response but still have partial data
-            const partial = err?.response?.data
-            if (typeof partial === 'string' && partial.length > 1000) {
-                return load(partial)
-            }
-            throw err
-        }
+            req.on('error', (err) => {
+                if (!settled) {
+                    settled = true
+                    if (data.length > 2000) resolve(data)
+                    else reject(err)
+                }
+            })
+            req.on('timeout', () => {
+                try {
+                    req.destroy()
+                } catch {
+                    /* ignore */
+                }
+                if (!settled) {
+                    settled = true
+                    if (data.length > 2000) resolve(data)
+                    else reject(new Error('timeout'))
+                }
+            })
+            setTimeout(() => {
+                if (settled) return
+                settled = true
+                try {
+                    req.destroy()
+                } catch {
+                    /* ignore */
+                }
+                if (data.length > 2000) resolve(data)
+                else reject(new Error('timeout'))
+            }, timeout + 500)
+        })
     }
 }

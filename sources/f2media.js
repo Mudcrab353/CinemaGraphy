@@ -234,7 +234,9 @@ function parseF2MediaSeriesDetail($, path) {
     const imdbHref = $('a[href*="imdb.com/title/tt"]').first().attr('href') ?? ''
     const imdbId = imdbHref.match(/\/title\/(tt\d+)/)?.[1] ?? null
     const title = normalizeText($('h1.entry-title').first().text())
-    const links = parseSeriesLinks($)
+    const structured = parseSeriesLinks($)
+    const fromHtml = parseSeriesLinksFromHtml($.root().html() || '')
+    const links = uniqueLinks([...structured, ...fromHtml], (item) => `${item.season}:${item.episode}:${item.url}`)
     return {path, title, imdbId, isSeries: true, links}
 }
 
