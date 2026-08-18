@@ -177,7 +177,49 @@ function parseSeriesLinks($) {
             })
         })
     })
-    return uniqueLinks(links, (item) => `${item.season}:${item.episode}:${item.url}`)
+    if (links.length) {
+        return uniqueLinks(links, (item) => `${item.season}:${item.episode}:${item.url}`)
+    }
+    // HTTP/2 often truncates large series pages before the download box.
+    // Recover links from whatever HTML we did receive (filenames encode SxxExx).
+    return uniqueLinks(parseSeriesLinksFromHtml($.root().html() || ''), (item) => `${item.season}:${item.episode}:${item.url}`)
+}
+
+function parseSeriesLinksFromHtml(html) {
+    const links = []
+    const seen = new Set()
+    const blob = String(html || '')
+    // Direct hrefs and handleDownloadClick('url')
+    const patterns = [
+        /href=["'](https?:\/\/[^"']+?\.(?:mkv|mp4)[^"']*)["']/gi,
+        /handleDownloadClick\(\s*['"](https?:\/\/[^'"]+?\.(?:mkv|mp4)[^'"]*)['"]/gi,
+    ]
+    for (const re of patterns) {
+        let m
+        while ((m = re.exec(blob))) {
+            const url = m[1]
+            if (!url || seen.has(url)) continue
+            seen.add(url)
+            const se = url.match(/[._\-]S(\d{1,2})E(\d{1,3})[._\-]/i)
+            const season = se ? Number(se[1]) : 1
+            const episode = se ? Number(se[2]) : null
+            if (!episode) continue
+            const quality = extractQualityFromFilename(url) || ''
+            const audioType = /farsi\.?dub|dubbed/i.test(url)
+                ? 'dubbed'
+                : (/farsi\.?sub|hardsub|sub/i.test(url) ? 'subtitled' : null)
+            links.push({
+                season,
+                episode,
+                quality: quality || null,
+                size: null,
+                audioType,
+                url,
+                title: [`S${season}E${String(episode).padStart(2, '0')}`, quality].filter(Boolean).join(' - '),
+            })
+        }
+    }
+    return links
 }
 
 function parseF2MediaMovieDetail($, path) {
@@ -367,7 +409,10 @@ export default class F2Media extends HtmlSource {
     }
 
     getSeriesLinks(movieData, videoId) {
-        const [, seasonText, episodeText] = String(videoId ?? '').split(':')
+        // videoId = `${pageId}:${season}:${episode}` — pageId is base64url (no ':')
+        const parts = String(videoId ?? '').split(':')
+        const episodeText = parts.length >= 3 ? parts[parts.length - 1] : ''
+        const seasonText = parts.length >= 3 ? parts[parts.length - 2] : ''
         const season = Number(seasonText)
         const episode = Number(episodeText)
         if (!Number.isInteger(season) || !Number.isInteger(episode) || season < 0 || episode < 1) {
@@ -375,8 +420,7 @@ export default class F2Media extends HtmlSource {
         }
         const links = this.getMovieLinks(movieData)
         let matched = links.filter((item) => item.season === season && item.episode === episode)
-        // Some F2M series pages label a single block "فصل اول" / S01 even when the
-        // page is a later season (e.g. Reacher S4). Fall back by episode only.
+        // Some F2M series pages only expose S01-style files on a later-season page.
         if (!matched.length) {
             matched = links.filter((item) => item.episode === episode)
         }

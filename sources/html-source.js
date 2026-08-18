@@ -80,11 +80,35 @@ export default class HtmlSource extends Source {
         }
 
         const defaults = this.requestConfig()
-        const response = await this.httpClient.get(new URL(pagePath, `${this.baseUrl}/`).toString(), {
-            ...defaults,
-            ...config,
-            headers: {...defaults.headers, ...config.headers},
-        })
-        return typeof response.data === 'string' ? load(response.data) : null
+        const url = new URL(pagePath, `${this.baseUrl}/`).toString()
+        const headers = {
+            ...defaults.headers,
+            ...config.headers,
+            'Accept-Language': 'fa-IR,fa;q=0.9,en;q=0.8',
+            Referer: `${this.baseUrl}/`,
+        }
+        // Series download boxes are large; HTTP/2 from some hosts truncates the body.
+        // Prefer a longer timeout and accept partial HTML rather than failing hard.
+        const timeout = Math.max(Number(config.timeout) || Number(defaults.timeout) || 20_000, 25_000)
+        try {
+            const response = await this.httpClient.get(url, {
+                ...defaults,
+                ...config,
+                headers,
+                timeout,
+                maxContentLength: 8_000_000,
+                maxBodyLength: 8_000_000,
+                // validateStatus: accept 200 only
+                decompress: true,
+            })
+            return typeof response.data === 'string' ? load(response.data) : null
+        } catch (err) {
+            // Axios may throw on truncated response but still have partial data
+            const partial = err?.response?.data
+            if (typeof partial === 'string' && partial.length > 1000) {
+                return load(partial)
+            }
+            throw err
+        }
     }
 }
