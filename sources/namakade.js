@@ -631,7 +631,18 @@ export async function namakadeGetStreams(id, env, httpClient) {
                 name: q ? `نماکده ${q}` : i === 0 ? 'نماکده' : `نماکده ${i + 1}`,
                 title: `نماکده\n${line2}`,
                 url,
-                behaviorHints: {bingeGroup: 'namakade', notWebReady: false},
+                // CDN often requires site Referer; without it some clients only get a short bumper / fail.
+                behaviorHints: {
+                    bingeGroup: 'namakade',
+                    notWebReady: false,
+                    proxyHeaders: {
+                        request: {
+                            Referer: base + '/',
+                            Origin: base,
+                            'User-Agent': UA,
+                        },
+                    },
+                },
             }
         }),
     }
