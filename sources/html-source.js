@@ -57,7 +57,13 @@ export default class HtmlSource extends Source {
 
         try {
             const url = new URL(value, `${this.baseUrl}/`)
-            return url.origin === new URL(this.baseUrl).origin ? url.pathname : null
+            const base = new URL(this.baseUrl)
+            // Accept www / non-www and http/https variants of the same host
+            const norm = (host) => String(host || '').replace(/^www\./i, '').toLowerCase()
+            if (norm(url.hostname) !== norm(base.hostname)) {
+                return null
+            }
+            return url.pathname
         } catch {
             return null
         }

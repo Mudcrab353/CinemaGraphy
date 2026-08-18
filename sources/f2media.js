@@ -231,64 +231,40 @@ export default class F2Media extends HtmlSource {
             return []
         }
 
+        const tokens = query
+            .toLowerCase()
+            .replace(/[^\p{L}\p{N}\s]+/gu, ' ')
+            .split(/\s+/)
+            .filter((t) => t.length >= 2)
+
+        const nameMatches = (name) => {
+            const n = normalizeText(name).toLowerCase()
+            if (!n) return false
+            if (n.includes(query.toLowerCase())) return true
+            // All tokens present (order-independent) — handles "Ted Lasso" vs long FA titles
+            if (tokens.length && tokens.every((t) => n.includes(t))) return true
+            // At least one strong token (len>=4) for short queries
+            const strong = tokens.filter((t) => t.length >= 4)
+            return strong.length > 0 && strong.some((t) => n.includes(t))
+        }
+
         try {
             this.logger.debug('F2Media search started', {query, baseUrl: this.baseUrl})
-            const $ = await this.fetchDocument('/', {params: {s: query}})
-            if (!$) {
-                return []
-            }
 
-            const results = []
-            const q = query.toLowerCase()
-
-            $('article.entry a.stretched-link[rel="bookmark"]').each((_, anchor) => {
-                const item = $(anchor).closest('article.entry')
-                const href = $(anchor).attr('href')
-                const path = this.pagePath(href)
-                const id = this.pageId(path)
-                const name = normalizeText($(anchor).find('.entry-title').text())
-
-                if (!id || !name || !path) {
-                    return
-                }
-
-                if (!name.toLowerCase().includes(q)) {
-                    return
-                }
-
-                const type = path.startsWith('/series/') ? 'series' : 'movie'
-                if (!isDetailPath(type, path)) {
-                    return
-                }
-
-                const poster = item.find('figure.entry-cover img').first().attr('src') ?? null
-
-                results.push({
-                    id,
-                    name,
-                    poster,
-                    type,
-                    genres: [],
-                })
-            })
-
-            this.logger.debug('F2Media search completed', {query, resultCount: results.length, method: 'html'})
-            if (results.length > 0) {
-                return results
-            }
-
-            this.logger.debug('F2Media search falling back to REST API', {query})
-            const restUrl = `${this.baseUrl}/wp-json/wp/v2`
-            const lcQuery = query.toLowerCase()
+            // REST first — HTML search markup on myf2m.info no longer uses article.entry cards
+            const restUrl = `${this.baseUrl.replace(/\/+$/, '')}/wp-json/wp/v2`
             const fallbackResults = []
+            const seen = new Set()
 
             const [postsRes, seriesRes] = await Promise.allSettled([
-                this.httpClient.get(`${restUrl}/posts?search=${encodeURIComponent(query)}&per_page=10`, {
-                    timeout: 10_000,
+                this.httpClient.get(`${restUrl}/posts`, {
+                    params: {search: query, per_page: 15},
+                    timeout: 12_000,
                     headers: this.requestConfig().headers,
                 }),
-                this.httpClient.get(`${restUrl}/series?search=${encodeURIComponent(query)}&per_page=10`, {
-                    timeout: 10_000,
+                this.httpClient.get(`${restUrl}/series`, {
+                    params: {search: query, per_page: 15},
+                    timeout: 12_000,
                     headers: this.requestConfig().headers,
                 }),
             ])
@@ -302,26 +278,59 @@ export default class F2Media extends HtmlSource {
                     const path = this.pagePath(link)
                     const id = this.pageId(path)
                     const name = item.title?.rendered
-                        ? normalizeText(item.title.rendered).replace(/^(دانلود\s+(فیلم|سریال)\s+)/, '').trim()
+                        ? normalizeText(item.title.rendered)
+                              .replace(/^(دانلود\s+(فیلم|سریال|فصل)\s*)+/i, '')
+                              .trim()
                         : ''
-                    if (!id || !name || !name.toLowerCase().includes(lcQuery)) {
+                    if (!id || !name || !path || !nameMatches(name)) {
                         continue
                     }
-                    const type = path?.startsWith('/series/') ? 'series' : 'movie'
+                    const type = path.startsWith('/series/') ? 'series' : 'movie'
                     if (!isDetailPath(type, path)) {
                         continue
                     }
+                    if (seen.has(id)) continue
+                    seen.add(id)
                     const imgUrl = item.featured_media_url ?? item.jetpack_featured_media_url ?? null
                     fallbackResults.push({id, name, poster: imgUrl, type, genres: []})
                 }
             }
 
-            this.logger.debug('F2Media search completed', {
-                query,
-                resultCount: fallbackResults.length,
-                method: 'rest-api',
+            if (fallbackResults.length > 0) {
+                this.logger.debug('F2Media search completed', {
+                    query,
+                    resultCount: fallbackResults.length,
+                    method: 'rest-api',
+                })
+                return fallbackResults
+            }
+
+            // HTML fallback (older themes)
+            const $ = await this.fetchDocument('/', {params: {s: query}})
+            if (!$) {
+                return []
+            }
+            const results = []
+            $('article.entry a.stretched-link[rel="bookmark"], a.stretched-link[rel="bookmark"], .entry a[rel="bookmark"]').each((_, anchor) => {
+                const item = $(anchor).closest('article.entry, .entry, article')
+                const href = $(anchor).attr('href')
+                const path = this.pagePath(href)
+                const id = this.pageId(path)
+                const name = normalizeText(
+                    $(anchor).find('.entry-title').text()
+                        || $(anchor).attr('title')
+                        || $(anchor).text(),
+                )
+                if (!id || !name || !path || !nameMatches(name)) return
+                const type = path.startsWith('/series/') ? 'series' : 'movie'
+                if (!isDetailPath(type, path)) return
+                if (seen.has(id)) return
+                seen.add(id)
+                const poster = item.find('figure.entry-cover img, img').first().attr('src') ?? null
+                results.push({id, name, poster, type, genres: []})
             })
-            return fallbackResults
+            this.logger.debug('F2Media search completed', {query, resultCount: results.length, method: 'html'})
+            return results
         } catch (error) {
             logAxiosError(error, this.logger, 'F2Media search failed')
             return []
