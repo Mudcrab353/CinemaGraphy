@@ -94,7 +94,7 @@ export default class HtmlSource extends Source {
         // Series pages are huge; take partial HTML instead of waiting for a clean close.
         const timeout = Math.max(
             Number(config.timeout) || 0,
-            isSeries ? 18_000 : Number(defaults.timeout) || REQUEST_TIMEOUT_MS,
+            isSeries ? 22_000 : Number(defaults.timeout) || REQUEST_TIMEOUT_MS,
         )
 
         const html = await this._getHtmlPartial(url, {headers, timeout, isSeries})
@@ -122,21 +122,26 @@ export default class HtmlSource extends Source {
                 res.on('data', (chunk) => {
                     data += chunk
                     if (!isSeries || settled) return
+                    // Wait until multiple qualities (or end of download box) so we
+                    // do not stop after the first 1080p group only.
                     const mkv = (data.match(/\.mkv/gi) || []).length
-                    if (mkv >= 8 && /download-season|series-downloaditems|S\d{2}E\d{2}/i.test(data)) {
-                        settled = true
-                        try {
-                            res.destroy()
-                        } catch {
-                            /* ignore */
-                        }
-                        try {
-                            req.destroy()
-                        } catch {
-                            /* ignore */
-                        }
-                        resolve(data)
-                    }
+                    if (mkv < 12 && data.length < 80_000) return
+                    const qCount =
+                        (/480p/i.test(data) ? 1 : 0) +
+                        (/720p/i.test(data) ? 1 : 0) +
+                        (/1080p/i.test(data) ? 1 : 0)
+                    const boxEnd = /سریال[\u200c\s]*های[\u200c\s]*پیشنهادی|دیدگاه کاربران|comment-respond/i.test(data)
+                    const enough =
+                        boxEnd ||
+                        (mkv >= 40 && qCount >= 2) ||
+                        mkv >= 80 ||
+                        data.length > 400_000
+                    if (!enough) return
+                    if (!/download-season|series-downloaditems|S\d{2}E\d{2}/i.test(data)) return
+                    settled = true
+                    try { res.destroy() } catch { /* ignore */ }
+                    try { req.destroy() } catch { /* ignore */ }
+                    resolve(data)
                 })
                 res.on('end', () => {
                     if (!settled) {

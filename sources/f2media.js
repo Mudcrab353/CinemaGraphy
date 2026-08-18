@@ -104,12 +104,25 @@ function mediaUrl($element) {
 
 function blockAudioType(blockElement, $) {
     const classAttr = $(blockElement).attr('class') ?? ''
-    if (/dub/i.test(classAttr)) {
-        return 'dubbed'
-    }
-    if (/sub/i.test(classAttr)) {
-        return 'subtitled'
-    }
+    if (/dub/i.test(classAttr)) return 'dubbed'
+    if (/sub/i.test(classAttr)) return 'subtitled'
+    // Headers like "دوبله فارسی" / "زیرنویس فارسی" are previous siblings of each quality box
+    let text = normalizeText($(blockElement).text())
+    $(blockElement)
+        .prevAll()
+        .slice(0, 8)
+        .each((_, el) => {
+            text = `${normalizeText($(el).text())} ${text}`
+        })
+    if (/دوبله|دو\s*زبانه|farsi\.?dub|\bdubbed\b/i.test(text)) return 'dubbed'
+    if (/زیرنویس|hard\.?sub|farsi\.?sub|\bsubtitled\b/i.test(text)) return 'subtitled'
+    return null
+}
+
+function audioFromUrl(url) {
+    const u = String(url || '')
+    if (/farsi\.?dub|\bdubbed\b/i.test(u)) return 'dubbed'
+    if (/farsi\.?sub|hard\.?sub|hardsub|\bsubtitled\b/i.test(u)) return 'subtitled'
     return null
 }
 
@@ -138,8 +151,16 @@ function parseMovieLinks($) {
                 return
             }
             const quality = extractQualityFromFilename(url) || rawQ || ''
-            const titleParts = [quality, encoder, filenameFromUrl(url)].filter(Boolean)
-            links.push({url, quality: quality || null, audioType, title: titleParts.join(' - ')})
+            const resolvedAudio = audioFromUrl(url) || audioType
+            const audioLabel =
+                resolvedAudio === 'dubbed' ? 'دوبله' : resolvedAudio === 'subtitled' ? 'زیرنویس' : null
+            const titleParts = [quality, audioLabel, encoder].filter(Boolean)
+            links.push({
+                url,
+                quality: quality || null,
+                audioType: resolvedAudio,
+                title: titleParts.join(' · '),
+            })
         })
     })
     return uniqueLinks(links)
@@ -154,43 +175,52 @@ function parseSeriesLinks($) {
             seasonIndex + 1,
         )
 
-                $(seasonElement).find('.download-list').each((_, block) => {
+        $(seasonElement).find('.download-list').each((_, block) => {
             const audioType = blockAudioType(block, $)
-            const quality = normalizeText($(block).find('.text[dir="ltr"]').first().text())
+            const qualityLabel =
+                labeledFieldValue($, block, /کیفیت/) ||
+                normalizeText($(block).find('.text[dir="ltr"]').first().text())
             const size = labeledFieldValue($, block, /حجم/)
             const encoder = labeledFieldValue($, block, /انکودر/)
 
             $(block).find('.series-downloaditems .d-flex').each((episodeIndex, episodeElement) => {
-                const directLink = $(episodeElement).find('a.btn-default[href*="http"], a.btn-default[href*=".mkv"], a.btn-default[href*=".mp4"]').last()
-                const anyHttp = $(episodeElement).find('a[href*="http"]').filter((_, a) => /\.(mkv|mp4|m3u8)(\?|$)/i.test($(a).attr('href') || '')).last()
+                const directLink = $(episodeElement)
+                    .find('a.btn-default[href*="http"], a.btn-default[href*=".mkv"], a.btn-default[href*=".mp4"]')
+                    .last()
+                const anyHttp = $(episodeElement)
+                    .find('a[href*="http"]')
+                    .filter((_, a) => /\.(mkv|mp4|m3u8)(\?|$)/i.test($(a).attr('href') || ''))
+                    .last()
                 const fallbackLink = $(episodeElement).find('a[onclick*="handleDownloadClick"]').first()
-                const url = mediaUrl(directLink.length ? directLink : (anyHttp.length ? anyHttp : fallbackLink))
+                const url = mediaUrl(directLink.length ? directLink : anyHttp.length ? anyHttp : fallbackLink)
                 const episode =
-                    numberFromText(directLink.text())
-                    ?? numberFromText($(episodeElement).find('a.btn-default').last().text())
-                    ?? episodeIndex + 1
-                if (!url) {
-                    return
-                }
-                // URL first so each quality group keeps its real resolution
-                const resolvedQuality = extractQualityFromFilename(url) || quality || ''
-                const titleParts = [
-                    `S${season}E${String(episode).padStart(2, '0')}`,
-                    resolvedQuality,
-                    encoder,
-                    filenameFromUrl(url),
-                ].filter(Boolean)
+                    numberFromText(directLink.text()) ??
+                    numberFromText($(episodeElement).find('a.btn-default').last().text()) ??
+                    episodeIndex + 1
+                if (!url) return
+
                 const seFromUrl = String(url).match(/[._\-]S(\d{1,2})E(\d{1,3})[._\-]/i)
                 const seasonFinal = seFromUrl ? Number(seFromUrl[1]) : season
                 const episodeFinal = seFromUrl ? Number(seFromUrl[2]) : episode
+                // File name wins so 480p / 720p / 1080p stay separate streams
+                const resolvedQuality = extractQualityFromFilename(url) || qualityLabel || ''
+                const resolvedAudio = audioFromUrl(url) || audioType
+                const audioLabel =
+                    resolvedAudio === 'dubbed' ? 'دوبله' : resolvedAudio === 'subtitled' ? 'زیرنویس' : null
+                const titleParts = [
+                    `S${seasonFinal}E${String(episodeFinal).padStart(2, '0')}`,
+                    resolvedQuality,
+                    audioLabel,
+                    encoder,
+                ].filter(Boolean)
                 links.push({
                     season: seasonFinal,
                     episode: episodeFinal,
                     quality: resolvedQuality || null,
                     size: size || null,
-                    audioType,
+                    audioType: resolvedAudio,
                     url,
-                    title: titleParts.join(' - '),
+                    title: titleParts.join(' · '),
                 })
             })
         })
@@ -198,8 +228,7 @@ function parseSeriesLinks($) {
     if (links.length) {
         return uniqueLinks(links, (item) => `${item.season}:${item.episode}:${item.url}`)
     }
-    // HTTP/2 often truncates large series pages before the download box.
-    // Recover links from whatever HTML we did receive (filenames encode SxxExx).
+    // HTTP/2 often truncates large series pages — recover from raw hrefs
     return uniqueLinks(parseSeriesLinksFromHtml($.root().html() || ''), (item) => `${item.season}:${item.episode}:${item.url}`)
 }
 
@@ -207,7 +236,6 @@ function parseSeriesLinksFromHtml(html) {
     const links = []
     const seen = new Set()
     const blob = String(html || '')
-    // Direct hrefs and handleDownloadClick('url')
     const patterns = [
         /href=["'](https?:\/\/[^"']+?\.(?:mkv|mp4)[^"']*)["']/gi,
         /handleDownloadClick\(\s*['"](https?:\/\/[^'"]+?\.(?:mkv|mp4)[^'"]*)['"]/gi,
@@ -223,9 +251,9 @@ function parseSeriesLinksFromHtml(html) {
             const episode = se ? Number(se[2]) : null
             if (!episode) continue
             const quality = extractQualityFromFilename(url) || ''
-            const audioType = /farsi\.?dub|dubbed/i.test(url)
-                ? 'dubbed'
-                : (/farsi\.?sub|hardsub|sub/i.test(url) ? 'subtitled' : null)
+            const audioType = audioFromUrl(url)
+            const audioLabel =
+                audioType === 'dubbed' ? 'دوبله' : audioType === 'subtitled' ? 'زیرنویس' : null
             links.push({
                 season,
                 episode,
@@ -233,7 +261,9 @@ function parseSeriesLinksFromHtml(html) {
                 size: null,
                 audioType,
                 url,
-                title: [`S${season}E${String(episode).padStart(2, '0')}`, quality].filter(Boolean).join(' - '),
+                title: [`S${season}E${String(episode).padStart(2, '0')}`, quality, audioLabel]
+                    .filter(Boolean)
+                    .join(' · '),
             })
         }
     }
