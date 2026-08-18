@@ -57,22 +57,9 @@ function urlFromOnclick(value) {
 
 function extractQualityFromFilename(url) {
     const s = String(url ?? '')
-    // S01E01.720p.WEB-DL... or .../720p/... or _1080p_
-    const match = s.match(/(?:^|[._\-\/\s])((?:2160|1080|720|480|360)p)(?:[._\-\/\s]|$)/i)
-        || s.match(/\b((?:2160|1080|720|480|360)p)\b/i)
-        || s.match(/[._\-](\d{3,4}p)\b/i)
+    const match = s.match(/(?:^|[._\-\/])((?:2160|1080|720|480|360)p)(?:[._\-\/]|$)/i)
+        || s.match(/((?:2160|1080|720|480|360)p)/i)
     return match?.[1]?.toLowerCase() ?? null
-}
-
-/** Prefer a token that actually names a resolution / source. */
-function pickQualityLabel(...candidates) {
-    const cleaned = candidates.map((c) => normalizeText(c)).filter(Boolean)
-    for (const c of cleaned) {
-        if (/(?:2160|1080|720|480|360)\s*p|\b4k\b|blu-?ray|web-?dl|webrip|hdrip|hdtv/i.test(c)) {
-            return c
-        }
-    }
-    return cleaned[0] || ''
 }
 
 function filenameFromUrl(url) {
@@ -131,7 +118,7 @@ function parseMovieLinks($) {
             if (!url) {
                 return
             }
-            const quality = pickQualityLabel(extractQualityFromFilename(url), rawQ) || rawQ || extractQualityFromFilename(url) || ''
+            const quality = extractQualityFromFilename(url) || rawQ || ''
             const titleParts = [quality, encoder, filenameFromUrl(url)].filter(Boolean)
             links.push({url, quality: quality || null, audioType, title: titleParts.join(' - ')})
         })
@@ -147,19 +134,11 @@ function parseSeriesLinks($) {
             seasonIndex + 1,
         )
 
-        $(seasonElement).find('.download-list').each((_, block) => {
+                $(seasonElement).find('.download-list').each((_, block) => {
             const audioType = blockAudioType(block, $)
+            const quality = normalizeText($(block).find('.text[dir="ltr"]').first().text())
             const size = labeledFieldValue($, block, /حجم/)
             const encoder = labeledFieldValue($, block, /انکودر/)
-            // Quality often lives in a labeled row or the first LTR badge — do not
-            // reuse a single wrong page-level token across every quality group.
-            const qualityFromLabel = labeledFieldValue($, block, /کیفیت|quality/i)
-            const ltrTexts = []
-            $(block).find('.text[dir="ltr"]').each((__, el) => {
-                const tx = normalizeText($(el).text())
-                if (tx) ltrTexts.push(tx)
-            })
-            const blockQuality = pickQualityLabel(qualityFromLabel, ...ltrTexts)
 
             $(block).find('.series-downloaditems > .d-flex').each((episodeIndex, episodeElement) => {
                 const directLink = $(episodeElement).find('a.btn-default[href]').last()
@@ -169,11 +148,8 @@ function parseSeriesLinks($) {
                 if (!url) {
                     return
                 }
-                // Per-row hints (some themes put 720p on the episode row itself)
-                const rowText = normalizeText($(episodeElement).text())
-                const fromFile = extractQualityFromFilename(url)
-                const fromRow = pickQualityLabel(rowText)
-                const resolvedQuality = pickQualityLabel(fromFile, fromRow, blockQuality) || fromFile || blockQuality || ''
+                // URL first so each quality group keeps its real resolution
+                const resolvedQuality = extractQualityFromFilename(url) || quality || ''
                 const titleParts = [
                     `S${season}E${String(episode).padStart(2, '0')}`,
                     resolvedQuality,
