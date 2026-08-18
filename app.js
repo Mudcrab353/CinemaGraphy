@@ -30,7 +30,7 @@ import {ID_SEPARATOR, METADATA_SOURCE} from './sources/source.js'
 import {findExternalMetaSource, findExternalStreamSource, formatStreamTitle, getCinemeta, getExternalCatalogSources, getExternalCatalogStatus, invalidateExternalCatalogCache, getKitsuTitle, getSubtitle, getTMDBMetaFa, enrichMetaWithFaTmdb, enrichCatalogMetasWithoutRpdb, getTMDBMetaByTmdbId, getTMDBDetails, getTMDBTitle, getLandingTmdbCatalogs, getTorrentStreams, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxyExternalStream, proxySubtitles, translateCatalogName, buildOrderedExternalCatalogs, classifyExternalCatalogSource, rewriteTmdbImageUrls, parseTmdbImageProxyPath, tmdbRequest, setMetaLangPref, setUiLangPref} from './utils.js'
 
 export const ADDON_PREFIX = 'ip'
-export const ADDON_VERSION = '2.1.60'
+export const ADDON_VERSION = '2.1.61'
 
 
 const PROVIDER_BASEURL_KEYS = [
@@ -715,8 +715,10 @@ async function streamsByTitle(title, type, season, episode, providers) {
         return cached.streams
     }
 
-    // Enough budget for search + detail (F2Media may also hit REST fallback).
-    const PROVIDER_BUDGET_MS = Number(process.env.PROVIDER_TIMEOUT_MS) || 14_000
+    // Series detail pages (esp. F2Media) are large and often need longer than movies.
+    // Env PROVIDER_TIMEOUT_MS still overrides when set.
+    const PROVIDER_BUDGET_MS = Number(process.env.PROVIDER_TIMEOUT_MS)
+        || (type === 'series' ? 28_000 : 14_000)
     const queries = searchQueryVariants(title)
 
     const settled = await Promise.allSettled(
