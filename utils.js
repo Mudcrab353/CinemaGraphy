@@ -1907,12 +1907,7 @@ export function formatStreamTitle({providerKey, quality, size, audioType, extraT
     const ui = streamUi()
     const providerLabel = providerDisplayLabel(providerKey)
     const emoji = PROVIDER_EMOJI[providerKey] || '📡'
-    const qualityText = quality ? String(quality).trim() : ''
-    const fileText = filenameTextFromUrl(url)
-    // Prefer explicit provider quality string for resolution so a wrong shared
-    // label cannot be overridden by a noisy filename — but if quality lacks
-    // 720p/1080p, fall back to the filename.
-    const combinedText = [qualityText, extraText, fileText].filter(Boolean).join(' ')
+    const combinedText = [quality, extraText, filenameTextFromUrl(url)].filter(Boolean).join(' ')
     const displaySize = cleanSize(size) || detectSize(combinedText)
     const isCensored = PROVIDER_CENSORED[providerKey] === true
     const statusLine = providerKey === 'torrent'
@@ -1934,9 +1929,9 @@ export function formatStreamTitle({providerKey, quality, size, audioType, extraT
         return lines.join('\n')
     }
 
-    const resolution = detectResolution(qualityText) || detectResolution(fileText) || detectResolution(combinedText)
+    const resolution = detectResolution(combinedText)
     const extras = detectExtras(combinedText)
-    const source = detectSource(qualityText) || detectSource(fileText) || detectSource(combinedText)
+    const source = detectSource(combinedText)
     const codec = detectCodec(combinedText)
     const audio = detectAudio(combinedText, audioType)
 
