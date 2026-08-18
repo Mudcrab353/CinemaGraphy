@@ -718,7 +718,7 @@ async function streamsByTitle(title, type, season, episode, providers) {
     // Series detail pages (esp. F2Media) are large and often need longer than movies.
     // Env PROVIDER_TIMEOUT_MS still overrides when set.
     const PROVIDER_BUDGET_MS = Number(process.env.PROVIDER_TIMEOUT_MS)
-        || (type === 'series' ? 28_000 : 14_000)
+        || (type === 'series' ? 22_000 : 12_000)
     const queries = searchQueryVariants(title)
 
     const settled = await Promise.allSettled(
