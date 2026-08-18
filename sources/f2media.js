@@ -3,6 +3,24 @@ import axios from 'axios'
 import HtmlSource, {decodePagePath, isHttpUrl, normalizeText} from './html-source.js'
 import {logAxiosError, searchAndGetTMDB} from '../utils.js'
 
+/** Preferred live domain — myf2m.info series pages often truncate/timeout from Vercel. */
+export const DEFAULT_F2MEDIA_BASEURL = 'https://www.film2med.top'
+/** Hosts that serve the same Film2Media content (www optional). */
+const F2MEDIA_HOSTS = [
+    'film2med.top',
+    'myf2m.info',
+    'film2media.top',
+    'film2media.pw',
+    'f2m.site',
+]
+function normHost(host) {
+    return String(host || '').replace(/^www\./i, '').toLowerCase()
+}
+function isF2MediaHost(host) {
+    const h = normHost(host)
+    return F2MEDIA_HOSTS.some((d) => h === d || h.endsWith('.' + d))
+}
+
 const PERSIAN_SEASONS = new Map([
     ['اول', 1],
     ['دوم', 2],
@@ -251,9 +269,25 @@ export default class F2Media extends HtmlSource {
     key = 'f2media'
 
     constructor(baseUrl, logger = console, httpClient = axios, env = process.env) {
-        super(baseUrl, logger, httpClient)
+        const raw = String(baseUrl || env.F2MEDIA_BASEURL || DEFAULT_F2MEDIA_BASEURL || '').trim()
+        const normalized = raw.replace(/\/+$/, '') || DEFAULT_F2MEDIA_BASEURL
+        super(normalized, logger, httpClient)
         this.providerID = `${this.key}${this.idSeparator}`
         this.tmdbApiKey = env.TMDB_API_KEY
+    }
+
+    /** Accept any known Film2Media host so domain switches do not drop results. */
+    pagePath(value) {
+        if (!this.baseUrl) return null
+        try {
+            const url = new URL(value, `${this.baseUrl}/`)
+            if (!isF2MediaHost(url.hostname) && normHost(url.hostname) !== normHost(new URL(this.baseUrl).hostname)) {
+                return null
+            }
+            return url.pathname
+        } catch {
+            return null
+        }
     }
 
     async isLogin() {
