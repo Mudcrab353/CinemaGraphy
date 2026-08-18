@@ -108,7 +108,8 @@ function labeledFieldValue($, blockElement, labelPattern) {
 
 function parseMovieLinks($) {
     const links = []
-    $('#downloads .download-list').each((_, block) => {
+    // #downloads is only a section title on F2M, not a parent wrapper
+    $('.download-list').each((_, block) => {
         const audioType = blockAudioType(block, $)
         const encoder = labeledFieldValue($, block, /انکودر/)
 
@@ -128,7 +129,8 @@ function parseMovieLinks($) {
 
 function parseSeriesLinks($) {
     const links = []
-    $('#downloads .download-season').each((seasonIndex, seasonElement) => {
+    // #downloads is a title node; seasons sit as siblings further down the page
+    $('.download-season').each((seasonIndex, seasonElement) => {
         const season = seasonFromText(
             normalizeText($(seasonElement).children('button').first().text()),
             seasonIndex + 1,
@@ -140,11 +142,15 @@ function parseSeriesLinks($) {
             const size = labeledFieldValue($, block, /حجم/)
             const encoder = labeledFieldValue($, block, /انکودر/)
 
-            $(block).find('.series-downloaditems > .d-flex').each((episodeIndex, episodeElement) => {
-                const directLink = $(episodeElement).find('a.btn-default[href]').last()
+            $(block).find('.series-downloaditems .d-flex').each((episodeIndex, episodeElement) => {
+                const directLink = $(episodeElement).find('a.btn-default[href*="http"], a.btn-default[href*=".mkv"], a.btn-default[href*=".mp4"]').last()
+                const anyHttp = $(episodeElement).find('a[href*="http"]').filter((_, a) => /\.(mkv|mp4|m3u8)(\?|$)/i.test($(a).attr('href') || '')).last()
                 const fallbackLink = $(episodeElement).find('a[onclick*="handleDownloadClick"]').first()
-                const url = mediaUrl(directLink.length ? directLink : fallbackLink)
-                const episode = numberFromText(directLink.text()) ?? episodeIndex + 1
+                const url = mediaUrl(directLink.length ? directLink : (anyHttp.length ? anyHttp : fallbackLink))
+                const episode =
+                    numberFromText(directLink.text())
+                    ?? numberFromText($(episodeElement).find('a.btn-default').last().text())
+                    ?? episodeIndex + 1
                 if (!url) {
                     return
                 }
@@ -156,9 +162,12 @@ function parseSeriesLinks($) {
                     encoder,
                     filenameFromUrl(url),
                 ].filter(Boolean)
+                const seFromUrl = String(url).match(/[._\-]S(\d{1,2})E(\d{1,3})[._\-]/i)
+                const seasonFinal = seFromUrl ? Number(seFromUrl[1]) : season
+                const episodeFinal = seFromUrl ? Number(seFromUrl[2]) : episode
                 links.push({
-                    season,
-                    episode,
+                    season: seasonFinal,
+                    episode: episodeFinal,
                     quality: resolvedQuality || null,
                     size: size || null,
                     audioType,
@@ -355,8 +364,14 @@ export default class F2Media extends HtmlSource {
         if (!Number.isInteger(season) || !Number.isInteger(episode) || season < 0 || episode < 1) {
             return []
         }
-        return this.getMovieLinks(movieData)
-            .filter((item) => item.season === season && item.episode === episode)
+        const links = this.getMovieLinks(movieData)
+        let matched = links.filter((item) => item.season === season && item.episode === episode)
+        // Some F2M series pages label a single block "فصل اول" / S01 even when the
+        // page is a later season (e.g. Reacher S4). Fall back by episode only.
+        if (!matched.length) {
+            matched = links.filter((item) => item.episode === episode)
+        }
+        return matched
     }
 
     getLinks(type, videoId, movieData) {
