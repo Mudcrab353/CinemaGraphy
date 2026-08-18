@@ -36,7 +36,7 @@ import {ID_SEPARATOR, METADATA_SOURCE} from './sources/source.js'
 import {findExternalMetaSource, findExternalStreamSource, formatStreamTitle, getCinemeta, getExternalCatalogSources, getExternalCatalogStatus, invalidateExternalCatalogCache, getKitsuTitle, getSubtitle, getTMDBMetaFa, enrichMetaWithFaTmdb, enrichCatalogMetasWithoutRpdb, getTMDBMetaByTmdbId, getTMDBDetails, getTMDBTitle, getLandingTmdbCatalogs, getTorrentStreams, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxyExternalStream, proxySubtitles, translateCatalogName, buildOrderedExternalCatalogs, classifyExternalCatalogSource, rewriteTmdbImageUrls, parseTmdbImageProxyPath, tmdbRequest, setMetaLangPref, setUiLangPref} from './utils.js'
 
 export const ADDON_PREFIX = 'ip'
-export const ADDON_VERSION = '2.1.66'
+export const ADDON_VERSION = '2.1.67'
 
 
 const PROVIDER_BASEURL_KEYS = [
@@ -1205,7 +1205,8 @@ addon.get(/^\/api\/tmdb-image\/([^/]+)\/(.+)$/, async (req, res) => {
             // Isolated Namakade catalogs (no external proxy)
             if (String(req.params.id || '') === F2TURKISH_CATALOG_ID && isF2TurkishEnabled(activeEnv)) {
                 try {
-                    const search = (req.query || {}).search || ''
+                    const extra = parseExtraArgs(req.params.extraArgs)
+                    const search = extra.search || (req.query || {}).search || ''
                     const data = await f2turkishListCatalog(req.params.id, search, activeEnv, axios)
                     return jsonWithTmdbImages(req, res, data || {metas: []}, 'public, max-age=300')
                 } catch (err) {
