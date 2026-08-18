@@ -23,14 +23,14 @@ import {
     decodeMediaProxyToken,
 } from './sources/namakade.js'
 import Donyayeserial from './sources/donyayeserial.js'
-import F2Media from './sources/f2media.js'
+import F2Media, {DEFAULT_F2MEDIA_BASEURL} from './sources/f2media.js'
 import Peepboxtv from './sources/peepboxtv.js'
 import Serialblog from './sources/serialblog.js'
 import {ID_SEPARATOR, METADATA_SOURCE} from './sources/source.js'
 import {findExternalMetaSource, findExternalStreamSource, formatStreamTitle, getCinemeta, getExternalCatalogSources, getExternalCatalogStatus, invalidateExternalCatalogCache, getKitsuTitle, getSubtitle, getTMDBMetaFa, enrichMetaWithFaTmdb, enrichCatalogMetasWithoutRpdb, getTMDBMetaByTmdbId, getTMDBDetails, getTMDBTitle, getLandingTmdbCatalogs, getTorrentStreams, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxyExternalStream, proxySubtitles, translateCatalogName, buildOrderedExternalCatalogs, classifyExternalCatalogSource, rewriteTmdbImageUrls, parseTmdbImageProxyPath, tmdbRequest, setMetaLangPref, setUiLangPref} from './utils.js'
 
 export const ADDON_PREFIX = 'ip'
-export const ADDON_VERSION = '2.1.61'
+export const ADDON_VERSION = '2.1.62'
 
 
 const PROVIDER_BASEURL_KEYS = [
@@ -346,7 +346,7 @@ export function createProviders({env = process.env, logger = console, httpClient
     // Skip providers without a base URL so public instances don't waste time
     // on PeepBoxTV (paid) or any unconfigured source.
     const candidates = [
-        new F2Media(env.F2MEDIA_BASEURL, logger, httpClient, env),
+        new F2Media(env.F2MEDIA_BASEURL || DEFAULT_F2MEDIA_BASEURL, logger, httpClient, env),
         new Peepboxtv(env.PEEPBOXTV_BASEURL, logger, httpClient, env),
         new Cinamatic(env.CINAMATIC_BASEURL, logger, httpClient, env),
         new Aslmoviez(env.ASLMOVIEZ_BASEURL, logger, httpClient, env),
