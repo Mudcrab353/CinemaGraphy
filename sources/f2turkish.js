@@ -1,18 +1,18 @@
 /**
  * F2Media Turkish TV catalog — isolated (ENABLE_F2_TURKISH=1).
- * Lists via WordPress REST (category turkish-tv-series). Catalog ids use
- * F2Media provider format so meta/stream reuse existing handlers.
+ * List via WP REST; posters/titles enriched with TMDB when key is set.
+ * Stream ids stay F2Media provider format (playback unchanged).
  */
 
 import {DEFAULT_F2MEDIA_BASEURL} from './f2media.js'
 import {encodePagePath} from './html-source.js'
 
 export const F2TURKISH_CATALOG_ID = 'f2turkish_series'
-/** Known category id on film2med; refreshed from slug if needed. */
 const FALLBACK_CATEGORY_ID = 233905
 const LIST_TTL_MS = 15 * 60 * 1000
 const listCache = new Map()
 const catIdCache = new Map()
+const tmdbCache = new Map()
 
 function flagOn(v) {
     const s = String(v ?? '').trim().toLowerCase()
@@ -51,6 +51,18 @@ function cleanTitle(raw) {
         .replace(/\s*دوبله\s+فارسی.*$/i, '')
         .replace(/\s+/g, ' ')
         .trim()
+}
+
+/** Latin/English part for TMDB search. */
+function englishHint(title) {
+    const t = String(title || '')
+    const parts = t.split(/\s*\/\s*/)
+    for (const p of parts) {
+        const latin = p.replace(/[^\p{L}\p{N}\s:.'!&-]/gu, ' ').replace(/\s+/g, ' ').trim()
+        if ((latin.match(/[A-Za-z]/g) || []).length >= 3) return latin
+    }
+    const m = t.match(/[A-Za-z][A-Za-z0-9 .':!&-]{2,80}/)
+    return m ? m[0].trim() : t
 }
 
 async function httpGetJson(url, httpClient, timeout = 12_000) {
@@ -127,8 +139,54 @@ function itemFromRest(row, base) {
     return {
         id: `ipf2media___${pageId}`,
         name,
+        nameEn: englishHint(name),
         poster,
         path: norm,
+    }
+}
+
+async function tmdbTvLookup(query, apiKey, httpClient) {
+    if (!apiKey || !query) return null
+    const q = String(query).trim()
+    if (q.length < 2) return null
+    const cacheKey = q.toLowerCase()
+    if (tmdbCache.has(cacheKey)) return tmdbCache.get(cacheKey)
+
+    try {
+        const url =
+            `https://api.themoviedb.org/3/search/tv?api_key=${encodeURIComponent(apiKey)}` +
+            `&query=${encodeURIComponent(q)}&language=en-US`
+        const data = await httpGetJson(url, httpClient, 8_000)
+        const row = data?.results?.[0]
+        if (!row?.id) {
+            tmdbCache.set(cacheKey, null)
+            return null
+        }
+        let imdbId = null
+        try {
+            const ext = await httpGetJson(
+                `https://api.themoviedb.org/3/tv/${row.id}/external_ids?api_key=${encodeURIComponent(apiKey)}`,
+                httpClient,
+                6_000,
+            )
+            if (ext?.imdb_id && /^tt\d+/i.test(ext.imdb_id)) imdbId = ext.imdb_id
+        } catch {
+            /* optional */
+        }
+        const poster = row.poster_path ? `https://image.tmdb.org/t/p/w500${row.poster_path}` : null
+        const out = {
+            poster,
+            name: row.name || q,
+            year: (row.first_air_date || '').slice(0, 4) || null,
+            imdbId,
+            tmdbId: row.id,
+            overview: row.overview || '',
+        }
+        tmdbCache.set(cacheKey, out)
+        return out
+    } catch {
+        tmdbCache.set(cacheKey, null)
+        return null
     }
 }
 
@@ -142,7 +200,6 @@ async function scrapeTurkishList(env, httpClient) {
     const seen = new Set()
     const catId = await resolveCategoryId(base, httpClient)
 
-    // REST is stable and lighter than full HTML pages
     for (let page = 1; page <= 5; page++) {
         const url =
             `${base}/wp-json/wp/v2/series?categories=${catId}` +
@@ -162,11 +219,9 @@ async function scrapeTurkishList(env, httpClient) {
         }
     }
 
-    // HTML fallback if REST empty
     if (!items.length) {
         try {
             const htmlUrl = `${base}/category/turkish-tv-series/`
-            let html = ''
             if (httpClient?.get) {
                 const res = await httpClient.get(htmlUrl, {
                     timeout: 14_000,
@@ -176,26 +231,45 @@ async function scrapeTurkishList(env, httpClient) {
                     },
                     validateStatus: (s) => s >= 200 && s < 400,
                 })
-                html = typeof res.data === 'string' ? res.data : ''
-            }
-            const re = /\/series\/([a-z0-9][a-z0-9-]*)\//gi
-            let m
-            while ((m = re.exec(html))) {
-                const slug = m[1]
-                if (!slug || seen.has(slug)) continue
-                const norm = `/series/${slug}/`
-                const pageId = encodePagePath(norm)
-                if (!pageId) continue
-                seen.add(slug)
-                items.push({
-                    id: `ipf2media___${pageId}`,
-                    name: slug.replace(/-/g, ' '),
-                    poster: null,
-                    path: norm,
-                })
+                const html = typeof res.data === 'string' ? res.data : ''
+                const re = /\/series\/([a-z0-9][a-z0-9-]*)\//gi
+                let m
+                while ((m = re.exec(html))) {
+                    const slug = m[1]
+                    if (!slug || seen.has(slug)) continue
+                    const norm = `/series/${slug}/`
+                    const pageId = encodePagePath(norm)
+                    if (!pageId) continue
+                    seen.add(slug)
+                    items.push({
+                        id: `ipf2media___${pageId}`,
+                        name: slug.replace(/-/g, ' '),
+                        nameEn: slug.replace(/-/g, ' '),
+                        poster: null,
+                        path: norm,
+                    })
+                }
             }
         } catch {
-            /* isolated soft-fail */
+            /* soft-fail */
+        }
+    }
+
+    // TMDB posters (prefer TMDB quality; keep F2 id for streams)
+    const apiKey = String(env.TMDB_API_KEY || '').trim()
+    if (apiKey && items.length) {
+        const concurrency = 5
+        for (let i = 0; i < items.length; i += concurrency) {
+            const slice = items.slice(i, i + concurrency)
+            await Promise.all(
+                slice.map(async (it) => {
+                    const tmdb = await tmdbTvLookup(it.nameEn || it.name, apiKey, httpClient)
+                    if (!tmdb) return
+                    if (tmdb.poster) it.poster = tmdb.poster
+                    if (tmdb.year) it.year = tmdb.year
+                    if (tmdb.imdbId) it.imdbId = tmdb.imdbId
+                }),
+            )
         }
     }
 
@@ -212,7 +286,13 @@ export async function f2turkishListCatalog(catalogId, search, env, httpClient) {
         .trim()
         .toLowerCase()
     if (q) {
-        items = items.filter((it) => it.name.toLowerCase().includes(q))
+        items = items.filter(
+            (it) =>
+                it.name.toLowerCase().includes(q) ||
+                String(it.nameEn || '')
+                    .toLowerCase()
+                    .includes(q),
+        )
     }
 
     return {
@@ -222,6 +302,7 @@ export async function f2turkishListCatalog(catalogId, search, env, httpClient) {
             name: it.name,
             poster: it.poster || null,
             posterShape: 'poster',
+            releaseInfo: it.year || undefined,
         })),
     }
 }
