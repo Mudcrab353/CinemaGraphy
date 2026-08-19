@@ -348,7 +348,8 @@ export function f2turkishManifestCatalogs(env, lang = 'fa') {
         {
             type: 'series',
             id: F2TURKISH_CATALOG_ID,
-            name: isEn ? 'Series - Turkish' : 'سریال - ترکی',
+            // Name only (no «سریال»/Series) — Stremio/Nuvio append type → «ترکی - سریال» like «هولو - سریال»
+            name: isEn ? 'Turkish' : 'ترکی',
             extra: [
                 {name: 'search', isRequired: false},
                 {name: 'skip', isRequired: false},
