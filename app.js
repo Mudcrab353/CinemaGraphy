@@ -36,7 +36,7 @@ import {ID_SEPARATOR, METADATA_SOURCE} from './sources/source.js'
 import {findExternalMetaSource, findExternalStreamSource, formatStreamTitle, getCinemeta, getExternalCatalogSources, getExternalCatalogStatus, invalidateExternalCatalogCache, getKitsuTitle, getSubtitle, getTMDBMetaFa, enrichMetaWithFaTmdb, enrichCatalogMetasWithoutRpdb, getTMDBMetaByTmdbId, getTMDBDetails, getTMDBTitle, getLandingTmdbCatalogs, getTorrentStreams, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxyExternalStream, proxySubtitles, translateCatalogName, buildOrderedExternalCatalogs, classifyExternalCatalogSource, rewriteTmdbImageUrls, parseTmdbImageProxyPath, tmdbRequest, setMetaLangPref, setUiLangPref} from './utils.js'
 
 export const ADDON_PREFIX = 'ip'
-export const ADDON_VERSION = '2.1.70'
+export const ADDON_VERSION = '2.1.71'
 
 
 const PROVIDER_BASEURL_KEYS = [
@@ -1164,33 +1164,41 @@ addon.get(/^\/api\/tmdb-image\/([^/]+)\/(.+)$/, async (req, res) => {
                         ...catalog,
                         name: translateCatalogName(catalog.name, catalog.type, catalogLang),
                     }))
-                    // F2 Turkish: after 101/AIO, before anime — isolated, ENABLE_F2_TURKISH only
-                    if (isF2TurkishEnabled(activeEnv) && !disableCatalog) {
-                        const trLang = catalogLang
-                        // Keep short label «ترکی» / «Turkish» — UI adds type (like هولو - سریال)
-                        const trCats = f2turkishManifestCatalogs(activeEnv, trLang)
-                        let insertAt = orderedExternal.findIndex((c) =>
-                            /anime|انیمه|myanimelist|kitsu|mal[_-]/i.test(`${c?.name || ''} ${c?.id || ''}`),
-                        )
-                        if (insertAt < 0) {
-                            insertAt = orderedExternal.findIndex((c) =>
-                                /iptv|ماهواره|satellite/i.test(`${c?.name || ''} ${c?.id || ''}`),
-                            )
-                        }
-                        if (insertAt < 0) insertAt = orderedExternal.length
-                        orderedExternal.splice(insertAt, 0, ...trCats)
-                    }
                     manifest.catalogs.push(...orderedExternal)
-                    // Namakade always last (after IPTV / platforms) — isolated Iranian catalogs
-                    if (isNamakadeEnabled(activeEnv)) {
-                        const nkLang = String(activeEnv.ADDON_LANG || 'fa').trim().toLowerCase().startsWith('en') ? 'en' : 'fa'
-                        manifest.catalogs.push(...namakadeManifestCatalogs(activeEnv, nkLang))
-                    }
-
                 }
             }
         } catch (error) {
             logAxiosError(error, logger, 'External catalogs unavailable, serving own catalogs only')
+        }
+
+        // Isolated catalogs — always attach even if external 101/AIO/anime failed
+        if (!disableCatalog) {
+            const catalogLang = String(activeEnv.ADDON_LANG || 'fa').trim().toLowerCase().startsWith('en') ? 'en' : 'fa'
+            if (isF2TurkishEnabled(activeEnv)) {
+                const trCats = f2turkishManifestCatalogs(activeEnv, catalogLang)
+                const already = manifest.catalogs.some((c) => c?.id === F2TURKISH_CATALOG_ID)
+                if (!already && trCats.length) {
+                    let insertAt = manifest.catalogs.findIndex((c) =>
+                        /anime|انیمه|myanimelist|kitsu|mal[_-]/i.test(`${c?.name || ''} ${c?.id || ''}`),
+                    )
+                    if (insertAt < 0) {
+                        insertAt = manifest.catalogs.findIndex((c) =>
+                            /iptv|ماهواره|satellite|namakade/i.test(`${c?.name || ''} ${c?.id || ''}`),
+                        )
+                    }
+                    if (insertAt < 0) insertAt = manifest.catalogs.length
+                    manifest.catalogs.splice(insertAt, 0, ...trCats)
+                }
+            }
+            if (isNamakadeEnabled(activeEnv)) {
+                const nkLang = catalogLang
+                const nkCats = namakadeManifestCatalogs(activeEnv, nkLang)
+                for (const nk of nkCats) {
+                    if (!manifest.catalogs.some((c) => c?.id === nk.id)) {
+                        manifest.catalogs.push(nk)
+                    }
+                }
+            }
         }
         res.status(200)
             .type('json')
