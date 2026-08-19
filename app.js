@@ -36,7 +36,7 @@ import {ID_SEPARATOR, METADATA_SOURCE} from './sources/source.js'
 import {findExternalMetaSource, findExternalStreamSource, formatStreamTitle, getCinemeta, getExternalCatalogSources, getExternalCatalogStatus, invalidateExternalCatalogCache, getKitsuTitle, getSubtitle, getTMDBMetaFa, enrichMetaWithFaTmdb, enrichCatalogMetasWithoutRpdb, getTMDBMetaByTmdbId, getTMDBDetails, getTMDBTitle, getLandingTmdbCatalogs, getTorrentStreams, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxyExternalStream, proxySubtitles, translateCatalogName, buildOrderedExternalCatalogs, classifyExternalCatalogSource, rewriteTmdbImageUrls, parseTmdbImageProxyPath, tmdbRequest, setMetaLangPref, setUiLangPref} from './utils.js'
 
 export const ADDON_PREFIX = 'ip'
-export const ADDON_VERSION = '2.1.69'
+export const ADDON_VERSION = '2.1.70'
 
 
 const PROVIDER_BASEURL_KEYS = [
@@ -1167,10 +1167,8 @@ addon.get(/^\/api\/tmdb-image\/([^/]+)\/(.+)$/, async (req, res) => {
                     // F2 Turkish: after 101/AIO, before anime — isolated, ENABLE_F2_TURKISH only
                     if (isF2TurkishEnabled(activeEnv) && !disableCatalog) {
                         const trLang = catalogLang
-                        const trCats = f2turkishManifestCatalogs(activeEnv, trLang).map((c) => ({
-                            ...c,
-                            name: translateCatalogName(c.name, c.type, trLang) || c.name,
-                        }))
+                        // Keep short label «ترکی» / «Turkish» — UI adds type (like هولو - سریال)
+                        const trCats = f2turkishManifestCatalogs(activeEnv, trLang)
                         let insertAt = orderedExternal.findIndex((c) =>
                             /anime|انیمه|myanimelist|kitsu|mal[_-]/i.test(`${c?.name || ''} ${c?.id || ''}`),
                         )
