@@ -1,6 +1,6 @@
 /**
  * F2Media Turkish TV catalog — isolated (ENABLE_F2_TURKISH=1).
- * Fast multi-page WP REST list (no heavy TMDB on critical path).
+ * Full category list (WP REST, up to all pages) + posters from embed/media/TMDB.
  * Stream ids: F2Media provider format.
  */
 
@@ -9,9 +9,10 @@ import {encodePagePath} from './html-source.js'
 
 export const F2TURKISH_CATALOG_ID = 'f2turkish_series'
 const FALLBACK_CATEGORY_ID = 233905
-const LIST_TTL_MS = 10 * 60 * 1000
+const LIST_TTL_MS = 12 * 60 * 1000
 const listCache = new Map()
 const catIdCache = new Map()
+const tmdbCache = new Map()
 
 function flagOn(v) {
     const s = String(v ?? '').trim().toLowerCase()
@@ -52,6 +53,17 @@ function cleanTitle(raw) {
         .trim()
 }
 
+function englishHint(title) {
+    const t = String(title || '')
+    const parts = t.split(/\s*\/\s*/)
+    for (const p of parts) {
+        const latin = p.replace(/[^\p{L}\p{N}\s:.'!&-]/gu, ' ').replace(/\s+/g, ' ').trim()
+        if ((latin.match(/[A-Za-z]/g) || []).length >= 3) return latin
+    }
+    const m = t.match(/[A-Za-z][A-Za-z0-9 .':!&-]{2,80}/)
+    return m ? m[0].trim() : t
+}
+
 function titleCaseWords(s) {
     return String(s || '')
         .split(/\s+/)
@@ -59,7 +71,7 @@ function titleCaseWords(s) {
         .join(' ')
 }
 
-async function httpGet(url, httpClient, timeout = 12_000) {
+async function httpGet(url, httpClient, timeout = 14_000) {
     if (httpClient?.get) {
         const res = await httpClient.get(url, {
             timeout,
@@ -133,20 +145,100 @@ function itemFromRest(row, base) {
         poster =
             embedded[0].source_url ||
             embedded[0].media_details?.sizes?.medium_large?.source_url ||
+            embedded[0].media_details?.sizes?.large?.source_url ||
             embedded[0].media_details?.sizes?.medium?.source_url ||
             null
     }
 
+    const mediaId = Number(row.featured_media) || 0
     let year = null
-    const d = row.date || row.modified
-    if (d) year = String(d).slice(0, 4)
+    if (row.date) year = String(row.date).slice(0, 4)
 
     return {
         id: `ipf2media___${pageId}`,
         name,
+        nameEn: englishHint(name),
         poster,
+        mediaId: mediaId > 0 ? mediaId : null,
         year,
         path: norm,
+    }
+}
+
+/** Batch-resolve WP media IDs → source_url */
+async function fillPostersFromMedia(base, items, httpClient) {
+    const need = items.filter((it) => !it.poster && it.mediaId)
+    if (!need.length) return
+    const ids = [...new Set(need.map((it) => it.mediaId))]
+    // WP allow include= up to ~100
+    for (let i = 0; i < ids.length; i += 50) {
+        const chunk = ids.slice(i, i + 50)
+        try {
+            const {data} = await httpGet(
+                `${base}/wp-json/wp/v2/media?include=${chunk.join(',')}&per_page=${chunk.length}`,
+                httpClient,
+                12_000,
+            )
+            if (!Array.isArray(data)) continue
+            const map = new Map()
+            for (const m of data) {
+                const url =
+                    m.source_url ||
+                    m.media_details?.sizes?.medium_large?.source_url ||
+                    m.media_details?.sizes?.medium?.source_url
+                if (m.id && url) map.set(Number(m.id), url)
+            }
+            for (const it of need) {
+                if (!it.poster && it.mediaId && map.has(it.mediaId)) {
+                    it.poster = map.get(it.mediaId)
+                }
+            }
+        } catch {
+            /* continue */
+        }
+    }
+}
+
+async function tmdbPoster(query, apiKey, httpClient) {
+    if (!apiKey || !query) return null
+    const key = String(query).trim().toLowerCase()
+    if (tmdbCache.has(key)) return tmdbCache.get(key)
+    try {
+        const {data} = await httpGet(
+            `https://api.themoviedb.org/3/search/tv?api_key=${encodeURIComponent(apiKey)}` +
+                `&query=${encodeURIComponent(query)}&language=en-US`,
+            httpClient,
+            7_000,
+        )
+        const row = data?.results?.[0]
+        const poster = row?.poster_path ? `https://image.tmdb.org/t/p/w500${row.poster_path}` : null
+        const year = row?.first_air_date ? String(row.first_air_date).slice(0, 4) : null
+        const name = row?.name || null
+        const out = poster || year || name ? {poster, year, name} : null
+        tmdbCache.set(key, out)
+        return out
+    } catch {
+        tmdbCache.set(key, null)
+        return null
+    }
+}
+
+/** Only for items still missing poster — limited concurrency. */
+async function fillPostersFromTmdb(items, apiKey, httpClient) {
+    if (!apiKey) return
+    const need = items.filter((it) => !it.poster)
+    if (!need.length) return
+    const concurrency = 4
+    for (let i = 0; i < need.length; i += concurrency) {
+        const slice = need.slice(i, i + concurrency)
+        await Promise.all(
+            slice.map(async (it) => {
+                const tmdb = await tmdbPoster(it.nameEn || it.name, apiKey, httpClient)
+                if (!tmdb) return
+                if (tmdb.poster) it.poster = tmdb.poster
+                if (tmdb.year && !it.year) it.year = tmdb.year
+            }),
+        )
     }
 }
 
@@ -160,59 +252,46 @@ async function scrapeTurkishList(env, httpClient) {
     const seen = new Set()
     const catId = await resolveCategoryId(base, httpClient)
 
-    // Page 1 first (gets total pages), then rest in parallel
-    let totalPages = 3
-    try {
-        const url1 =
+    // per_page=100 → fewer round-trips for full category (~50–100 titles)
+    let totalPages = 1
+    for (let page = 1; page <= totalPages; page++) {
+        const url =
             `${base}/wp-json/wp/v2/series?categories=${catId}` +
-            `&per_page=20&page=1&_embed=1&orderby=date&order=desc`
-        const {data: rows1, headers} = await httpGet(url1, httpClient, 12_000)
-        const tp = Number(headers['x-wp-totalpages'] || headers['X-WP-TotalPages'] || 0)
-        if (Number.isFinite(tp) && tp > 0) totalPages = Math.min(tp, 10)
-        if (Array.isArray(rows1)) {
-            for (const row of rows1) {
+            `&per_page=100&page=${page}&_embed=wp:featuredmedia&orderby=date&order=desc`
+        try {
+            const {data: rows, headers} = await httpGet(url, httpClient, 16_000)
+            if (page === 1) {
+                const tp = Number(
+                    headers['x-wp-totalpages'] || headers['X-WP-TotalPages'] || 0,
+                )
+                if (Number.isFinite(tp) && tp > 0) totalPages = Math.min(tp, 20)
+                const total = Number(headers['x-wp-total'] || headers['X-WP-Total'] || 0)
+                if (total > 0 && totalPages === 1 && total > 100) {
+                    totalPages = Math.min(Math.ceil(total / 100), 20)
+                }
+            }
+            if (!Array.isArray(rows) || !rows.length) break
+            for (const row of rows) {
                 const it = itemFromRest(row, base)
                 if (!it || seen.has(it.path)) continue
                 seen.add(it.path)
                 items.push(it)
             }
+            if (rows.length < 100) break
+        } catch {
+            if (page === 1) break
         }
-    } catch {
-        /* try more pages / html */
     }
 
-    if (totalPages > 1) {
-        const jobs = []
-        for (let page = 2; page <= totalPages; page++) {
-            const url =
-                `${base}/wp-json/wp/v2/series?categories=${catId}` +
-                `&per_page=20&page=${page}&_embed=1&orderby=date&order=desc`
-            jobs.push(
-                httpGet(url, httpClient, 12_000)
-                    .then(({data: rows}) => {
-                        if (!Array.isArray(rows)) return
-                        for (const row of rows) {
-                            const it = itemFromRest(row, base)
-                            if (!it || seen.has(it.path)) continue
-                            seen.add(it.path)
-                            items.push(it)
-                        }
-                    })
-                    .catch(() => {}),
-            )
-        }
-        await Promise.all(jobs)
-    }
-
-    // HTML fallback only if REST totally empty
+    // HTML fallback — all pages if REST empty
     if (!items.length) {
-        for (let page = 1; page <= 5; page++) {
+        for (let page = 1; page <= 15; page++) {
             const htmlUrl =
                 page === 1
                     ? `${base}/category/turkish-tv-series/`
                     : `${base}/category/turkish-tv-series/page/${page}/`
             try {
-                const {data} = await httpGet(htmlUrl, httpClient, 12_000)
+                const {data} = await httpGet(htmlUrl, httpClient, 14_000)
                 const html = typeof data === 'string' ? data : ''
                 if (!html) break
                 const re = /\/series\/([a-z0-9][a-z0-9-]*)\//gi
@@ -225,10 +304,13 @@ async function scrapeTurkishList(env, httpClient) {
                     const pageId = encodePagePath(norm)
                     if (!pageId) continue
                     seen.add(slug)
+                    const label = titleCaseWords(slug.replace(/-/g, ' '))
                     items.push({
                         id: `ipf2media___${pageId}`,
-                        name: titleCaseWords(slug.replace(/-/g, ' ')),
+                        name: label,
+                        nameEn: label,
                         poster: null,
+                        mediaId: null,
                         path: norm,
                     })
                     added++
@@ -239,6 +321,11 @@ async function scrapeTurkishList(env, httpClient) {
             }
         }
     }
+
+    // Posters: WP media batch, then TMDB only for leftovers
+    await fillPostersFromMedia(base, items, httpClient)
+    const apiKey = String(env.TMDB_API_KEY || '').trim()
+    await fillPostersFromTmdb(items, apiKey, httpClient)
 
     listCache.set(cacheKey, {at: Date.now(), items})
     return items
@@ -254,7 +341,13 @@ export async function f2turkishListCatalog(catalogId, search, env, httpClient) {
             .trim()
             .toLowerCase()
         if (q) {
-            items = items.filter((it) => it.name.toLowerCase().includes(q))
+            items = items.filter(
+                (it) =>
+                    it.name.toLowerCase().includes(q) ||
+                    String(it.nameEn || '')
+                        .toLowerCase()
+                        .includes(q),
+            )
         }
         return {
             metas: items.map((it) => ({
