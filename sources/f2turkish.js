@@ -1,7 +1,7 @@
 /**
  * F2Media Turkish TV catalog — isolated (ENABLE_F2_TURKISH=1).
- * List via WP REST; posters/titles enriched with TMDB when key is set.
- * Stream ids stay F2Media provider format (playback unchanged).
+ * Full multi-page WP REST list; TMDB for posters/names when available.
+ * Stream ids stay F2Media provider format.
  */
 
 import {DEFAULT_F2MEDIA_BASEURL} from './f2media.js'
@@ -9,7 +9,7 @@ import {encodePagePath} from './html-source.js'
 
 export const F2TURKISH_CATALOG_ID = 'f2turkish_series'
 const FALLBACK_CATEGORY_ID = 233905
-const LIST_TTL_MS = 15 * 60 * 1000
+const LIST_TTL_MS = 12 * 60 * 1000
 const listCache = new Map()
 const catIdCache = new Map()
 const tmdbCache = new Map()
@@ -53,7 +53,6 @@ function cleanTitle(raw) {
         .trim()
 }
 
-/** Latin/English part for TMDB search. */
 function englishHint(title) {
     const t = String(title || '')
     const parts = t.split(/\s*\/\s*/)
@@ -65,17 +64,36 @@ function englishHint(title) {
     return m ? m[0].trim() : t
 }
 
-async function httpGetJson(url, httpClient, timeout = 12_000) {
+/** True if title looks like a URL slug, not a real display name. */
+function looksLikeSlugName(name) {
+    const s = String(name || '').trim()
+    if (!s || s.length < 2) return true
+    if (/[\u0600-\u06FF]/.test(s)) return false
+    if (/[A-Z]/.test(s)) return false
+    return /^[a-z0-9][a-z0-9\s._-]*$/.test(s)
+}
+
+function titleCaseWords(s) {
+    return String(s || '')
+        .split(/\s+/)
+        .map((w) => (w.length ? w[0].toUpperCase() + w.slice(1) : w))
+        .join(' ')
+}
+
+async function httpGet(url, httpClient, timeout = 14_000) {
     if (httpClient?.get) {
         const res = await httpClient.get(url, {
             timeout,
             headers: {
-                Accept: 'application/json',
+                Accept: 'application/json, text/html;q=0.9',
                 'User-Agent': 'Mozilla/5.0 (compatible; StremioIRProviders/2.3)',
             },
             validateStatus: (s) => s >= 200 && s < 400,
         })
-        return res.data
+        return {
+            data: res.data,
+            headers: res.headers || {},
+        }
     }
     const ctrl = new AbortController()
     const timer = setTimeout(() => ctrl.abort(), timeout)
@@ -85,7 +103,13 @@ async function httpGetJson(url, httpClient, timeout = 12_000) {
             headers: {Accept: 'application/json', 'User-Agent': 'Mozilla/5.0'},
         })
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        return await res.json()
+        const ct = res.headers.get('content-type') || ''
+        const data = ct.includes('json') ? await res.json() : await res.text()
+        const headers = {}
+        res.headers.forEach((v, k) => {
+            headers[k.toLowerCase()] = v
+        })
+        return {data, headers}
     } finally {
         clearTimeout(timer)
     }
@@ -95,7 +119,7 @@ async function resolveCategoryId(base, httpClient) {
     const key = `cat:${base}`
     if (catIdCache.has(key)) return catIdCache.get(key)
     try {
-        const rows = await httpGetJson(
+        const {data: rows} = await httpGet(
             `${base}/wp-json/wp/v2/categories?slug=turkish-tv-series`,
             httpClient,
             10_000,
@@ -110,7 +134,7 @@ async function resolveCategoryId(base, httpClient) {
 }
 
 function itemFromRest(row, base) {
-    if (!row || row.type !== 'series') return null
+    if (!row || (row.type && row.type !== 'series')) return null
     let path
     try {
         path = new URL(row.link, base).pathname
@@ -153,34 +177,23 @@ async function tmdbTvLookup(query, apiKey, httpClient) {
     if (tmdbCache.has(cacheKey)) return tmdbCache.get(cacheKey)
 
     try {
-        const url =
+        const {data} = await httpGet(
             `https://api.themoviedb.org/3/search/tv?api_key=${encodeURIComponent(apiKey)}` +
-            `&query=${encodeURIComponent(q)}&language=en-US`
-        const data = await httpGetJson(url, httpClient, 8_000)
+                `&query=${encodeURIComponent(q)}&language=en-US`,
+            httpClient,
+            8_000,
+        )
         const row = data?.results?.[0]
         if (!row?.id) {
             tmdbCache.set(cacheKey, null)
             return null
-        }
-        let imdbId = null
-        try {
-            const ext = await httpGetJson(
-                `https://api.themoviedb.org/3/tv/${row.id}/external_ids?api_key=${encodeURIComponent(apiKey)}`,
-                httpClient,
-                6_000,
-            )
-            if (ext?.imdb_id && /^tt\d+/i.test(ext.imdb_id)) imdbId = ext.imdb_id
-        } catch {
-            /* optional */
         }
         const poster = row.poster_path ? `https://image.tmdb.org/t/p/w500${row.poster_path}` : null
         const out = {
             poster,
             name: row.name || q,
             year: (row.first_air_date || '').slice(0, 4) || null,
-            imdbId,
             tmdbId: row.id,
-            overview: row.overview || '',
         }
         tmdbCache.set(cacheKey, out)
         return out
@@ -200,12 +213,25 @@ async function scrapeTurkishList(env, httpClient) {
     const seen = new Set()
     const catId = await resolveCategoryId(base, httpClient)
 
-    for (let page = 1; page <= 5; page++) {
+    // Full pagination via X-WP-TotalPages (category has ~50+ titles)
+    let totalPages = 8
+    for (let page = 1; page <= totalPages; page++) {
         const url =
             `${base}/wp-json/wp/v2/series?categories=${catId}` +
             `&per_page=20&page=${page}&_embed=1&orderby=date&order=desc`
         try {
-            const rows = await httpGetJson(url, httpClient, 14_000)
+            const {data: rows, headers} = await httpGet(url, httpClient, 16_000)
+            if (page === 1) {
+                const tp = Number(
+                    headers['x-wp-totalpages'] ||
+                        headers['X-WP-TotalPages'] ||
+                        headers['x-wp-total-pages'] ||
+                        0,
+                )
+                if (Number.isFinite(tp) && tp > 0) {
+                    totalPages = Math.min(tp, 15)
+                }
+            }
             if (!Array.isArray(rows) || rows.length === 0) break
             for (const row of rows) {
                 const it = itemFromRest(row, base)
@@ -215,25 +241,25 @@ async function scrapeTurkishList(env, httpClient) {
             }
             if (rows.length < 20) break
         } catch {
-            break
+            // keep going for later pages when one fails
+            if (page === 1) break
         }
     }
 
+    // HTML fallback: all archive pages when REST empty
     if (!items.length) {
-        try {
-            const htmlUrl = `${base}/category/turkish-tv-series/`
-            if (httpClient?.get) {
-                const res = await httpClient.get(htmlUrl, {
-                    timeout: 14_000,
-                    headers: {
-                        Accept: 'text/html',
-                        'User-Agent': 'Mozilla/5.0 (compatible; StremioIRProviders/2.3)',
-                    },
-                    validateStatus: (s) => s >= 200 && s < 400,
-                })
-                const html = typeof res.data === 'string' ? res.data : ''
+        for (let page = 1; page <= 10; page++) {
+            const htmlUrl =
+                page === 1
+                    ? `${base}/category/turkish-tv-series/`
+                    : `${base}/category/turkish-tv-series/page/${page}/`
+            try {
+                const {data} = await httpGet(htmlUrl, httpClient, 14_000)
+                const html = typeof data === 'string' ? data : ''
+                if (!html) break
                 const re = /\/series\/([a-z0-9][a-z0-9-]*)\//gi
                 let m
+                let added = 0
                 while ((m = re.exec(html))) {
                     const slug = m[1]
                     if (!slug || seen.has(slug)) continue
@@ -241,21 +267,24 @@ async function scrapeTurkishList(env, httpClient) {
                     const pageId = encodePagePath(norm)
                     if (!pageId) continue
                     seen.add(slug)
+                    const label = titleCaseWords(slug.replace(/-/g, ' '))
                     items.push({
                         id: `ipf2media___${pageId}`,
-                        name: slug.replace(/-/g, ' '),
-                        nameEn: slug.replace(/-/g, ' '),
+                        name: label,
+                        nameEn: label,
                         poster: null,
                         path: norm,
                     })
+                    added++
                 }
+                if (added === 0 && page > 1) break
+            } catch {
+                break
             }
-        } catch {
-            /* soft-fail */
         }
     }
 
-    // TMDB posters (prefer TMDB quality; keep F2 id for streams)
+    // TMDB: posters + nicer names for slug-like titles
     const apiKey = String(env.TMDB_API_KEY || '').trim()
     if (apiKey && items.length) {
         const concurrency = 5
@@ -267,7 +296,10 @@ async function scrapeTurkishList(env, httpClient) {
                     if (!tmdb) return
                     if (tmdb.poster) it.poster = tmdb.poster
                     if (tmdb.year) it.year = tmdb.year
-                    if (tmdb.imdbId) it.imdbId = tmdb.imdbId
+                    if (tmdb.name && looksLikeSlugName(it.name)) {
+                        it.name = tmdb.name
+                        it.nameEn = tmdb.name
+                    }
                 }),
             )
         }
@@ -295,6 +327,7 @@ export async function f2turkishListCatalog(catalogId, search, env, httpClient) {
         )
     }
 
+    // Stremio skip pagination (extra skip=N) handled by client; return full set
     return {
         metas: items.map((it) => ({
             id: it.id,
@@ -310,11 +343,12 @@ export async function f2turkishListCatalog(catalogId, search, env, httpClient) {
 export function f2turkishManifestCatalogs(env, lang = 'fa') {
     if (!isF2TurkishEnabled(env)) return []
     const isEn = String(lang || 'fa').toLowerCase().startsWith('en')
+    // Same pattern as other regional catalogs (EN source name; FA via translate or direct)
     return [
         {
             type: 'series',
             id: F2TURKISH_CATALOG_ID,
-            name: isEn ? 'Turkish Series' : 'سریال - ترکی',
+            name: isEn ? 'Series - Turkish' : 'سریال - ترکی',
             extra: [
                 {name: 'search', isRequired: false},
                 {name: 'skip', isRequired: false},
