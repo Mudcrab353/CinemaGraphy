@@ -36,7 +36,7 @@ import {ID_SEPARATOR, METADATA_SOURCE} from './sources/source.js'
 import {findExternalMetaSource, findExternalStreamSource, formatStreamTitle, getCinemeta, getExternalCatalogSources, getExternalCatalogStatus, invalidateExternalCatalogCache, getKitsuTitle, getSubtitle, getTMDBMetaFa, enrichMetaWithFaTmdb, enrichCatalogMetasWithoutRpdb, getTMDBMetaByTmdbId, getTMDBDetails, getTMDBTitle, getLandingTmdbCatalogs, getTorrentStreams, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxyExternalStream, proxySubtitles, translateCatalogName, buildOrderedExternalCatalogs, classifyExternalCatalogSource, rewriteTmdbImageUrls, parseTmdbImageProxyPath, tmdbRequest, setMetaLangPref, setUiLangPref} from './utils.js'
 
 export const ADDON_PREFIX = 'ip'
-export const ADDON_VERSION = '2.1.67'
+export const ADDON_VERSION = '2.1.68'
 
 
 const PROVIDER_BASEURL_KEYS = [
@@ -1454,13 +1454,48 @@ addon.get(/^\/api\/tmdb-image\/([^/]+)\/(.+)$/, async (req, res) => {
             if (!movieData) {
                 return res.json({})
             }
-            const upstreamMeta = await getProviderMetadata(
+            let upstreamMeta = await getProviderMetadata(
                 parsedId.provider,
                 req.params.type,
                 parsedId.providerItemId,
                 movieData,
                 services,
             )
+            // When Cinemeta/TMDB has no match (common for some Turkish titles),
+            // build a minimal meta from provider links so the detail page still opens.
+            if (!upstreamMeta?.meta && movieData) {
+                const title = String(movieData.title || '').trim() || 'Unknown'
+                const links = Array.isArray(movieData.links) ? movieData.links : []
+                const videos = []
+                const seenEp = new Set()
+                for (const link of links) {
+                    const s = Number(link.season) || 1
+                    const e = Number(link.episode) || 0
+                    if (!e) continue
+                    const key = `${s}:${e}`
+                    if (seenEp.has(key)) continue
+                    seenEp.add(key)
+                    videos.push({
+                        id: `${s}:${e}`,
+                        title: `S${s}E${String(e).padStart(2, '0')}`,
+                        season: s,
+                        episode: e,
+                        released: '2000-01-01',
+                    })
+                }
+                videos.sort((a, b) => a.season - b.season || a.episode - b.episode)
+                upstreamMeta = {
+                    meta: {
+                        id: req.params.id,
+                        type: req.params.type === 'tv' ? 'series' : req.params.type,
+                        name: title,
+                        poster: null,
+                        background: null,
+                        description: '',
+                        videos: req.params.type === 'series' || req.params.type === 'tv' ? videos : undefined,
+                    },
+                }
+            }
             if (!upstreamMeta?.meta) {
                 return res.json({})
             }
