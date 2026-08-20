@@ -1,20 +1,20 @@
-import Aslmoviez from './sources/aslmoviez.js'
-import Cinamatic from './sources/cinamatic.js'
-import Digimovie from './sources/digimovie.js'
-import Animex from './sources/animex.js'
-import Donyayeserial from './sources/donyayeserial.js'
-import F2Media from './sources/f2media.js'
-import Peepboxtv from './sources/peepboxtv.js'
-import Serialblog from './sources/serialblog.js'
+import Aslmoviez from '../sources/aslmoviez.js'
+import Cinamatic from '../sources/cinamatic.js'
+import Digimovie from '../sources/digimovie.js'
+import Animex from '../sources/animex.js'
+import Donyayeserial from '../sources/donyayeserial.js'
+import F2Media from '../sources/f2media.js'
+import Peepboxtv from '../sources/peepboxtv.js'
+import Serialblog from '../sources/serialblog.js'
 import {
     isF2TurkishEnabled,
     f2turkishManifestCatalogs,
     f2turkishListCatalog,
     F2TURKISH_CATALOG_ID,
-} from './sources/f2turkish.js'
-import {ID_SEPARATOR, METADATA_SOURCE} from './sources/source.js'
-import {findExternalMetaSource, findExternalStreamSource, formatStreamTitle, getExternalCatalogSources, getKitsuTitle, getTMDBMetaFa, getTMDBMetaByTmdbId, getTMDBDetails, getTMDBTitle, getLandingTmdbCatalogs, getTorrentStreams, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxyExternalStream, proxySubtitles, translateCatalogName} from './utils.js'
-import {landingUrlsFromRequest, renderLandingPage} from './landing.js'
+} from '../sources/f2turkish.js'
+import {ID_SEPARATOR, METADATA_SOURCE} from '../sources/source.js'
+import {findExternalMetaSource, findExternalStreamSource, formatStreamTitle, getExternalCatalogSources, getKitsuTitle, getTMDBMetaFa, getTMDBMetaByTmdbId, getTMDBDetails, getTMDBTitle, getLandingTmdbCatalogs, getTorrentStreams, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxyExternalStream, proxySubtitles, translateCatalogName} from '../utils.js'
+import {landingUrlsFromRequest, renderLandingPage} from '../landing.js'
 import {createFetchHttpClient} from './http-client.js'
 import {createWorkerProxyConfig, handleProxyRequest} from './proxy.js'
 
@@ -76,8 +76,6 @@ export function createWorkerManifest(env = {}) {
             {name: 'subtitles', types: ['series', 'movie'], idPrefixes: [ADDON_PREFIX, 'tt', 'kitsu:', 'tmdb:']},
         ],
         types: ['movie', 'series', 'tv'],
-        // Torrent streams (infoHash-based) require the addon to explicitly
-        // declare P2P content, or clients hide them without warning.
         behaviorHints: {p2p: Boolean(env.TORRENT_METEOR_MANIFEST_URL)},
         stremioAddonsConfig: {
             issuer: 'https://stremio-addons.net',
@@ -224,7 +222,6 @@ async function getSubtitle(type, imdbId, httpClient) {
 
 async function catalogResponse(route, providers, logger, env = {}, httpClient) {
     try {
-        // Isolated F2 Turkish catalog (same as Express app)
         if (route.id === F2TURKISH_CATALOG_ID && isF2TurkishEnabled(env)) {
             const extra = Object.fromEntries(new URLSearchParams(route.extraArgs || ''))
             const search = extra.search || ''
@@ -274,12 +271,7 @@ async function metaResponse(route, providers, services, env, requestUrl, logger,
         if (route.id.startsWith('tmdb:') && env.TMDB_API_KEY) {
             const tmdbNumeric = String(route.id).split(':')[1]
             const meta = await getTMDBMetaByTmdbId(
-                route.type,
-                tmdbNumeric,
-                httpClient,
-                env.TMDB_API_KEY,
-                logger,
-                services.getCinemeta,
+                route.type, tmdbNumeric, httpClient, env.TMDB_API_KEY, logger, services.getCinemeta,
             )
             if (meta) {
                 return json({meta})
@@ -362,7 +354,7 @@ async function streamsByTitle(title, type, season, episode, providers) {
         providers.map(async (provider) => {
             const results = await provider.search(title)
             const match = results.find((r) => {
-                const cleanName = r.name.replace(/[؀-ۿݐ-ݿࢠ-ࣿﭐ-﷿ﹰ-﻿]/g, '').toLowerCase()
+                const cleanName = r.name.replace(/[؀-ۿݐ-ݿࢠ-͟\u0600-\u06FF]/g, '').toLowerCase()
                 return (cleanName.includes(cleanTitle) || cleanTitle.includes(cleanName)) && r.type === type
             })
             if (!match) {
@@ -412,8 +404,6 @@ async function imdbStreamResponse(type, id, providers, services, env, httpClient
     const streams = title
         ? await streamsByTitle(title, type, parsed.season, parsed.episode, providers)
         : []
-    // Iranian providers always come first — torrent results are appended,
-    // never prepended, regardless of whether Iranian results exist.
     return json({streams: [...streams, ...await torrentPromise]})
 }
 
@@ -511,9 +501,6 @@ async function streamResponse(route, providers, services, logger, httpClient, en
             return await imdbStreamResponse(route.type, route.id, providers, services, env, httpClient, logger)
         }
 
-        // Fallback for id schemes we don't otherwise handle (e.g. IPTV Bridge's
-        // own channel ids) — tried last, so it never intercepts tt/kitsu/tmdb
-        // requests that our own Iranian-providers + torrent pipeline handles.
         const externalSources = await getExternalCatalogSources(env, httpClient, logger)
         const streamSource = findExternalStreamSource(externalSources, route.id)
         if (streamSource) {
@@ -633,8 +620,7 @@ export function createWorkerHandler(options = {}) {
                 } catch (error) {
                     logResourceError(logger, 'External catalogs unavailable, serving own catalogs only', error)
                 }
-                
-                // Isolated Turkish catalog — always when enabled
+
                 try {
                     if (isF2TurkishEnabled(env)) {
                         const lang = String(env.ADDON_LANG || 'fa').toLowerCase().startsWith('en') ? 'en' : 'fa'
