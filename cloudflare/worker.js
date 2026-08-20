@@ -1,19 +1,25 @@
-import Aslmoviez from '../sources/aslmoviez.js'
-import Cinamatic from '../sources/cinamatic.js'
-import Digimovie from '../sources/digimovie.js'
-import Animex from '../sources/animex.js'
-import Donyayeserial from '../sources/donyayeserial.js'
-import F2Media from '../sources/f2media.js'
-import Peepboxtv from '../sources/peepboxtv.js'
-import Serialblog from '../sources/serialblog.js'
-import {ID_SEPARATOR, METADATA_SOURCE} from '../sources/source.js'
-import {findExternalMetaSource, findExternalStreamSource, formatStreamTitle, getExternalCatalogSources, getKitsuTitle, getTMDBMetaFa, getTMDBMetaByTmdbId, getTMDBDetails, getTMDBTitle, getLandingTmdbCatalogs, getTorrentStreams, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxyExternalStream, proxySubtitles, translateCatalogName} from '../utils.js'
-import {landingUrlsFromRequest, renderLandingPage} from '../landing.js'
+import Aslmoviez from './sources/aslmoviez.js'
+import Cinamatic from './sources/cinamatic.js'
+import Digimovie from './sources/digimovie.js'
+import Animex from './sources/animex.js'
+import Donyayeserial from './sources/donyayeserial.js'
+import F2Media from './sources/f2media.js'
+import Peepboxtv from './sources/peepboxtv.js'
+import Serialblog from './sources/serialblog.js'
+import {
+    isF2TurkishEnabled,
+    f2turkishManifestCatalogs,
+    f2turkishListCatalog,
+    F2TURKISH_CATALOG_ID,
+} from './sources/f2turkish.js'
+import {ID_SEPARATOR, METADATA_SOURCE} from './sources/source.js'
+import {findExternalMetaSource, findExternalStreamSource, formatStreamTitle, getExternalCatalogSources, getKitsuTitle, getTMDBMetaFa, getTMDBMetaByTmdbId, getTMDBDetails, getTMDBTitle, getLandingTmdbCatalogs, getTorrentStreams, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxyExternalStream, proxySubtitles, translateCatalogName} from './utils.js'
+import {landingUrlsFromRequest, renderLandingPage} from './landing.js'
 import {createFetchHttpClient} from './http-client.js'
 import {createWorkerProxyConfig, handleProxyRequest} from './proxy.js'
 
 const ADDON_PREFIX = 'ip'
-const ADDON_VERSION = '2.1.7'
+const ADDON_VERSION = '2.1.74'
 
 const CATALOGS = [
     {key: 'f2media', name: 'F2Media', catalogType: 'movies'},
@@ -218,6 +224,14 @@ async function getSubtitle(type, imdbId, httpClient) {
 
 async function catalogResponse(route, providers, logger, env = {}, httpClient) {
     try {
+        // Isolated F2 Turkish catalog (same as Express app)
+        if (route.id === F2TURKISH_CATALOG_ID && isF2TurkishEnabled(env)) {
+            const extra = Object.fromEntries(new URLSearchParams(route.extraArgs || ''))
+            const search = extra.search || ''
+            const data = await f2turkishListCatalog(route.id, search, env, httpClient)
+            return json(data || {metas: []})
+        }
+
         const externalSources = await getExternalCatalogSources(env, httpClient, logger)
         const externalSource = externalSources.find((source) => source.catalogIds.has(route.id))
         if (externalSource) {
@@ -618,6 +632,25 @@ export function createWorkerHandler(options = {}) {
                     }
                 } catch (error) {
                     logResourceError(logger, 'External catalogs unavailable, serving own catalogs only', error)
+                }
+                
+                // Isolated Turkish catalog — always when enabled
+                try {
+                    if (isF2TurkishEnabled(env)) {
+                        const lang = String(env.ADDON_LANG || 'fa').toLowerCase().startsWith('en') ? 'en' : 'fa'
+                        const trCats = f2turkishManifestCatalogs(env, lang)
+                        for (const c of trCats) {
+                            if (!manifest.catalogs.some((x) => x.id === c.id)) {
+                                let insertAt = manifest.catalogs.findIndex((x) =>
+                                    /anime|انیمه|myanimelist|kitsu/i.test(`${x?.name || ''} ${x?.id || ''}`),
+                                )
+                                if (insertAt < 0) insertAt = manifest.catalogs.length
+                                manifest.catalogs.splice(insertAt, 0, c)
+                            }
+                        }
+                    }
+                } catch (e) {
+                    logger.warn?.('F2Turkish manifest attach failed', {message: e?.message})
                 }
                 response = json(manifest)
             } else if (url.pathname === '/tmdb/landing.json') {

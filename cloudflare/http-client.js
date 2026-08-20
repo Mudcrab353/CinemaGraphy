@@ -1,106 +1,44 @@
-function appendParams(url, params) {
-    const result = new URL(url)
-    for (const [key, value] of Object.entries(params ?? {})) {
-        if (value != null) {
-            result.searchParams.append(key, String(value))
-        }
-    }
-    return result.toString()
-}
-
-function requestHeaders(values = {}) {
-    const headers = new Headers()
-    for (const [key, value] of Object.entries(values)) {
-        if (value != null && key.toLowerCase() !== 'host') {
-            headers.set(key, String(value))
-        }
-    }
-    return headers
-}
-
-function collectResponseHeaders(headers) {
-    const result = {}
-    for (const [key, value] of headers.entries()) {
-        const lower = key.toLowerCase()
-        if (lower === 'set-cookie') {
-            result[lower] = result[lower] ? [...result[lower], value] : [value]
-        } else {
-            result[lower] = value
-        }
-    }
-    return result
-}
-
-async function responseData(response, responseType) {
-    if (responseType === 'arraybuffer') {
-        return response.arrayBuffer()
-    }
-
-    const body = await response.text()
-    if (!body) {
-        return ''
-    }
-    try {
-        return JSON.parse(body)
-    } catch {
-        return body
-    }
-}
-
-async function fetchRequest(fetcher, method, url, data, config = {}) {
-    const controller = new AbortController()
-    const timeout = Number(config.timeout)
-    const timer = Number.isFinite(timeout) && timeout > 0
-        ? setTimeout(() => controller.abort(), timeout)
-        : null
-    const headers = requestHeaders(config.headers)
-    let body
-
-    if (data != null) {
-        if (typeof data === 'string' || data instanceof ArrayBuffer || ArrayBuffer.isView(data)) {
-            body = data
-        } else {
-            body = JSON.stringify(data)
-            if (!headers.has('content-type')) {
-                headers.set('content-type', 'application/json')
-            }
-        }
-    }
-
-    try {
-        const response = await fetcher(appendParams(url, config.params), {
-            method,
-            headers,
-            body,
-            redirect: config.maxRedirects === 0 ? 'manual' : 'follow',
-            signal: controller.signal,
-        })
-        const result = {
-            status: response.status,
-            headers: collectResponseHeaders(response.headers),
-            data: await responseData(response, config.responseType),
-        }
-        const validateStatus = config.validateStatus ?? ((status) => status >= 200 && status < 300)
-        if (!validateStatus(response.status)) {
-            const error = new Error(`Request failed with status code ${response.status}`)
-            error.response = result
-            throw error
-        }
-        return result
-    } finally {
-        if (timer) {
-            clearTimeout(timer)
-        }
-    }
-}
-
+/** Fetch-based HTTP client compatible with axios-like .get used by providers/utils. */
 export function createFetchHttpClient(fetcher = fetch) {
     return {
-        get(url, config) {
-            return fetchRequest(fetcher, 'GET', url, null, config)
-        },
-        post(url, data, config) {
-            return fetchRequest(fetcher, 'POST', url, data, config)
+        async get(url, config = {}) {
+            const timeout = Number(config.timeout) || 15_000
+            const ctrl = new AbortController()
+            const timer = setTimeout(() => ctrl.abort(), timeout)
+            try {
+                const res = await fetcher(url, {
+                    method: 'GET',
+                    headers: config.headers || {},
+                    signal: ctrl.signal,
+                    redirect: 'follow',
+                })
+                const ct = res.headers.get('content-type') || ''
+                let data
+                if (ct.includes('application/json')) {
+                    data = await res.json()
+                } else {
+                    data = await res.text()
+                }
+                const headers = {}
+                res.headers.forEach((v, k) => {
+                    headers[k] = v
+                    headers[k.toLowerCase()] = v
+                })
+                if (config.validateStatus) {
+                    if (!config.validateStatus(res.status)) {
+                        const err = new Error(`Request failed with status ${res.status}`)
+                        err.response = {status: res.status, data, headers}
+                        throw err
+                    }
+                } else if (res.status >= 400) {
+                    const err = new Error(`Request failed with status ${res.status}`)
+                    err.response = {status: res.status, data, headers}
+                    throw err
+                }
+                return {data, status: res.status, headers, statusText: res.statusText}
+            } finally {
+                clearTimeout(timer)
+            }
         },
     }
 }
