@@ -1,6 +1,6 @@
 <div align="center">
   <img src="./logo.png" alt="Cinemagraphy" width="128" height="128" />
-  <h1>سینماگرافی — Cinemagraphy</h1>
+  <h1>سینماگرافی — Cinemagraphy 3.0</h1>
   <p>
     <b>افزونهٔ رایگان استریمیو برای فیلم، سریال، انیمه و منابع ایرانی</b><br/>
     Free Stremio addon — Iranian sources, Persian metadata, optional torrents &amp; IPTV
@@ -11,8 +11,9 @@
     <a href="https://cinemagraphy.vercel.app/configure"><img src="https://img.shields.io/badge/configure-custom-orange?style=for-the-badge" alt="Configure" /></a>
   </p>
   <p>
-    <img src="https://img.shields.io/badge/version-2.1.51-blue.svg" alt="2.1.51" />
+    <img src="https://img.shields.io/badge/version-3.0.0-blue.svg" alt="3.0.0" />
     <img src="https://img.shields.io/badge/vercel-ready-black.svg" alt="Vercel" />
+    <img src="https://img.shields.io/badge/cloudflare-worker-f38020.svg" alt="Cloudflare" />
     <img src="https://img.shields.io/badge/Nuvio-compatible-7eb6ff.svg" alt="Nuvio" />
     <img src="https://img.shields.io/badge/FA%20%7C%20EN-supported-5dcea0.svg" alt="FA EN" />
     <img src="https://img.shields.io/badge/license-ISC-lightgrey.svg" alt="ISC" />
@@ -50,19 +51,20 @@ https://cinemagraphy.vercel.app/manifest.json
 
 ---
 
-## امکانات
+## امکانات (نسخه ۳.۰)
 
 | | |
 |---|---|
-| 🇮🇷 | منابع ایرانی موازی |
-| 🖼️ | پروکسی تصویر TMDB (بدون VPN در ایران) |
-| 📝 | متای فارسی + fallback انگلیسی |
-| 🌐 | زبان افزونه، برچسب استریم، **نام کاتالوگ‌ها** (FA / EN) |
-| 📺 | ماهواره / IPTV Bridge — مستقل از «فقط استریم» |
-| 📚 | کاتالوگ ۱۰۱ / AIO / انیمه از env |
-| 🌱 | تورنت اختیاری |
-| ⚙️ | `/configure` → منیفست `/c/{cfg}/manifest.json` |
+| 🇮🇷 | منابع ایرانی موازی (F2Media، Animex، DonyayeSerial، …) |
+| 🖼️ | پروکسی تصویر TMDB — پوستر و تامبنیل بدون VPN در ایران |
+| 📝 | متای فارسی (عنوان، توضیح، قسمت‌ها) + fallback انگلیسی |
+| 🌐 | زبان افزونه و برچسب‌های کاتالوگ (FA / EN) |
+| 📺 | ماهواره / IPTV Bridge — مستقل از حالت «فقط استریم» |
+| 📚 | کاتالوگ ۱۰۱ / AIO / انیمه / ترکی (F2) از env |
+| 🌱 | تورنت اختیاری (Meteor) |
+| ⚙️ | `/configure` → منیفست اختصاصی `/c/{cfg}/manifest.json` |
 | 🎛️ | فقط استریم · بدون متا · بدون کاتالوگ فیلم (IPTV جدا می‌ماند) |
+| 📱 | سازگار با **Stremio** و **Nuvio** |
 
 ---
 
@@ -70,58 +72,54 @@ https://cinemagraphy.vercel.app/manifest.json
 
 https://cinemagraphy.vercel.app/configure
 
-- پروایدرها، فقط‌استریم، زبان متا، **زبان افزونه (فارسی/English)**
-- با زبان انگلیسی: نام کاتالوگ‌ها (نتفلیکس، کرانچی‌رول، ماهواره، …) انگلیسی می‌مانند
-- با زبان فارسی: همان‌ها به برچسب‌های فارسی ترجمه می‌شوند
-- ماهواره: تیک جدا + لینک اختیاری (خالی = پیش‌فرض `iptvbridge.vercel.app`)
-- بارگذاری لینک `/c/...` قبلی برای ویرایش بدون وارد کردن دوبارهٔ کلیدها
+- پروایدرها، فقط‌استریم، زبان متا، **زبان افزونه (فارسی / English)**
+- بارگذاری لینک `/c/...` قبلی بدون وارد کردن دوبارهٔ کلیدها
+- ماهواره: تیک جدا + لینک M3U اختیاری
+- کاتالوگ‌های خارجی (۱۰۱، AIO، انیمه، IPTV) از متغیرهای محیطی
 
 ---
 
-## متغیرهای محیطی مهم
+## استقرار
 
-| متغیر | نقش |
-|--------|------|
-| `TMDB_API_KEY` | متا و پوستر |
-| `*_BASEURL` | پروایدرهای ایرانی |
-| `TORRENT_METEOR_MANIFEST_URL` | تورنت |
-| `CATALOG101_MANIFEST_URL` | کاتالوگ ۱۰۱ |
-| `CATALOG_AIO_MANIFEST_URL` | AIOCatalogs |
-| `CATALOG_ANIME_MANIFEST_URL` | انیمه |
-| `CATALOG_IPTVBRIDGE_MANIFEST_URL` | ماهواره (یا پیش‌فرض داخلی) |
-| `PUBLIC_BASE_URL` | پایهٔ پروکسی تصویر |
+| پلتفرم | توضیح |
+|--------|--------|
+| **Vercel** | استقرار اصلی عمومی — `vercel.json` آماده است |
+| **Cloudflare Worker** | `pnpm worker:deploy` / `wrangler deploy` — همان منطق استریم و متا |
+| **VPS / لوکال** | `node index.js` یا `pnpm start` با Node 24 |
+
+متغیرهای مهم: `TMDB_API_KEY`، آدرس پروایدرها، `CATALOG101_MANIFEST_URL` / `CATALOG_AIO_MANIFEST_URL`، `TORRENT_METEOR_MANIFEST_URL`، `ENABLE_F2_TURKISH`.
 
 ---
 
-## نسخه ۲.۱.۵۱
+## تاریخچهٔ خلاصه (از ۲.۱.۳۶ تا ۳.۰.۰)
 
-| نسخه | موضوع |
-|------|--------|
-| ۲.۱.۴۳ | Animex قسمت‌ها |
-| ۲.۱.۴۴ | دکمه Configure در استریمیو |
-| ۲.۱.۴۵–۴۸ | IPTV در Configure + استقلال از فقط‌استریم |
-| ۲.۱.۴۹ | هیرو لندینگ + ترتیب کرانچی‌رول |
-| ۲.۱.۵۰ | meta و stream ماهواره از IPTV Bridge |
-| **۲.۱.۵۱** | نام کاتالوگ‌ها (۱۰۱ / AIO / انیمه / ماهواره) بر اساس زبان افزونه |
-
----
-
-## دیپلوی
-
-Vercel · Cloudflare Workers · VPS / لوکال (`npm i` سپس start)
-
-منیفست عمومی: `cinemagraphy.vercel.app` — نسخهٔ خصوصی تست را عمومی نکنید.
+- پروکسی TMDB برای پوستر، بک‌گراند و تامبنیل قسمت‌ها  
+- متای فارسی پایدار + نام قسمت‌ها  
+- پشتیبانی رسمی Nuvio و برچسب‌های نصب  
+- شخصی‌سازی پیشرفته (زبان، فقط استریم، IPTV مستقل)  
+- کاتالوگ ۱۰۱ / AIO با غنی‌سازی فارسی و ترتیب منطقی  
+- Animex سریال، F2Media کیفیت‌ها، کاتالوگ سریال ترکی  
+- نماکده (اختیاری)، ماهواره مستقل  
+- Worker کلادفلر هم‌تراز Vercel (timeout استریم، `tt` برای قسمت‌ها)
 
 ---
 
-## کانال
+## احترام به پروژهٔ اصلی
 
-- [t.me/cinemmagraphy](https://t.me/cinemmagraphy)
-- پشتیبانی: [t.me/nerdcow](https://t.me/nerdcow)
-- [GitHub](https://github.com/TheNerdCow/CinemaGraphy)
+فورک و توسعهٔ مستقل بر پایهٔ [stremio-ir-providers](https://github.com/MrMohebi/stremio-ir-providers) — با تغییرات گسترده در متا، کاتالوگ، لندینگ و استقرار.
 
-با احترام به پروژهٔ پایهٔ استریمیو ایرانی (محبّی / ir-stremio).
+---
 
-## License
+## پشتیبانی
+
+- کانال تلگرام: [@cinemmagraphy](https://t.me/cinemmagraphy)  
+- ارتباط: [@NerdCow](https://t.me/nerdcow)  
+- Issues روی همین مخزن  
+
+**حمایت مالی** (ایران / خارج — کریپتو و …) به‌زودی روی سایت فعال می‌شود.
+
+---
+
+## مجوز
 
 ISC

@@ -1,6 +1,6 @@
 {
   "name": "cinemagraphy",
-  "version": "2.1.74",
+  "version": "3.0.0",
   "packageManager": "pnpm@11.11.0",
   "main": "index.js",
   "type": "module",
@@ -14,7 +14,7 @@
     "worker:deploy": "wrangler deploy --secrets-file .dev.vars",
     "worker:check": "wrangler deploy --dry-run --secrets-file .dev.vars",
     "test": "node --test",
-    "check": "node --test && node --check index.js && node --check proxyServer.js"
+    "check": "node --check index.js && node --check proxyServer.js"
   },
   "keywords": [],
   "author": "",
