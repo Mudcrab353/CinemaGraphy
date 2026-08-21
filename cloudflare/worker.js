@@ -331,6 +331,13 @@ function stripPersian(s) {
     return String(s || '').replace(/[\u0600-\u06FF]/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase()
 }
 
+// Match Vercel: short in-memory stream cache (same isolate / warm Worker)
+const STREAM_CACHE_TTL_MS = 90_000
+const streamTitleCache = new Map()
+function streamCacheKey(title, type, season, episode) {
+    return `${type}|${season ?? ''}|${episode ?? ''}|${String(title || '').toLowerCase().trim()}`
+}
+
 function withProviderTimeout(promise, ms, key) {
     return new Promise((resolve) => {
         let done = false
@@ -347,7 +354,13 @@ function withProviderTimeout(promise, ms, key) {
 
 async function streamsByTitle(title, type, season, episode, providers, env = {}) {
     const cleanTitle = stripPersian(title)
-    const budget = Number(env.PROVIDER_TIMEOUT_MS) || (type === 'series' ? 12_000 : 9_000)
+    const cacheKey = streamCacheKey(cleanTitle, type, season, episode)
+    const cached = streamTitleCache.get(cacheKey)
+    if (cached && Date.now() - cached.at < STREAM_CACHE_TTL_MS) {
+        return cached.streams
+    }
+    // Align with Vercel: series pages (F2Media etc.) need longer than movies
+    const budget = Number(env.PROVIDER_TIMEOUT_MS) || (type === 'series' ? 20_000 : 12_000)
     const queries = []
     const raw = String(title || '').trim()
     if (raw) queries.push(raw)
@@ -398,9 +411,15 @@ async function streamsByTitle(title, type, season, episode, providers, env = {})
         })()
         return withProviderTimeout(work, budget, provider.key)
     }))
-    return sortByQuality(
+    const streams = sortByQuality(
         settled.filter((r) => r.status === 'fulfilled').flatMap((r) => r.value?.streams || []),
     )
+    streamTitleCache.set(cacheKey, {at: Date.now(), streams})
+    if (streamTitleCache.size > 250) {
+        const oldest = streamTitleCache.keys().next().value
+        streamTitleCache.delete(oldest)
+    }
+    return streams
 }
 
 async function imdbStreamResponse(type, id, providers, services, env, httpClient, logger) {
@@ -452,9 +471,17 @@ async function tmdbStreamResponse(type, id, providers, httpClient, apiKey, env, 
     return json({streams: [...streams, ...await torrentPromise]})
 }
 
-async function streamResponse(route, providers, services, logger, httpClient, env) {
+async function streamResponse(route, providers, services, logger, httpClient, env, request = null) {
     try {
         if (!['movie', 'series', 'tv'].includes(route.type)) return json({streams: []})
+        // Edge Cache API — second request for same episode is near-instant (like warm Vercel)
+        try {
+            if (request && typeof caches !== 'undefined' && caches.default) {
+                const ck = new Request(new URL(request.url).origin + `/__stream_cache/${route.type}/${encodeURIComponent(route.id)}`)
+                const hit = await caches.default.match(ck)
+                if (hit) return hit
+            }
+        } catch (_) { /* ignore cache read errors */ }
         const parsedId = parseWorkerAddonId(route.id, providers)
         if (parsedId) {
             const movieData = await parsedId.provider.getMovieData(route.type, parsedId.providerItemId)
@@ -630,7 +657,29 @@ export function createWorkerHandler(options = {}) {
                     }
                     if (route.resource === 'catalog') response = await catalogResponse(route, providers, logger, env, httpClient)
                     else if (route.resource === 'meta') response = await metaResponse(route, providers, services, env, request.url, logger, httpClient)
-                    else if (route.resource === 'stream') response = await streamResponse(route, providers, services, logger, httpClient, env)
+                    else if (route.resource === 'stream') {
+                        response = await streamResponse(route, providers, services, logger, httpClient, env, request)
+                        // Cache successful stream payloads at the edge (90s) — stabilizes CF cold paths
+                        try {
+                            if (response && response.status === 200 && typeof caches !== 'undefined' && caches.default) {
+                                const bodyText = await response.clone().text()
+                                let ok = false
+                                try {
+                                    const parsed = JSON.parse(bodyText)
+                                    ok = Array.isArray(parsed?.streams) && parsed.streams.length > 0
+                                } catch { ok = false }
+                                if (ok) {
+                                    const ck = new Request(new URL(request.url).origin + `/__stream_cache/${route.type}/${encodeURIComponent(route.id)}`)
+                                    const headers = new Headers(response.headers)
+                                    headers.set('content-type', 'application/json; charset=utf-8')
+                                    headers.set('cache-control', 'public, max-age=90, s-maxage=90')
+                                    headers.set('x-cg-cache', 'store')
+                                    await caches.default.put(ck, new Response(bodyText, {status: 200, headers}))
+                                    response = new Response(bodyText, {status: 200, headers})
+                                }
+                            }
+                        } catch (_) { /* ignore cache write */ }
+                    }
                     else response = await subtitleResponse(route, providers, services, env, httpClient, logger)
                 }
             }
