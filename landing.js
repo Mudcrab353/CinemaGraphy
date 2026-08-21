@@ -223,9 +223,29 @@ overscroll-behavior-x:contain;scrollbar-width:none!important;-ms-overflow-style:
 .prov .card{transition:transform .18s,border-color .18s}
 .prov .card:hover{transform:translateY(-2px);border-color:rgba(232,160,74,.3)}
 
-.chip.soon{opacity:.85;cursor:default;position:relative;padding-inline-end:52px}
-.chip.soon .soon-tag{position:absolute;inset-inline-end:8px;top:50%;transform:translateY(-50%);font-size:.62rem;font-weight:800;padding:2px 6px;border-radius:999px;background:rgba(232,160,74,.22);color:var(--a);letter-spacing:.02em}
+.chip.soon{opacity:.85;cursor:default;display:inline-flex;align-items:center;gap:6px;padding:8px 12px}
+.chip.soon .soon-tag{position:static;transform:none;font-size:.62rem;font-weight:800;padding:2px 7px;border-radius:999px;background:rgba(232,160,74,.22);color:var(--a);letter-spacing:.02em;white-space:nowrap;flex-shrink:0}
 .chip.soon:hover{transform:none;border-color:var(--gb)}
+.nav-chips{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end;min-width:0}
+@media(max-width:860px){
+  header{padding:10px 3.5vw;gap:10px}
+  .brand span{display:none}
+  .brand img{width:36px;height:36px;border-radius:11px}
+  .nav-chips{gap:6px}
+  .chip{padding:6px 10px;font-size:.75rem}
+  .chip.soon{display:none} /* hero already has support button */
+  .row{gap:8px;justify-content:center}
+  .row .btn{flex:1 1 calc(50% - 8px);min-width:0;padding:12px 12px;font-size:.84rem}
+  .stage{width:min(210px,58vw)}
+  .feat-row{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .box .r{flex-wrap:wrap}
+  .box input{width:100%}
+}
+@media(max-width:420px){
+  .row .btn{flex:1 1 100%;font-size:.88rem}
+  .chip{padding:6px 9px;font-size:.72rem}
+  header{padding:8px 3vw}
+}
 </style>
 </head>
 <body>
@@ -233,7 +253,7 @@ overscroll-behavior-x:contain;scrollbar-width:none!important;-ms-overflow-style:
 <div class="neb n1"></div><div class="neb n2"></div>
 <header>
 <a class="brand" href="/"><img src="${logo}" alt="Cinemagraphy" onerror="this.src='${LOGO_FALLBACK}'"/><span>سینماگرافی</span></a>
-<div style="display:flex;gap:8px;align-items:center">
+<div class="nav-chips">
 <a class="chip" href="/guide" style="text-decoration:none"><span class="lang-fa">راهنما</span><span class="lang-en">Guide</span></a>
 <a class="chip" href="/configure" style="text-decoration:none"><span class="lang-fa">شخصی‌سازی</span><span class="lang-en">Configure</span></a>
 <span class="chip soon" title="به‌زودی / Coming soon" role="button" aria-disabled="true">
