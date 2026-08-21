@@ -1,6 +1,6 @@
 <div align="center">
   <img src="./logo.png" alt="Cinemagraphy" width="128" height="128" />
-  <h1>سینماگرافی — Cinemagraphy 3.0</h1>
+  <h1>سینماگرافی — Cinemagraphy </h1>
   <p>
     <b>افزونهٔ رایگان استریمیو برای فیلم، سریال، انیمه و منابع ایرانی</b><br/>
     Free Stremio addon — Iranian sources, Persian metadata, optional torrents &amp; IPTV
