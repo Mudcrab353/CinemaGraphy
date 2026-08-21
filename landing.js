@@ -59,14 +59,14 @@ export function renderLandingPage({
   manifestUrl = PUBLIC_INSTALL,
   installUrl,
   logoUrl = '/logo.png',
-  version = '2.1.55',
+  version = '3.0.0',
 } = {}) {
   const m = escapeHtml(manifestUrl || PUBLIC_INSTALL)
   const install = escapeHtml(
     installUrl || `stremio://${String(manifestUrl || PUBLIC_INSTALL).replace(/^https?:\/\//i, '')}`,
   )
   const logo = escapeHtml(logoUrl || LOGO_FALLBACK)
-  const ver = escapeHtml(String(version || '2.1.55'))
+  const ver = escapeHtml(String(version || '3.0.0'))
 
   const addonCards = RECOMMENDED.map(
     (a) => `
@@ -222,6 +222,10 @@ overscroll-behavior-x:contain;scrollbar-width:none!important;-ms-overflow-style:
 .sec-h .ico svg{width:16px;height:16px;fill:currentColor}
 .prov .card{transition:transform .18s,border-color .18s}
 .prov .card:hover{transform:translateY(-2px);border-color:rgba(232,160,74,.3)}
+
+.chip.soon{opacity:.85;cursor:default;position:relative;padding-inline-end:52px}
+.chip.soon .soon-tag{position:absolute;inset-inline-end:8px;top:50%;transform:translateY(-50%);font-size:.62rem;font-weight:800;padding:2px 6px;border-radius:999px;background:rgba(232,160,74,.22);color:var(--a);letter-spacing:.02em}
+.chip.soon:hover{transform:none;border-color:var(--gb)}
 </style>
 </head>
 <body>
@@ -232,6 +236,10 @@ overscroll-behavior-x:contain;scrollbar-width:none!important;-ms-overflow-style:
 <div style="display:flex;gap:8px;align-items:center">
 <a class="chip" href="/guide" style="text-decoration:none"><span class="lang-fa">راهنما</span><span class="lang-en">Guide</span></a>
 <a class="chip" href="/configure" style="text-decoration:none"><span class="lang-fa">شخصی‌سازی</span><span class="lang-en">Configure</span></a>
+<span class="chip soon" title="به‌زودی / Coming soon" role="button" aria-disabled="true">
+  <span class="lang-fa">♥ حمایت مالی</span><span class="lang-en">♥ Support</span>
+  <span class="soon-tag lang-fa">به‌زودی</span><span class="soon-tag lang-en">Soon</span>
+</span>
 <button class="chip" id="langBtn" type="button">EN</button>
 </div>
 </header>
@@ -247,6 +255,7 @@ overscroll-behavior-x:contain;scrollbar-width:none!important;-ms-overflow-style:
 <a class="btn bp" href="${install}"><span class="lang-fa">نصب در نوویو و استریمیو</span><span class="lang-en">Install in Nuvio &amp; Stremio</span></a>
 <button class="btn bp" id="manifestCopyBtn" type="button"><span class="lang-fa">لینک منیفست</span><span class="lang-en">Manifest link</span></button>
 <a class="btn bp" href="/configure" style="background:rgba(255,255,255,.1);color:var(--t);box-shadow:none;border:1px solid var(--gb)"><span class="lang-fa">شخصی‌سازی</span><span class="lang-en">Configure</span></a>
+<button class="btn bp" type="button" disabled style="opacity:.72;cursor:default;background:rgba(232,160,74,.12);color:var(--a);box-shadow:none;border:1px solid rgba(232,160,74,.35)" title="به‌زودی — حمایت از ایران و خارج (کریپتو و …)"><span class="lang-fa">♥ حمایت مالی · به‌زودی</span><span class="lang-en">♥ Support · Soon</span></button>
 </div>
 <input type="hidden" id="manifestUrl" value="${m}"/>
 </div>
@@ -654,11 +663,11 @@ h2{font-size:1.05rem;margin:0 0 10px;overflow-wrap:anywhere}
 
 export function renderConfigurePage({
   logoUrl = '/logo.png',
-  version = '2.1.55',
+  version = '3.0.0',
   origin = PUBLIC_SITE,
 } = {}) {
   const logo = escapeHtml(logoUrl || LOGO_FALLBACK)
-  const ver = escapeHtml(String(version || '2.1.55'))
+  const ver = escapeHtml(String(version || '3.0.0'))
   const originClean = String(origin || PUBLIC_SITE).replace(/\/$/, '')
   const base = escapeHtml(originClean)
   const baseJson = JSON.stringify(originClean)
@@ -1144,11 +1153,11 @@ export function renderConfigurePage({
 
 export function renderGuidePage({
   logoUrl = '/logo.png',
-  version = '2.1.55',
+  version = '3.0.0',
   manifestUrl = PUBLIC_INSTALL,
 } = {}) {
   const logo = escapeHtml(logoUrl || LOGO_FALLBACK)
-  const ver = escapeHtml(String(version || '2.1.55'))
+  const ver = escapeHtml(String(version || '3.0.0'))
   const install = escapeHtml(
     'stremio://' + String(manifestUrl || PUBLIC_INSTALL).replace(/^https?:\/\//i, ''),
   )
