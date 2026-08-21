@@ -917,10 +917,18 @@ export function createAddon({
 
     function requestScope(req) {
         const e = mergeEnv(env, req?.addonConfig)
+        // Public default is ALWAYS Persian. English only via /c/ personalization.
+        // Do not let server env ADDON_LANG/META_LANG flip the public install to EN.
         try {
-            setMetaLangPref(e.META_LANG || env.META_LANG || 'fa')
-            // Stream labels follow addon language (ADDON_LANG), not META_LANG
-            setUiLangPref(e.ADDON_LANG || env.ADDON_LANG || 'fa')
+            if (!req?.addonConfig) {
+                e.ADDON_LANG = 'fa'
+                e.META_LANG = 'fa'
+            } else {
+                if (!String(e.ADDON_LANG || '').trim()) e.ADDON_LANG = 'fa'
+                if (!String(e.META_LANG || '').trim()) e.META_LANG = String(e.ADDON_LANG || 'fa')
+            }
+            setMetaLangPref(e.META_LANG || 'fa')
+            setUiLangPref(e.ADDON_LANG || 'fa')
         } catch { /* ignore */ }
         const p = req?.addonConfig ? createProviders({env: e, logger}) : providers
         return {env: e, providers: p}
