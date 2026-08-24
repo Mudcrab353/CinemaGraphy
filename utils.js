@@ -1375,6 +1375,16 @@ function cleanupCatalogFaName(working) {
 }
 
 export function translateCatalogName(name, type, lang = null) {
+    // Keep Animex / Turkish fixed labels intact
+    const raw = String(name || '').trim()
+    const isEn = String(lang || 'fa').toLowerCase().startsWith('en')
+    if (/^انیمه\s*[-–—]\s*انیمکس$/u.test(raw) || /^anime\s*[-–—]\s*animex$/i.test(raw)) {
+        return isEn ? 'Anime - Animex' : 'انیمه - انیمکس'
+    }
+    if (/^ترکی$/u.test(raw) || /^turkish$/i.test(raw)) {
+        return isEn ? 'Turkish' : 'ترکی'
+    }
+
     if (!name) return name
 
     const original = String(name).trim()

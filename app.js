@@ -55,7 +55,7 @@ import {createRateLimitMiddleware} from './lib/rate-limit.js'
 import {registerAdminRoutes} from './lib/admin.js'
 
 export const ADDON_PREFIX = 'ip'
-export const ADDON_VERSION = '3.2.1'
+export const ADDON_VERSION = '3.2.2'
 
 // Re-export config helpers for tests / external consumers
 export {decodeAddonConfig, mergeEnv, DEFAULT_IPTV_BRIDGE_MANIFEST_URL, isConfigFlagOn}
@@ -1319,7 +1319,25 @@ addon.get(/^\/api\/tmdb-image\/([^/]+)\/(.+)$/, async (req, res) => {
                 return res.json({})
             }
 
-            const movieData = await parsedId.provider.getMovieData(req.params.type, parsedId.providerItemId)
+            let movieData = await parsedId.provider.getMovieData(req.params.type, parsedId.providerItemId)
+            if (!movieData && parsedId.provider?.key === 'animex') {
+                try {
+                    const {decodePagePath} = await import('./sources/html-source.js')
+                    const path = decodePagePath(parsedId.providerItemId)
+                    const slug = String(path || '').split('/').filter(Boolean).pop() || ''
+                    const titleGuess = slug.replace(/-/g, ' ').trim()
+                    if (titleGuess) {
+                        movieData = {
+                            path: path || `/anime/${slug}/`,
+                            title: titleGuess,
+                            imdbId: null,
+                            isSeries: true,
+                            pageSeason: null,
+                            links: [],
+                        }
+                    }
+                } catch { /* ignore */ }
+            }
             if (!movieData) {
                 return res.json({})
             }
