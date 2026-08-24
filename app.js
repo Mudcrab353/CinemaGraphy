@@ -55,7 +55,7 @@ import {createRateLimitMiddleware} from './lib/rate-limit.js'
 import {registerAdminRoutes} from './lib/admin.js'
 
 export const ADDON_PREFIX = 'ip'
-export const ADDON_VERSION = '3.2.3'
+export const ADDON_VERSION = '3.2.4'
 
 // Re-export config helpers for tests / external consumers
 export {decodeAddonConfig, mergeEnv, DEFAULT_IPTV_BRIDGE_MANIFEST_URL, isConfigFlagOn}
@@ -1019,7 +1019,11 @@ addon.get(/^\/api\/tmdb-image\/([^/]+)\/(.+)$/, async (req, res) => {
             }
             // Anime - Animex catalog: right after Turkish, before external anime / IPTV
             if (isAnimexCatalogEnabled(activeEnv)) {
-                const axCats = animexCatalogManifestCatalogs(activeEnv, catalogLang)
+                const axCats = animexCatalogManifestCatalogs(activeEnv, catalogLang).map((c) => ({
+                    ...c,
+                    // FORCE_AX_NAME
+                    name: String(catalogLang || 'fa').startsWith('en') ? 'Anime - Animex' : 'انیمه - انیمکس',
+                }))
                 const alreadyAx = manifest.catalogs.some((c) => c?.id === ANIMEX_CATALOG_ID)
                 if (!alreadyAx && axCats.length) {
                     let insertAt = manifest.catalogs.findIndex((c) => c?.id === F2TURKISH_CATALOG_ID)

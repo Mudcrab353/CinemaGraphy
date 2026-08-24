@@ -59,7 +59,7 @@ export function renderLandingPage({
   manifestUrl = PUBLIC_INSTALL,
   installUrl,
   logoUrl = '/logo.png',
-  version = '3.2.2',
+  version = '3.2.4',
 } = {}) {
   const m = escapeHtml(manifestUrl || PUBLIC_INSTALL)
   const install = escapeHtml(
@@ -683,7 +683,7 @@ h2{font-size:1.05rem;margin:0 0 10px;overflow-wrap:anywhere}
 
 export function renderConfigurePage({
   logoUrl = '/logo.png',
-  version = '3.2.2',
+  version = '3.2.4',
   origin = PUBLIC_SITE,
 } = {}) {
   const logo = escapeHtml(logoUrl || LOGO_FALLBACK)
@@ -1198,7 +1198,7 @@ export function renderConfigurePage({
 
 export function renderGuidePage({
   logoUrl = '/logo.png',
-  version = '3.2.2',
+  version = '3.2.4',
   manifestUrl = PUBLIC_INSTALL,
 } = {}) {
   const logo = escapeHtml(logoUrl || LOGO_FALLBACK)
