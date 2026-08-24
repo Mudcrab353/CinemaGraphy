@@ -143,6 +143,20 @@ export default class Animex extends HtmlSource {
         this.providerID = `${this.key}${this.idSeparator}`
     }
 
+    requestConfig() {
+        const base = super.requestConfig?.() || {}
+        return {
+            ...base,
+            timeout: Math.max(Number(base.timeout) || 15000, 28000),
+            headers: {
+                ...(base.headers || {}),
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                'Accept-Language': 'fa-IR,fa;q=0.9,en;q=0.8',
+                Referer: this.baseUrl || 'https://animex.click/',
+            },
+        }
+    }
+
     async search(text) {
         const query = normalizeText(text)
         if (!this.baseUrl || !query) {
