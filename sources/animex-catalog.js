@@ -33,9 +33,9 @@ export function animexCatalogDisplayName(lang = 'fa') {
 
 function cleanTitle(raw) {
   return String(raw || '')
-    .replace(/&/g, '&').replace(/"/g, '"').replace(/&#39;/g, "'")
+    .replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'")
     .replace(/<[^>]+>/g, '')
-    .replace(/^\u062f\u0627\u0646\u0644\u0648\u062f\s+(\u0627\u0646\u06cc\u0645\u0647|\u0633\u0631\u06cc\u0627\u0644|\u0641\u06cc\u0644\u0645)\s+/i, '')
+    .replace(/^دانلود\s+(انیمه|سریال|فیلم)\s+/i, '')
     .replace(/\s+/g, ' ').trim()
 }
 
@@ -88,7 +88,7 @@ function parseListingHtml(html, base) {
     const pageId = encodePagePath(idPath)
     if (!pageId) return
     let name = cleanTitle(title) || slug.replace(/-/g, ' ')
-    if (name.length < 2 || name === '\u0627\u0646\u06cc\u0645\u06a9\u0633') name = slug.replace(/-/g, ' ')
+    if (name.length < 2 || name === 'انیمکس') name = slug.replace(/-/g, ' ')
     let poster = null
     if (img && !String(img).startsWith('data:') && !String(img).includes('_files/')) {
       try { poster = new URL(img, base).toString() } catch { poster = String(img).startsWith('http') ? img : null }
@@ -118,7 +118,7 @@ function parseListingHtml(html, base) {
       || chunk.match(/<h[123][^>]*>([\s\S]*?)<\/h[123]>/i)
       || chunk.match(/alt=["']([^"']+)["']/i)
     let title = titleM ? cleanTitle(titleM[1]) : ''
-    if (!title || title === '\u0627\u0646\u06cc\u0645\u06a9\u0633') title = slug.replace(/-/g, ' ')
+    if (!title || title === 'انیمکس') title = slug.replace(/-/g, ' ')
     push(slug, title, imgM ? imgM[1] : null)
   }
 
