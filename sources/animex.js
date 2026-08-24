@@ -486,6 +486,24 @@ export default class Animex extends HtmlSource {
                 }
             }
 
+            // If directory listing failed (common outside IR), still expose download targets
+            if (!links.length && !externalFallbacks.length && downloadTokens.length) {
+                for (const token of downloadTokens) {
+                    const groupLabel = [token.group_title, token.quality].filter(Boolean).join(' ')
+                    if (!token.target) continue
+                    externalFallbacks.push({
+                        url: token.target,
+                        externalUrl: token.target,
+                        quality: groupLabel || qualityFromText(token.target) || null,
+                        title: groupLabel || 'Animex',
+                        size: token.size || null,
+                        season: extractSeasonNumber(token.group_title, token.quality, title) ?? pageSeason,
+                        episode: extractEpisodeNumber(token.target) || extractEpisodeNumber(groupLabel),
+                        behaviorHints: {notWebReady: true},
+                    })
+                }
+            }
+
             const merged = uniqueLinks([...links, ...externalFallbacks])
 
             return {
