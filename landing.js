@@ -59,7 +59,7 @@ export function renderLandingPage({
   manifestUrl = PUBLIC_INSTALL,
   installUrl,
   logoUrl = '/logo.png',
-  version = '3.0.0',
+  version = '3.1.0',
 } = {}) {
   const m = escapeHtml(manifestUrl || PUBLIC_INSTALL)
   const install = escapeHtml(
@@ -683,11 +683,11 @@ h2{font-size:1.05rem;margin:0 0 10px;overflow-wrap:anywhere}
 
 export function renderConfigurePage({
   logoUrl = '/logo.png',
-  version = '3.0.0',
+  version = '3.1.0',
   origin = PUBLIC_SITE,
 } = {}) {
   const logo = escapeHtml(logoUrl || LOGO_FALLBACK)
-  const ver = escapeHtml(String(version || '3.0.0'))
+  const ver = escapeHtml(String(version || '3.1.0'))
   const originClean = String(origin || PUBLIC_SITE).replace(/\/$/, '')
   const base = escapeHtml(originClean)
   const baseJson = JSON.stringify(originClean)
@@ -730,6 +730,11 @@ export function renderConfigurePage({
 <h1 class="lang-en">🔧 Advanced configure</h1>
 <p class="sub lang-fa">این صفحه همیشه <b>منیفست اختصاصی</b> می‌سازد (نه لینک پیش‌فرض عمومی). پیش‌فرض کامل روی <a href="/">صفحهٔ اصلی</a> است. تنظیمات در مرورگر ذخیره می‌شود تا برای ویرایش بعدی کلیدها را دوباره وارد نکنید.</p>
 <p class="sub lang-en">This page always builds a <b>custom</b> manifest (not the public default). Defaults live on the <a href="/">home page</a>. Settings are saved in your browser so you can edit without retyping keys.</p>
+
+<div class="glass" style="padding:14px 16px;margin-bottom:16px;border:1px solid rgba(232,160,74,.45);background:rgba(232,160,74,.08)">
+<p class="lang-fa" style="margin:0;font-size:.88rem;line-height:1.55"><b>⚠️ امنیت:</b> لینک نصب اختصاصی (<code>/c/...</code>) ممکن است شامل کلید TMDB و رمز پروایدرها باشد. آن را در گروه عمومی یا شبکه‌های اجتماعی نفرستید. برای اطلاعات حساس از متغیرهای محیطی سرور استفاده کنید.</p>
+<p class="lang-en" style="margin:0;font-size:.88rem;line-height:1.55"><b>⚠️ Security:</b> Your custom install link (<code>/c/...</code>) may contain your TMDB API key and provider passwords. Do not share it publicly. Prefer server environment variables for secrets.</p>
+</div>
 
 <div class="load-box glass">
 <h2 class="lang-fa">بارگذاری تنظیمات قبلی</h2>
@@ -905,6 +910,20 @@ export function renderConfigurePage({
 </div>
 
 <div class="glass" style="padding:16px;margin-bottom:16px">
+<h2 class="lang-fa" style="margin-top:0">انیمه - انیمکس</h2>
+<h2 class="lang-en" style="margin-top:0">Anime - Animex</h2>
+<label class="tog" style="display:flex;gap:12px;align-items:flex-start;padding:12px 0;cursor:pointer">
+<input type="checkbox" id="animexCatalogOn" style="width:18px;height:18px;margin-top:3px;accent-color:#e8a04a;flex-shrink:0"/>
+<div>
+<b class="lang-fa">فعال‌سازی کاتالوگ انیمه - انیمکس</b>
+<span class="hint lang-fa" style="display:block;font-size:.82rem;color:var(--m);font-weight:500;margin-top:4px">زیر «ترکی» و بالای کاتالوگ انیمهٔ خارجی. متا از TMDB؛ پوستر پشتیبان از انیمکس.</span>
+<b class="lang-en">Enable Anime - Animex catalog</b>
+<span class="hint lang-en" style="display:block;font-size:.82rem;color:var(--m);font-weight:500;margin-top:4px">Below Turkish, above external anime catalogs. TMDB meta; poster fallback from Animex.</span>
+</div>
+</label>
+</div>
+
+<div class="glass" style="padding:16px;margin-bottom:16px">
 <h2 class="lang-fa" style="margin-top:0">نماکده</h2>
 <h2 class="lang-en" style="margin-top:0">Namakade</h2>
 <label class="tog" style="display:flex;gap:12px;align-items:flex-start;padding:12px 0;cursor:pointer">
@@ -1008,6 +1027,8 @@ export function renderConfigurePage({
     if (nk && nk.checked) o.ENABLE_NAMAKADE = '1';
     const f2t = document.getElementById('f2turkishOn');
     if (f2t && f2t.checked) o.ENABLE_F2_TURKISH = '1';
+    const axc = document.getElementById('animexCatalogOn');
+    if (axc) o.ENABLE_ANIMEX_CATALOG = axc.checked ? '1' : '0';
     var metaR = document.querySelector('input[name="metaLang"]:checked');
     if (metaR && metaR.value === 'en') o.META_LANG = 'en';
     var addR = document.querySelector('input[name="addonLang"]:checked');
@@ -1041,6 +1062,10 @@ export function renderConfigurePage({
     if (nkEl) nkEl.checked = o.ENABLE_NAMAKADE === '1' || o.ENABLE_NAMAKADE === 'true';
     const f2tEl = document.getElementById('f2turkishOn');
     if (f2tEl) f2tEl.checked = o.ENABLE_F2_TURKISH === '1' || o.ENABLE_F2_TURKISH === 'true';
+    const axcEl = document.getElementById('animexCatalogOn');
+    if (axcEl) {
+      axcEl.checked = o.ENABLE_ANIMEX_CATALOG !== '0' && o.ENABLE_ANIMEX_CATALOG !== 'false';
+    }
     var metaVal = (o.META_LANG === 'en') ? 'en' : 'fa';
     document.querySelectorAll('input[name="metaLang"]').forEach(function (r) { r.checked = r.value === metaVal; });
     var addVal = (o.ADDON_LANG === 'en') ? 'en' : 'fa';
@@ -1096,7 +1121,7 @@ export function renderConfigurePage({
     el.textContent = text || '';
     el.style.color = ok ? '#5dcea0' : 'var(--m)';
   }
-  document.querySelectorAll('[data-prov], [data-k], #optStreamsOnly, #optDisableMeta, #optDisableCatalog, #optDisableSubs, #optIptv, #optNamakade, #f2turkishOn, input[name="metaLang"], input[name="addonLang"]').forEach(function (el) {
+  document.querySelectorAll('[data-prov], [data-k], #optStreamsOnly, #optDisableMeta, #optDisableCatalog, #optDisableSubs, #optIptv, #optNamakade, #f2turkishOn, #animexCatalogOn, input[name="metaLang"], input[name="addonLang"]').forEach(function (el) {
     el.addEventListener('change', refresh);
     el.addEventListener('input', refresh);
   });
@@ -1173,11 +1198,11 @@ export function renderConfigurePage({
 
 export function renderGuidePage({
   logoUrl = '/logo.png',
-  version = '3.0.0',
+  version = '3.1.0',
   manifestUrl = PUBLIC_INSTALL,
 } = {}) {
   const logo = escapeHtml(logoUrl || LOGO_FALLBACK)
-  const ver = escapeHtml(String(version || '3.0.0'))
+  const ver = escapeHtml(String(version || '3.1.0'))
   const install = escapeHtml(
     'stremio://' + String(manifestUrl || PUBLIC_INSTALL).replace(/^https?:\/\//i, ''),
   )

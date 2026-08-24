@@ -28,188 +28,37 @@ import {
     f2turkishListCatalog,
     F2TURKISH_CATALOG_ID,
 } from './sources/f2turkish.js'
+import {
+    isAnimexCatalogEnabled,
+    animexCatalogManifestCatalogs,
+    animexCatalogList,
+    ANIMEX_CATALOG_ID,
+} from './sources/animex-catalog.js'
 import Donyayeserial from './sources/donyayeserial.js'
 import F2Media, {DEFAULT_F2MEDIA_BASEURL} from './sources/f2media.js'
 import Peepboxtv from './sources/peepboxtv.js'
 import Serialblog from './sources/serialblog.js'
 import {ID_SEPARATOR, METADATA_SOURCE} from './sources/source.js'
 import {findExternalMetaSource, findExternalStreamSource, formatStreamTitle, getCinemeta, getExternalCatalogSources, getExternalCatalogStatus, invalidateExternalCatalogCache, getKitsuTitle, getSubtitle, getTMDBMetaFa, enrichMetaWithFaTmdb, enrichCatalogMetasWithoutRpdb, getTMDBMetaByTmdbId, getTMDBDetails, getTMDBTitle, getLandingTmdbCatalogs, getTorrentStreams, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxyExternalStream, proxySubtitles, translateCatalogName, buildOrderedExternalCatalogs, classifyExternalCatalogSource, rewriteTmdbImageUrls, parseTmdbImageProxyPath, tmdbRequest, setMetaLangPref, setUiLangPref} from './utils.js'
+import {
+    PROVIDER_BASEURL_KEYS,
+    PROVIDER_KEY_TO_ENV,
+    DEFAULT_IPTV_BRIDGE_MANIFEST_URL,
+    isConfigFlagOn,
+    decodeAddonConfig,
+    mergeEnv,
+} from './lib/config.js'
+import {sortByQuality} from './lib/stream-format.js'
+import {cacheStats} from './lib/cache.js'
+import {configShareWarning} from './lib/security.js'
+import {createRateLimitMiddleware} from './lib/rate-limit.js'
+import {registerAdminRoutes} from './lib/admin.js'
 
 export const ADDON_PREFIX = 'ip'
-export const ADDON_VERSION = '3.0.0'
+export const ADDON_VERSION = '3.2.1'
 
-
-const PROVIDER_BASEURL_KEYS = [
-    'F2MEDIA_BASEURL',
-    'PEEPBOXTV_BASEURL',
-    'CINAMATIC_BASEURL',
-    'ASLMOVIEZ_BASEURL',
-    'SERIALBLOG_BASEURL',
-    'DIGIMOVIE_BASEURL',
-    'DONYAYESERIAL_BASEURL',
-    'ANIMEX_BASEURL',
-]
-
-const PROVIDER_KEY_TO_ENV = {
-    f2media: 'F2MEDIA_BASEURL',
-    peepboxtv: 'PEEPBOXTV_BASEURL',
-    cinamatic: 'CINAMATIC_BASEURL',
-    aslmoviez: 'ASLMOVIEZ_BASEURL',
-    serialblog: 'SERIALBLOG_BASEURL',
-    digimovie: 'DIGIMOVIE_BASEURL',
-    donyayeserial: 'DONYAYESERIAL_BASEURL',
-    animex: 'ANIMEX_BASEURL',
-}
-
-/** Public default when ENABLE_IPTV is on and no custom URL / env is set. */
-export const DEFAULT_IPTV_BRIDGE_MANIFEST_URL = 'https://iptvbridge.vercel.app/manifest.json'
-
-const CONFIG_ALLOW = new Set([
-    'TMDB_API_KEY',
-    'ENABLED_PROVIDERS',
-    'TORRENT_METEOR_MANIFEST_URL',
-    'EXTERNAL_CATALOG_MANIFEST_URLS',
-    'CATALOG_AIO_MANIFEST_URL',
-    'CATALOG_AIOCATALOGS_MANIFEST_URL',
-    'CATALOG101_MANIFEST_URL',
-    'CATALOG_ANIME_MANIFEST_URL',
-    'CATALOG_IPTVBRIDGE_MANIFEST_URL',
-    'CATALOG_TMDB_MANIFEST_URL',
-    'PROVIDER_TIMEOUT_MS',
-    'DIGIMOVIE_USERNAME',
-    'DIGIMOVIE_PASSWORD',
-    'PROXY_ENABLE',
-    'PROXY_URL',
-    'PROXY_PATH',
-    'DISABLE_META',
-    'DISABLE_CATALOG',
-    'DISABLE_SUBTITLES',
-    'STREAMS_ONLY',
-    'ADDON_NAME_SUFFIX',
-    'META_LANG',
-    'ADDON_LANG',
-    'ENABLE_IPTV',
-    'ENABLE_NAMAKADE',
-    'NAMAKADE_BASEURL',
-    ...PROVIDER_BASEURL_KEYS,
-])
-
-function isConfigFlagOn(env, key) {
-    const v = String(env?.[key] ?? '').trim().toLowerCase()
-    return v === '1' || v === 'true' || v === 'yes' || v === 'on'
-}
-
-export function decodeAddonConfig(encoded) {
-    if (!encoded) return null
-    try {
-        const json = Buffer.from(String(encoded), 'base64url').toString('utf8')
-        const obj = JSON.parse(json)
-        if (!obj || typeof obj !== 'object') return null
-        const out = {}
-        for (const [k, v] of Object.entries(obj)) {
-            if (!CONFIG_ALLOW.has(k)) continue
-            if (v == null) continue
-            const s = String(v).trim()
-            if (s) out[k] = s
-        }
-        return Object.keys(out).length ? out : null
-    } catch {
-        return null
-    }
-}
-
-/**
- * When a custom /c/<config>/ install is used, provider BASEURLs from the
- * public server env must NOT leak in. Only providers the user selected
- * (ENABLED_PROVIDERS and/or explicit *_BASEURL) stay active.
- */
-export function mergeEnv(baseEnv = {}, config) {
-    if (!config) return baseEnv
-    const e = {...baseEnv, ...config}
-
-    const enabled = String(config.ENABLED_PROVIDERS || '')
-        .split(',')
-        .map((s) => s.trim().toLowerCase())
-        .filter(Boolean)
-
-    const explicitBase = PROVIDER_BASEURL_KEYS.filter((k) => String(config[k] || '').trim())
-
-    if (enabled.length || explicitBase.length) {
-        for (const k of PROVIDER_BASEURL_KEYS) {
-            delete e[k]
-        }
-        for (const k of explicitBase) {
-            e[k] = String(config[k]).trim()
-        }
-        for (const key of enabled) {
-            const envKey = PROVIDER_KEY_TO_ENV[key] || PROVIDER_KEY_TO_ENV[key.replace(/_baseurl$/i, '')]
-            if (!envKey) continue
-            if (String(config[envKey] || '').trim()) {
-                e[envKey] = String(config[envKey]).trim()
-            } else if (String(baseEnv[envKey] || '').trim()) {
-                e[envKey] = String(baseEnv[envKey]).trim()
-            }
-        }
-        // Optional extras stay from config only when exclusive provider mode
-        if (!String(config.TORRENT_METEOR_MANIFEST_URL || '').trim()) {
-            // keep server torrent unless user cleared — only strip if they set ENABLED without torrent key
-            // User expectation: only selected providers → disable torrent unless explicitly set
-            if (!('TORRENT_METEOR_MANIFEST_URL' in config)) {
-                delete e.TORRENT_METEOR_MANIFEST_URL
-            }
-        }
-    }
-
-    // IPTV / ماهواره — opt-in on custom installs; independent from movie/series catalogs
-    {
-        const iptvOn = isConfigFlagOn(config, 'ENABLE_IPTV')
-            || Boolean(String(config.CATALOG_IPTVBRIDGE_MANIFEST_URL || '').trim())
-        const customIptv = String(config.CATALOG_IPTVBRIDGE_MANIFEST_URL || '').trim()
-        if (!iptvOn) {
-            delete e.CATALOG_IPTVBRIDGE_MANIFEST_URL
-        } else if (customIptv) {
-            e.CATALOG_IPTVBRIDGE_MANIFEST_URL = customIptv
-        } else {
-            const fromServer = String(baseEnv.CATALOG_IPTVBRIDGE_MANIFEST_URL || '').trim()
-            e.CATALOG_IPTVBRIDGE_MANIFEST_URL = fromServer || DEFAULT_IPTV_BRIDGE_MANIFEST_URL
-        }
-    }
-
-    // STREAMS_ONLY / DISABLE_CATALOG apply to movie-series catalogs only — not IPTV
-    // Namakade: isolated Iranian catalogs — only when user enables
-    // نماکده: only ENABLE_NAMAKADE turns it on (BASEURL alone must NOT enable — keeps public manifest clean)
-    if (Object.prototype.hasOwnProperty.call(config, 'ENABLE_NAMAKADE')
-        || Object.prototype.hasOwnProperty.call(config, 'NAMAKADE_BASEURL')) {
-        if (isConfigFlagOn(config, 'ENABLE_NAMAKADE')) {
-            e.ENABLE_NAMAKADE = '1'
-            if (String(config.NAMAKADE_BASEURL || '').trim()) {
-                e.NAMAKADE_BASEURL = String(config.NAMAKADE_BASEURL).trim()
-            }
-        } else {
-            delete e.ENABLE_NAMAKADE
-            // keep custom BASEURL if provided for when user later enables
-            if (String(config.NAMAKADE_BASEURL || '').trim()) {
-                e.NAMAKADE_BASEURL = String(config.NAMAKADE_BASEURL).trim()
-            } else {
-                delete e.NAMAKADE_BASEURL
-            }
-        }
-    }
-
-    const streamsOnlyCfg = isConfigFlagOn(config, 'STREAMS_ONLY')
-    const disableMovieCatalogs = streamsOnlyCfg || isConfigFlagOn(config, 'DISABLE_CATALOG')
-    if (disableMovieCatalogs) {
-        delete e.CATALOG101_MANIFEST_URL
-        delete e.CATALOG_AIO_MANIFEST_URL
-        delete e.CATALOG_AIOCATALOGS_MANIFEST_URL
-        delete e.CATALOG_TMDB_MANIFEST_URL
-        delete e.CATALOG_ANIME_MANIFEST_URL
-        delete e.EXTERNAL_CATALOG_MANIFEST_URLS
-        // CATALOG_IPTVBRIDGE_MANIFEST_URL intentionally kept when ENABLE_IPTV was set above
-    }
-
-    return e
-}
+// Re-export config helpers for tests / external consumers
+export {decodeAddonConfig, mergeEnv, DEFAULT_IPTV_BRIDGE_MANIFEST_URL, isConfigFlagOn}
 
 
 const CATALOGS = [
@@ -517,6 +366,8 @@ export async function getProvidersStatus(env = process.env, httpClient = axios) 
         providers: items,
         externalCatalogs,
         externalCatalogEnv,
+        cache: cacheStats(),
+        securityNote: configShareWarning('fa'),
     }
     providerStatusCache = {at: Date.now(), payload}
     return payload
@@ -553,39 +404,6 @@ function proxyPrefix(env) {
     const baseUrl = String(env.PROXY_URL ?? '').replace(/\/$/, '')
     const path = String(env.PROXY_PATH ?? 'proxy').replace(/^\/+|\/+$/g, '')
     return baseUrl && path ? `${baseUrl}/${path}?url=` : null
-}
-
-const QUALITY_RANKS = {
-    '2160': 7, '4k': 7,
-    '1440': 6,
-    '1080': 5,
-    '720': 4,
-    '576': 3,
-    '480': 2,
-    '360': 1,
-    '240': 0,
-}
-
-function rankFromTitle(title) {
-    const t = String(title ?? '').toLowerCase()
-    for (const [key, rank] of Object.entries(QUALITY_RANKS)) {
-        if (t.includes(key)) {
-            return rank
-        }
-    }
-    return -1
-}
-
-function sortByQuality(streams) {
-    if (!Array.isArray(streams)) {
-        return streams
-    }
-    return streams
-        .map((s) => ({
-            ...s,
-            title: (s.title ?? '').replace(/انکودر\s*:/gi, '').replace(/encoder\s*:/gi, '').trim(),
-        }))
-        .sort((a, b) => rankFromTitle(b.title) - rankFromTitle(a.title))
 }
 
 function logResourceError(logger, resource, error) {
@@ -899,6 +717,7 @@ export function createAddon({
     const addon = express()
     addon.disable('x-powered-by')
     addon.use(cors())
+    addon.use(createRateLimitMiddleware(env))
     addon.use((req, _res, next) => {
         try {
             const pathOnly = (req.url || '').split('?')[0]
@@ -1198,6 +1017,28 @@ addon.get(/^\/api\/tmdb-image\/([^/]+)\/(.+)$/, async (req, res) => {
                     manifest.catalogs.splice(insertAt, 0, ...trCats)
                 }
             }
+            // Anime - Animex catalog: right after Turkish, before external anime / IPTV
+            if (isAnimexCatalogEnabled(activeEnv)) {
+                const axCats = animexCatalogManifestCatalogs(activeEnv, catalogLang)
+                const alreadyAx = manifest.catalogs.some((c) => c?.id === ANIMEX_CATALOG_ID)
+                if (!alreadyAx && axCats.length) {
+                    let insertAt = manifest.catalogs.findIndex((c) => c?.id === F2TURKISH_CATALOG_ID)
+                    if (insertAt >= 0) {
+                        insertAt += 1
+                    } else {
+                        insertAt = manifest.catalogs.findIndex((c) =>
+                            /anime|انیمه|myanimelist|kitsu|mal[_-]/i.test(`${c?.name || ''} ${c?.id || ''}`),
+                        )
+                        if (insertAt < 0) {
+                            insertAt = manifest.catalogs.findIndex((c) =>
+                                /iptv|ماهواره|satellite|namakade/i.test(`${c?.name || ''} ${c?.id || ''}`),
+                            )
+                        }
+                        if (insertAt < 0) insertAt = manifest.catalogs.length
+                    }
+                    manifest.catalogs.splice(insertAt, 0, ...axCats)
+                }
+            }
             if (isNamakadeEnabled(activeEnv)) {
                 const nkLang = catalogLang
                 const nkCats = namakadeManifestCatalogs(activeEnv, nkLang)
@@ -1220,6 +1061,17 @@ addon.get(/^\/api\/tmdb-image\/([^/]+)\/(.+)$/, async (req, res) => {
             const streamsOnly = isConfigFlagOn(activeEnv, 'STREAMS_ONLY')
             const disableCatalog = streamsOnly || isConfigFlagOn(activeEnv, 'DISABLE_CATALOG')
             // Isolated Namakade catalogs (no external proxy)
+            if (String(req.params.id || '') === ANIMEX_CATALOG_ID && isAnimexCatalogEnabled(activeEnv)) {
+                try {
+                    const extra = parseExtraArgs(req.params.extraArgs)
+                    const search = extra.search || (req.query || {}).search || ''
+                    const data = await animexCatalogList(req.params.id, search, activeEnv, axios)
+                    return res.status(200).type('json').set('cache-control', 'public, max-age=300').json(data)
+                } catch (error) {
+                    logger.error('animex catalog failed', {message: error?.message ?? String(error)})
+                    return res.status(200).type('json').json({metas: []})
+                }
+            }
             if (String(req.params.id || '') === F2TURKISH_CATALOG_ID && isF2TurkishEnabled(activeEnv)) {
                 try {
                     const extra = parseExtraArgs(req.params.extraArgs)
@@ -1721,6 +1573,14 @@ addon.get(/^\/api\/tmdb-image\/([^/]+)\/(.+)$/, async (req, res) => {
     })
 
     addon.get('/health', (req, res) => res.type('text/plain').send('ok'))
+
+    registerAdminRoutes(addon, {
+        env,
+        logger,
+        getProvidersStatus,
+        version: ADDON_VERSION,
+    })
+
     addon.use(createErrorHandler(logger))
     return addon
 }
