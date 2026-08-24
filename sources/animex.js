@@ -139,8 +139,12 @@ export default class Animex extends HtmlSource {
     key = 'animex'
 
     constructor(baseUrl, logger = console, httpClient = axios) {
-        super(baseUrl, logger, httpClient)
+        super(baseUrl || 'https://animex.click', logger, httpClient)
         this.providerID = `${this.key}${this.idSeparator}`
+        if (!this.baseUrl) {
+            this.baseUrl = 'https://animex.click'
+            this.baseURL = this.baseUrl
+        }
     }
 
     requestConfig() {
@@ -409,14 +413,49 @@ export default class Animex extends HtmlSource {
         }
 
         try {
-            const $ = await this.fetchDocument(path)
+            let $ = await this.fetchDocument(path)
             if (!$) {
-                return null
+                // CF/Worker: fetchDocument can fail; raw GET + cheerio
+                try {
+                    const url = this.endpoint(path)
+                    const res = await this.httpClient.get(url, {
+                        ...this.requestConfig(),
+                        timeout: 28000,
+                        responseType: 'text',
+                        transformResponse: [(d) => d],
+                        validateStatus: (s) => s >= 200 && s < 400,
+                    })
+                    const html = typeof res.data === 'string' ? res.data : ''
+                    if (html && html.length > 200) {
+                        const {load} = await import('cheerio')
+                        $ = load(html)
+                    }
+                } catch (e) {
+                    this.logger?.warn?.({err: e?.message}, 'Animex raw fetch failed')
+                }
+            }
+            if (!$) {
+                // Last resort: title from slug so meta endpoint can still open
+                const slug = path.split('/').filter(Boolean).pop() || ''
+                return {
+                    path,
+                    title: slug.replace(/-/g, ' '),
+                    imdbId: null,
+                    isSeries: true,
+                    pageSeason: null,
+                    links: [],
+                }
             }
 
             const imdbHref = $('a[href*="imdb.com/title/tt"]').first().attr('href') ?? ''
             const imdbId = imdbHref.match(/\/title\/(tt\d+)/)?.[1] ?? null
-            const title = normalizeText($('h1').first().text())
+            let title = normalizeText($('h1').first().text())
+            if (!title || title === 'انیمکس' || title === 'Animex') {
+                title = normalizeText($('meta[property="og:title"]').attr('content'))
+                    || normalizeText($('.entry-title, .post-title').first().text())
+                    || path.split('/').filter(Boolean).pop()?.replace(/-/g, ' ')
+                    || title
+            }
             const resolvedType = pathType(path) ?? type
             const pageSeason = extractSeasonNumber(title, path)
 
