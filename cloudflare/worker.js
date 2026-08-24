@@ -12,6 +12,12 @@ import {
     f2turkishListCatalog,
     F2TURKISH_CATALOG_ID,
 } from '../sources/f2turkish.js'
+import {
+    isAnimexCatalogEnabled,
+    animexCatalogManifestCatalogs,
+    animexCatalogList,
+    ANIMEX_CATALOG_ID,
+} from '../sources/animex-catalog.js'
 import {ID_SEPARATOR, METADATA_SOURCE} from '../sources/source.js'
 import {findExternalMetaSource, findExternalStreamSource, formatStreamTitle, getExternalCatalogSources, getKitsuTitle, getTMDBMetaFa, getTMDBMetaByTmdbId, getTMDBDetails, getTMDBTitle, getLandingTmdbCatalogs, getTorrentStreams, modifyUrls, proxyExternalCatalog, proxyExternalMeta, proxyExternalStream, proxySubtitles, translateCatalogName, buildOrderedExternalCatalogs, classifyExternalCatalogSource, rewriteTmdbImageUrls, parseTmdbImageProxyPath, enrichMetaWithFaTmdb, enrichCatalogMetasWithoutRpdb, setMetaLangPref, setUiLangPref} from '../utils.js'
 import {landingUrlsFromRequest, renderLandingPage, renderConfigurePage, renderGuidePage} from '../landing.js'
@@ -184,6 +190,10 @@ async function getSubtitle(type, imdbId, httpClient) {
 
 async function catalogResponse(route, providers, logger, env = {}, httpClient) {
     try {
+        if (route.id === ANIMEX_CATALOG_ID && isAnimexCatalogEnabled(env)) {
+            const extra = Object.fromEntries(new URLSearchParams(route.extraArgs || ''))
+            return json(await animexCatalogList(route.id, extra.search || '', env, httpClient) || {metas: []})
+        }
         if (route.id === F2TURKISH_CATALOG_ID && isF2TurkishEnabled(env)) {
             const extra = Object.fromEntries(new URLSearchParams(route.extraArgs || ''))
             return json(await f2turkishListCatalog(route.id, extra.search || '', env, httpClient) || {metas: []})
@@ -591,6 +601,20 @@ export function createWorkerHandler(options = {}) {
                             if (!manifest.catalogs.some((x) => x.id === c.id)) {
                                 let insertAt = manifest.catalogs.findIndex((x) => /anime|انیمه|myanimelist|kitsu/i.test(`${x?.name || ''} ${x?.id || ''}`))
                                 if (insertAt < 0) insertAt = manifest.catalogs.length
+                                manifest.catalogs.splice(insertAt, 0, c)
+                            }
+                        }
+                    }
+                    if (isAnimexCatalogEnabled(env)) {
+                        const lang = String(env.ADDON_LANG || 'fa').toLowerCase().startsWith('en') ? 'en' : 'fa'
+                        for (const c of animexCatalogManifestCatalogs(env, lang)) {
+                            if (!manifest.catalogs.some((x) => x.id === c.id)) {
+                                let insertAt = manifest.catalogs.findIndex((x) => x.id === F2TURKISH_CATALOG_ID)
+                                if (insertAt >= 0) insertAt += 1
+                                else {
+                                    insertAt = manifest.catalogs.findIndex((x) => /anime|انیمه|myanimelist|kitsu/i.test(`${x?.name || ''} ${x?.id || ''}`))
+                                    if (insertAt < 0) insertAt = manifest.catalogs.length
+                                }
                                 manifest.catalogs.splice(insertAt, 0, c)
                             }
                         }
