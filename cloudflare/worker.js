@@ -26,7 +26,7 @@ import {createWorkerProxyConfig, handleProxyRequest} from './proxy.js'
 import {decodeAddonConfig, mergeEnv} from './config.js'
 
 const ADDON_PREFIX = 'ip'
-const ADDON_VERSION = '3.2.5'
+const ADDON_VERSION = '3.2.6'
 
 const CATALOGS = [
     {key: 'f2media', name: 'F2Media', catalogType: 'movies'},
@@ -294,12 +294,89 @@ async function metaResponse(route, providers, services, env, requestUrl, logger,
 
         const parsedId = parseWorkerAddonId(route.id, providers)
         if (!parsedId || !['movie', 'series', 'tv'].includes(route.type)) return json({})
-        const movieData = await parsedId.provider.getMovieData(route.type, parsedId.providerItemId)
+        let movieData = await parsedId.provider.getMovieData(route.type, parsedId.providerItemId)
+        // Animex: never hard-fail meta — open detail even if scrape is partial
+        if (!movieData && parsedId.provider?.key === 'animex') {
+            try {
+                const {decodePagePath} = await import('../sources/html-source.js')
+                const path = decodePagePath(parsedId.providerItemId)
+                const slug = String(path || '').split('/').filter(Boolean).pop() || ''
+                movieData = {
+                    path: path || `/anime/${slug}/`,
+                    title: slug.replace(/-/g, ' '),
+                    imdbId: null,
+                    isSeries: true,
+                    pageSeason: null,
+                    links: [],
+                }
+            } catch {}
+        }
         if (!movieData) return json({})
 
-        const upstreamMeta = parsedId.provider.metadataSource === METADATA_SOURCE.PROVIDER
+        let upstreamMeta = parsedId.provider.metadataSource === METADATA_SOURCE.PROVIDER
             ? {meta: await parsedId.provider.getMeta(route.type, parsedId.providerItemId, movieData)}
             : await services.getCinemeta(route.type, await parsedId.provider.imdbID(movieData, route.type))
+
+        // No IMDb/Cinemeta (typical for Animex anime) → build meta + episode list from links
+        if (!upstreamMeta?.meta && movieData) {
+            const title = String(movieData.title || '').trim() || 'Anime'
+            const links = Array.isArray(movieData.links) ? movieData.links : []
+            const videos = []
+            const seenEp = new Set()
+            for (const link of links) {
+                const s = Number(link.season) || 1
+                const e = Number(link.episode) || 0
+                if (!e) continue
+                const key = `${s}:${e}`
+                if (seenEp.has(key)) continue
+                seenEp.add(key)
+                videos.push({
+                    id: `${s}:${e}`,
+                    title: `S${s}E${String(e).padStart(2, '0')}`,
+                    season: s,
+                    episode: e,
+                    released: '2000-01-01',
+                })
+            }
+            videos.sort((a, b) => a.season - b.season || a.episode - b.episode)
+            // Kitsu synopsis for anime when possible
+            let description = ''
+            let poster = null
+            let background = null
+            try {
+                const q = title.replace(/[\u0600-\u06FF]/g, ' ').trim() || title
+                const kitsuUrl = 'https://kitsu.io/api/edge/anime?filter[text]=' + encodeURIComponent(q) + '&page[limit]=1'
+                const kres = await httpClient.get(kitsuUrl, {
+                    timeout: 8000,
+                    headers: {Accept: 'application/vnd.api+json'},
+                    validateStatus: (s) => s < 500,
+                })
+                const a = kres?.data?.data?.[0]?.attributes
+                if (a) {
+                    description = String(a.synopsis || '').trim().slice(0, 1200)
+                    poster = a.posterImage?.large || a.posterImage?.medium || null
+                    background = a.coverImage?.large || null
+                    if (a.canonicalTitle || a.titles?.en_jp) {
+                        // prefer Kitsu title if page title is weak
+                        const kt = a.titles?.en_jp || a.canonicalTitle
+                        if (kt && (title.length < 4 || /^[a-z0-9 -]+$/i.test(title))) {
+                            movieData.title = kt
+                        }
+                    }
+                }
+            } catch {}
+            upstreamMeta = {
+                meta: {
+                    id: route.id,
+                    type: route.type === 'tv' ? 'series' : route.type,
+                    name: String(movieData.title || title).trim(),
+                    poster,
+                    background,
+                    description,
+                    videos: route.type === 'series' || route.type === 'tv' ? videos : undefined,
+                },
+            }
+        }
         if (!upstreamMeta?.meta) return json({})
         let result = structuredClone(upstreamMeta)
         if (env.PROXY_ENABLE === 'true' || env.PROXY_ENABLE === '1') result = modifyUrls(result, proxyPrefix(env, requestUrl))
