@@ -55,7 +55,7 @@ import {createRateLimitMiddleware} from './lib/rate-limit.js'
 import {registerAdminRoutes} from './lib/admin.js'
 
 export const ADDON_PREFIX = 'ip'
-export const ADDON_VERSION = '3.2.2'
+export const ADDON_VERSION = '3.2.3'
 
 // Re-export config helpers for tests / external consumers
 export {decodeAddonConfig, mergeEnv, DEFAULT_IPTV_BRIDGE_MANIFEST_URL, isConfigFlagOn}

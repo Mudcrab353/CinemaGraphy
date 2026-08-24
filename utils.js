@@ -1378,6 +1378,12 @@ export function translateCatalogName(name, type, lang = null) {
     // Keep Animex / Turkish fixed labels intact
     const raw = String(name || '').trim()
     const isEn = String(lang || 'fa').toLowerCase().startsWith('en')
+    // Fixed Animex catalog label (any dash variant / extra spaces)
+    if (/انیمکس/u.test(raw) || /\banimex\b/i.test(raw)) {
+        if (/انیمه|anime/i.test(raw) || /انیمکس|animex/i.test(raw)) {
+            return isEn ? 'Anime - Animex' : 'انیمه - انیمکس'
+        }
+    }
     if (/^انیمه\s*[-–—]\s*انیمکس$/u.test(raw) || /^anime\s*[-–—]\s*animex$/i.test(raw)) {
         return isEn ? 'Anime - Animex' : 'انیمه - انیمکس'
     }
