@@ -26,7 +26,7 @@ import {createWorkerProxyConfig, handleProxyRequest} from './proxy.js'
 import {decodeAddonConfig, mergeEnv} from './config.js'
 
 const ADDON_PREFIX = 'ip'
-const ADDON_VERSION = '3.2.2'
+const ADDON_VERSION = '3.2.4'
 
 const CATALOGS = [
     {key: 'f2media', name: 'F2Media', catalogType: 'movies'},
@@ -607,7 +607,11 @@ export function createWorkerHandler(options = {}) {
                     }
                     if (isAnimexCatalogEnabled(env)) {
                         const lang = String(env.ADDON_LANG || 'fa').toLowerCase().startsWith('en') ? 'en' : 'fa'
-                        for (const c of animexCatalogManifestCatalogs(env, lang)) {
+                        for (const c of animexCatalogManifestCatalogs(env, lang).map((x) => ({
+                            ...x,
+                            // FORCE_AX_NAME
+                            name: lang === 'en' ? 'Anime - Animex' : 'انیمه - انیمکس',
+                        }))) {
                             if (!manifest.catalogs.some((x) => x.id === c.id)) {
                                 let insertAt = manifest.catalogs.findIndex((x) => x.id === F2TURKISH_CATALOG_ID)
                                 if (insertAt >= 0) insertAt += 1
