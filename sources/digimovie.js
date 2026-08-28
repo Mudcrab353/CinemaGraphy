@@ -232,23 +232,34 @@ let cachedCookie = ''
 
 // ---------------------------------------------------------------------------
 
+const DEFAULT_DIGI_BASE = 'https://www.digimoviez.com'
+
 export default class Digimovie extends HtmlSource {
     key = 'digimovie'
 
     constructor(baseUrl, logger = console, httpClient = axios, env = process.env) {
-        super(baseUrl, logger, httpClient)
+        const resolved = String(baseUrl || env.DIGIMOVIE_BASEURL || '').trim()
+            || (String(env.DIGIMOVIE_COOKIE || env.DIGIMOVIE_USERNAME || '').trim() ? DEFAULT_DIGI_BASE : '')
+        super(resolved, logger, httpClient)
         this.providerID = `${this.key}${this.idSeparator}`
         this.username = env.DIGIMOVIE_USERNAME
         this.password = env.DIGIMOVIE_PASSWORD
+        /** Prefer browser session cookie from personal /c/ config — avoids security-question login. */
+        this.envCookie = String(env.DIGIMOVIE_COOKIE || '').trim()
         this.loginPath = '/account/login/?next_page=/dashboard'
     }
 
     get cookie() {
-        return cachedCookie
+        return this.envCookie || cachedCookie
     }
 
     set cookie(value) {
-        cachedCookie = value
+        const v = String(value || '')
+        if (this.envCookie) {
+            this.envCookie = v
+        } else {
+            cachedCookie = v
+        }
     }
 
     requestConfig() {
