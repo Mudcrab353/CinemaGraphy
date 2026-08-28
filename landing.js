@@ -998,6 +998,7 @@ export function renderConfigurePage({
 <label class="lang-fa" style="font-size:.8rem;color:var(--m)">منیفست اختصاصی شما</label>
 <label class="lang-en" style="font-size:.8rem;color:var(--m)">Your custom manifest</label>
 <input id="outUrl" readonly value=""/>
+<p id="cfgTokenTip" class="hint" style="margin:6px 0 0;font-size:.75rem;word-break:break-all"></p>
 <div class="row">
 <button class="btn bp" type="button" id="btnCopy"><span class="lang-fa">کپی لینک</span><span class="lang-en">Copy link</span></button>
 <a class="btn bp" id="btnInstall" href="#"><span class="lang-fa">نصب در نوویو و استریمیو</span><span class="lang-en">Install in Nuvio &amp; Stremio</span></a>
@@ -1154,6 +1155,13 @@ export function renderConfigurePage({
     var out = document.getElementById('outUrl');
     if (out) out.value = manifest;
     if (btn && !(needProv && provCount === 0)) btn.href = install;
+    var tip = document.getElementById('cfgTokenTip');
+    if (tip) {
+      var keys = Object.keys(o).sort();
+      tip.textContent = keys.length
+        ? (r.lang === 'fa' ? 'تنظیمات فعال: ' : 'Active: ') + keys.join(', ') + ' · token ' + cfg.slice(0, 10) + '…'
+        : (r.lang === 'fa' ? 'بدون تنظیم اضافه (منیفست پیش‌فرض سرور)' : 'No extra settings (server default manifest)');
+    }
   }
   function setMsg(text, ok) {
     var el = document.getElementById('loadMsg');
@@ -1161,9 +1169,19 @@ export function renderConfigurePage({
     el.textContent = text || '';
     el.style.color = ok ? '#5dcea0' : 'var(--m)';
   }
-  document.querySelectorAll('[data-prov], [data-k], #optStreamsOnly, #optDisableMeta, #optDisableCatalog, #optDisableSubs, #optIptv, #optNamakade, #f2turkishOn, #animexCatalogOn, input[name="metaLang"], input[name="addonLang"]').forEach(function (el) {
-    el.addEventListener('change', refresh);
-    el.addEventListener('input', refresh);
+  function shouldRefresh(el) {
+    if (!el || !el.getAttribute) return false;
+    if (el.getAttribute('data-prov') != null || el.getAttribute('data-k') != null) return true;
+    var id = el.id || '';
+    if (/^(optStreamsOnly|optDisableMeta|optDisableCatalog|optDisableSubs|optIptv|optNamakade|f2turkishOn|animexCatalogOn)$/.test(id)) return true;
+    if (el.name === 'metaLang' || el.name === 'addonLang') return true;
+    return false;
+  }
+  document.addEventListener('change', function (e) {
+    if (shouldRefresh(e.target)) { syncVipPanels(); refresh(); }
+  });
+  document.addEventListener('input', function (e) {
+    if (shouldRefresh(e.target)) refresh();
   });
   var so = document.getElementById('optStreamsOnly');
   if (so) so.addEventListener('change', function () {
@@ -1449,31 +1467,52 @@ details.faq summary{cursor:pointer;font-weight:700}
 </div>
 
 <div class="gbox glass" id="vip">
-<h2 class="lang-fa">۶) کوکی VIP — Digi و Ava</h2>
-<h2 class="lang-en">6) VIP cookie — Digi &amp; Ava</h2>
-<p class="lang-fa muted">فقط نصب شخصی. اکانت مال شماست. روی env عمومی سرور نگذارید.</p>
-<p class="lang-en muted">Personal installs only. Your own account. Do not put on a public server env.</p>
-<p class="muted"><b>BASEURL:</b> Digi <code>https://www.digimoviez.com</code> · Ava <code>https://avamovie.shop</code></p>
-<div class="olist">
-<div class="step"><b>1</b>
-<span class="lang-fa">با اشتراک فعال وارد سایت شوید و صفحه‌ای که لینک دانلود واقعی دارد باز کنید.</span>
-<span class="lang-en">Log in with active VIP and open a page that shows real download links.</span>
+<h2 class="lang-fa">۶) کوکی VIP — Digi و Ava (یک روش برای هر دو)</h2>
+<h2 class="lang-en">6) VIP cookie — Digi &amp; Ava (same steps)</h2>
+<p class="lang-fa muted">فقط در <a href="/configure">شخصی‌سازی</a>. روی Env سرور نگذارید. اکانت و ریسک با خودتان است.</p>
+<p class="lang-en muted">Only in <a href="/configure">Configure</a>. Never on server Env. Account risk is yours.</p>
+<p class="muted"><b>BASEURL:</b> Digi <code>https://digimoviez.com</code> · Ava <code>https://avamovie.shop</code></p>
+
+<div class="step" style="margin-top:10px"><b>1</b>
+<span class="lang-fa">وارد سایت شو (لاگین + اشتراک فعال).</span>
+<span class="lang-en">Log in on the site (active VIP).</span>
 </div>
 <div class="step"><b>2</b>
-<span class="lang-fa">دسکتاپ: F12 → Application → Cookies (یا Network → هدر Cookie)</span>
-<span class="lang-en">Desktop: F12 → Application → Cookies (or Network → Cookie header)</span>
+<span class="lang-fa">صفحه را <b>Refresh</b> کن. کلید <b>F12</b> → تب <b>Network</b>.</span>
+<span class="lang-en">Refresh the page. Press <b>F12</b> → <b>Network</b> tab.</span>
 </div>
 <div class="step"><b>3</b>
-<span class="lang-fa">رشته را در <a href="/configure">شخصی‌سازی</a> در <code>DIGIMOVIE_COOKIE</code> / <code>AVAMOVIE_COOKIE</code> بچسبانید، تیک پروایدر و BASEURL را بزنید.</span>
-<span class="lang-en">Paste into <a href="/configure">Configure</a> as <code>DIGIMOVIE_COOKIE</code> / <code>AVAMOVIE_COOKIE</code>, enable provider + BASEURL.</span>
+<span class="lang-fa">روی اولین درخواست همان دامنه کلیک کن (مثلاً <code>digimoviez.com</code> یا <code>avamovie.shop</code>).</span>
+<span class="lang-en">Click the first request for that domain (e.g. <code>digimoviez.com</code> / <code>avamovie.shop</code>).</span>
 </div>
 <div class="step"><b>4</b>
-<span class="lang-fa">سشن اغلب چند ساعت تا حدود یک روز است؛ استریم خالی شد → کوکی تازه.</span>
-<span class="lang-en">Sessions often last hours to ~a day; empty streams → refresh cookie.</span>
+<span class="lang-fa">سمت راست → <b>Headers</b> → بخش <b>Request Headers</b> → خط <b>Cookie</b>.</span>
+<span class="lang-en">Right panel → <b>Headers</b> → <b>Request Headers</b> → line <b>Cookie</b>.</span>
 </div>
+<div class="step"><b>5</b>
+<span class="lang-fa">روی مقدار Cookie راست‌کلیک → <b>Copy value</b> (یک خط بلند).</span>
+<span class="lang-en">Right-click the Cookie value → <b>Copy value</b> (one long line).</span>
 </div>
-<p class="lang-fa muted">کوکی بهتر از رمز است: آوا کپچا دارد، دیجی سوال امنیتی — لاگین خودکار فشار و ریسک بن دارد.</p>
-<p class="lang-en muted">Cookie beats password: Ava has captcha, Digi a security question — auto-login loads the host and risks bans.</p>
+
+<div class="glass" style="padding:12px;margin:12px 0;font-family:ui-monospace,monospace;font-size:.72rem;direction:ltr;text-align:left;line-height:1.6;border:1px dashed var(--gb)">
+<div style="color:var(--m);margin-bottom:6px">DevTools · Request Headers (example)</div>
+<div>:method: GET</div>
+<div>accept: text/html</div>
+<div><b style="color:var(--a)">Cookie:</b> PHPSESSID=<span style="filter:blur(4px);user-select:none">xxxx</span>; wordpress_logged_in_<span style="filter:blur(4px);user-select:none">ab12</span>=<span style="filter:blur(4px);user-select:none">Nerd••••secret••••</span>; mode=darkMode</div>
+<div style="margin-top:8px;color:var(--m)" class="lang-fa">↑ فقط همین خط Cookie را کامل کپی کنید (اعداد واقعی تار شده‌اند)</div>
+<div style="margin-top:4px;color:var(--m)" class="lang-en">↑ Copy the entire Cookie line only (real values are blurred)</div>
+</div>
+
+<div class="step"><b>6</b>
+<span class="lang-fa">در Configure تیک Digi یا Ava → فیلد <b>COOKIE</b> → چسباندن. BASEURL را هم بگذار. دکمه نصب / کپی لینک.</span>
+<span class="lang-en">Configure → tick Digi or Ava → paste into <b>COOKIE</b>. Set BASEURL. Install / copy link.</span>
+</div>
+<div class="step"><b>7</b>
+<span class="lang-fa">سشن چند ساعت تا حدود یک روز است. استریم خالی شد → دوباره کوکی تازه بگیر. در استریمیو افزونهٔ قبلی را حذف و لینک جدید را نصب کن.</span>
+<span class="lang-en">Session lasts hours to ~a day. Empty streams → new cookie. In Stremio remove the old addon and install the new link.</span>
+</div>
+<p class="lang-fa muted" style="margin-top:10px">Application → Cookies هم می‌شود، ولی باید دستی <code>name=value; …</code> بسازی. Network یک‌جا کپی می‌دهد.</p>
+<p class="lang-en muted" style="margin-top:10px">Application → Cookies works too, but you must build <code>name=value; …</code> yourself. Network copies one line.</p>
 </div>
 
 <div class="gbox glass" id="faq">
