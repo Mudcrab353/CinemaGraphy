@@ -1011,76 +1011,109 @@ export function renderConfigurePage({
 (function () {
   var BASE = ${baseJson};
   var STORE = 'cg-configure-v2';
-  var r = document.documentElement;
-  var lb = document.getElementById('langBtn');
-  function al(l) {
-    r.lang = l;
-    r.dir = l === 'fa' ? 'rtl' : 'ltr';
-    if (lb) lb.textContent = l === 'fa' ? 'EN' : 'FA';
-    localStorage.setItem('cg-lang', l);
+  var root = document.documentElement;
+  var langBtn = document.getElementById('langBtn');
+
+  function setLang(l) {
+    root.lang = l;
+    root.dir = l === 'fa' ? 'rtl' : 'ltr';
+    if (langBtn) langBtn.textContent = l === 'fa' ? 'EN' : 'FA';
+    try { localStorage.setItem('cg-lang', l); } catch (e) {}
   }
-  al(localStorage.getItem('cg-lang') || 'fa');
-  if (lb) lb.onclick = function () { al(r.lang === 'fa' ? 'en' : 'fa'); };
+  setLang((function () { try { return localStorage.getItem('cg-lang') || 'fa'; } catch (e) { return 'fa'; } })());
+  if (langBtn) langBtn.onclick = function () { setLang(root.lang === 'fa' ? 'en' : 'fa'); };
 
   function toB64Url(obj) {
     var s = JSON.stringify(obj);
     var b64 = btoa(unescape(encodeURIComponent(s)));
-    return b64.split('+').join('-').split('/').join('_').split('=').join('');
+    return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
   }
   function fromB64Url(str) {
     try {
-      var b64 = String(str || '').split('-').join('+').split('_').join('/');
+      var b64 = String(str || '').replace(/-/g, '+').replace(/_/g, '/');
       while (b64.length % 4) b64 += '=';
-      var json = decodeURIComponent(escape(atob(b64)));
-      return JSON.parse(json);
+      return JSON.parse(decodeURIComponent(escape(atob(b64))));
     } catch (e) { return null; }
   }
   function stripProto(u) {
-    return String(u || '').split('://').slice(1).join('://');
+    return String(u || '').replace(/^https?:\/\//i, '');
   }
   function extractCfgToken(url) {
-    var m = String(url || '').match(/\\/c\\/([^/\\s]+)(?:\\/|$)/i);
+    var m = String(url || '').match(/\/c\/([^\/\s?#]+)(?:\/|$)/i);
     return m ? decodeURIComponent(m[1]) : null;
   }
+
+  function syncVipPanels() {
+    var d = document.getElementById('provDigi');
+    var a = document.getElementById('provAva');
+    var pd = document.getElementById('vipDigiPanel');
+    var pa = document.getElementById('vipAvaPanel');
+    if (pd) pd.hidden = !(d && d.checked);
+    if (pa) pa.hidden = !(a && a.checked);
+  }
+
+  function syncStreamToggles() {
+    var so = document.getElementById('optStreamsOnly');
+    var dm = document.getElementById('optDisableMeta');
+    var dc = document.getElementById('optDisableCatalog');
+    if (so && so.checked) {
+      if (dm) { dm.checked = true; dm.disabled = true; }
+      if (dc) { dc.checked = true; dc.disabled = true; }
+    } else {
+      if (dm) dm.disabled = false;
+      if (dc) dc.disabled = false;
+    }
+  }
+
   function collect() {
     var o = {};
     var on = [];
-    document.querySelectorAll('[data-prov]').forEach(function (cb) {
-      if (cb.checked) on.push(cb.getAttribute('data-prov'));
-    });
+    var nodes = document.querySelectorAll('[data-prov]');
+    for (var i = 0; i < nodes.length; i++) {
+      if (nodes[i].checked) on.push(nodes[i].getAttribute('data-prov'));
+    }
     if (on.length) o.ENABLED_PROVIDERS = on.join(',');
-    document.querySelectorAll('[data-k]').forEach(function (inp) {
-      var v = (inp.value || '').trim();
-      if (v) o[inp.getAttribute('data-k')] = v;
-    });
+
+    var fields = document.querySelectorAll('[data-k]');
+    for (var j = 0; j < fields.length; j++) {
+      var key = fields[j].getAttribute('data-k');
+      var val = (fields[j].value || '').trim();
+      if (key && val) o[key] = val;
+    }
+
+    function flag(id, prop) {
+      var el = document.getElementById(id);
+      if (el && el.checked) o[prop] = '1';
+    }
     var streams = document.getElementById('optStreamsOnly');
-    var dm = document.getElementById('optDisableMeta');
-    var dc = document.getElementById('optDisableCatalog');
-    var ds = document.getElementById('optDisableSubs');
-    if (streams && streams.checked) o.STREAMS_ONLY = '1';
-    if (dm && dm.checked && !(streams && streams.checked)) o.DISABLE_META = '1';
-    if (dc && dc.checked && !(streams && streams.checked)) o.DISABLE_CATALOG = '1';
-    if (ds && ds.checked) o.DISABLE_SUBTITLES = '1';
-    var iptv = document.getElementById('optIptv');
-    if (iptv && iptv.checked) o.ENABLE_IPTV = '1';
-    var nk = document.getElementById('optNamakade');
-    if (nk && nk.checked) o.ENABLE_NAMAKADE = '1';
-    const f2t = document.getElementById('f2turkishOn');
-    if (f2t && f2t.checked) o.ENABLE_F2_TURKISH = '1';
-    const axc = document.getElementById('animexCatalogOn');
+    if (streams && streams.checked) {
+      o.STREAMS_ONLY = '1';
+    } else {
+      flag('optDisableMeta', 'DISABLE_META');
+      flag('optDisableCatalog', 'DISABLE_CATALOG');
+    }
+    flag('optDisableSubs', 'DISABLE_SUBTITLES');
+    flag('optIptv', 'ENABLE_IPTV');
+    flag('optNamakade', 'ENABLE_NAMAKADE');
+    flag('f2turkishOn', 'ENABLE_F2_TURKISH');
+
+    var axc = document.getElementById('animexCatalogOn');
     if (axc) o.ENABLE_ANIMEX_CATALOG = axc.checked ? '1' : '0';
+
     var metaR = document.querySelector('input[name="metaLang"]:checked');
     if (metaR && metaR.value === 'en') o.META_LANG = 'en';
     var addR = document.querySelector('input[name="addonLang"]:checked');
     if (addR && addR.value === 'en') o.ADDON_LANG = 'en';
     return o;
   }
+
   function applyObj(o) {
-    if (!o || typeof o !== 'object') return;
+    if (!o || typeof o !== 'object') o = {};
     document.querySelectorAll('[data-prov]').forEach(function (cb) { cb.checked = false; });
-    var list = String(o.ENABLED_PROVIDERS || '').split(',').map(function (s) { return s.trim().toLowerCase(); }).filter(Boolean);
-    list.forEach(function (k) {
-      var el = document.querySelector('[data-prov="'+k+'"]');
+    String(o.ENABLED_PROVIDERS || '').split(',').forEach(function (k) {
+      k = k.trim().toLowerCase();
+      if (!k) return;
+      var el = document.querySelector('[data-prov="' + k + '"]');
       if (el) el.checked = true;
     });
     document.querySelectorAll('[data-k]').forEach(function (inp) {
@@ -1100,170 +1133,169 @@ export function renderConfigurePage({
     if (iptvEl) iptvEl.checked = o.ENABLE_IPTV === '1' || o.ENABLE_IPTV === 'true' || Boolean(o.CATALOG_IPTVBRIDGE_MANIFEST_URL);
     var nkEl = document.getElementById('optNamakade');
     if (nkEl) nkEl.checked = o.ENABLE_NAMAKADE === '1' || o.ENABLE_NAMAKADE === 'true';
-    const f2tEl = document.getElementById('f2turkishOn');
+    var f2tEl = document.getElementById('f2turkishOn');
     if (f2tEl) f2tEl.checked = o.ENABLE_F2_TURKISH === '1' || o.ENABLE_F2_TURKISH === 'true';
-    const axcEl = document.getElementById('animexCatalogOn');
-    if (axcEl) {
-      axcEl.checked = o.ENABLE_ANIMEX_CATALOG !== '0' && o.ENABLE_ANIMEX_CATALOG !== 'false';
-    }
-    var metaVal = (o.META_LANG === 'en') ? 'en' : 'fa';
+    var axcEl = document.getElementById('animexCatalogOn');
+    if (axcEl) axcEl.checked = o.ENABLE_ANIMEX_CATALOG !== '0' && o.ENABLE_ANIMEX_CATALOG !== 'false';
+    var metaVal = o.META_LANG === 'en' ? 'en' : 'fa';
     document.querySelectorAll('input[name="metaLang"]').forEach(function (r) { r.checked = r.value === metaVal; });
-    var addVal = (o.ADDON_LANG === 'en') ? 'en' : 'fa';
+    var addVal = o.ADDON_LANG === 'en' ? 'en' : 'fa';
     document.querySelectorAll('input[name="addonLang"]').forEach(function (r) { r.checked = r.value === addVal; });
     syncStreamToggles();
     syncVipPanels();
   }
-  function syncStreamToggles() {
-    var so = document.getElementById('optStreamsOnly');
-    var dm = document.getElementById('optDisableMeta');
-    var dc = document.getElementById('optDisableCatalog');
-    if (so && so.checked) {
-      if (dm) { dm.checked = true; dm.disabled = true; }
-      if (dc) { dc.checked = true; dc.disabled = true; }
-    } else {
-      if (dm) dm.disabled = false;
-      if (dc) dc.disabled = false;
-    }
-  }
-  function refresh() {
-    syncStreamToggles();
-    var o = collect();
-    try { localStorage.setItem(STORE, JSON.stringify(o)); } catch (e) {}
-    var streams = document.getElementById('optStreamsOnly');
-    var needProv = streams && streams.checked;
-    var provCount = (o.ENABLED_PROVIDERS || '').split(',').filter(Boolean).length;
-    var warn = document.getElementById('cfgWarn');
-    var btn = document.getElementById('btnInstall');
-    var btnCopy = document.getElementById('btnCopy');
-    if (needProv && provCount === 0) {
-      if (warn) {
-        warn.style.display = 'block';
-        warn.textContent = r.lang === 'fa'
-          ? 'برای حالت فقط‌استریم حداقل یک پروایدر را انتخاب کنید (مثلاً Animex یا F2Media).'
-          : 'Streams-only requires at least one provider (e.g. Animex or F2Media).';
-      }
-      if (btn) { btn.href = '#'; btn.style.opacity = '0.45'; btn.style.pointerEvents = 'none'; }
-      if (btnCopy) { btnCopy.disabled = true; btnCopy.style.opacity = '0.45'; }
-    } else {
-      if (warn) warn.style.display = 'none';
-      if (btnCopy) { btnCopy.disabled = false; btnCopy.style.opacity = '1'; }
-      if (btn) { btn.style.opacity = '1'; btn.style.pointerEvents = 'auto'; }
-    }
-    var cfg = toB64Url(o);
-    var manifest = BASE + '/c/' + cfg + '/manifest.json';
-    var install = 'stremio://' + stripProto(BASE) + '/c/' + cfg + '/manifest.json';
-    var out = document.getElementById('outUrl');
-    if (out) out.value = manifest;
-    if (btn && !(needProv && provCount === 0)) btn.href = install;
-    var tip = document.getElementById('cfgTokenTip');
-    if (tip) {
-      var keys = Object.keys(o).sort();
-      tip.textContent = keys.length
-        ? (r.lang === 'fa' ? 'تنظیمات فعال: ' : 'Active: ') + keys.join(', ') + ' · token ' + cfg.slice(0, 10) + '…'
-        : (r.lang === 'fa' ? 'بدون تنظیم اضافه (منیفست پیش‌فرض سرور)' : 'No extra settings (server default manifest)');
-    }
-  }
+
   function setMsg(text, ok) {
     var el = document.getElementById('loadMsg');
     if (!el) return;
     el.textContent = text || '';
     el.style.color = ok ? '#5dcea0' : 'var(--m)';
   }
-  function shouldRefresh(el) {
-    if (!el || !el.getAttribute) return false;
-    if (el.getAttribute('data-prov') != null || el.getAttribute('data-k') != null) return true;
+
+  function refresh() {
+    try {
+      syncStreamToggles();
+      syncVipPanels();
+      var o = collect();
+      try { localStorage.setItem(STORE, JSON.stringify(o)); } catch (e) {}
+
+      var streams = document.getElementById('optStreamsOnly');
+      var needProv = streams && streams.checked;
+      var provCount = (o.ENABLED_PROVIDERS || '').split(',').filter(Boolean).length;
+      var warn = document.getElementById('cfgWarn');
+      var btn = document.getElementById('btnInstall');
+      var btnCopy = document.getElementById('btnCopy');
+
+      if (needProv && provCount === 0) {
+        if (warn) {
+          warn.style.display = 'block';
+          warn.textContent = root.lang === 'fa'
+            ? 'برای حالت فقط‌استریم حداقل یک پروایدر را انتخاب کنید.'
+            : 'Streams-only requires at least one provider.';
+        }
+        if (btn) { btn.href = '#'; btn.style.opacity = '0.45'; btn.style.pointerEvents = 'none'; }
+        if (btnCopy) { btnCopy.disabled = true; btnCopy.style.opacity = '0.45'; }
+      } else {
+        if (warn) warn.style.display = 'none';
+        if (btnCopy) { btnCopy.disabled = false; btnCopy.style.opacity = '1'; }
+        if (btn) { btn.style.opacity = '1'; btn.style.pointerEvents = 'auto'; }
+      }
+
+      var token = toB64Url(o);
+      var manifest = BASE + '/c/' + token + '/manifest.json';
+      var install = 'stremio://' + stripProto(BASE) + '/c/' + token + '/manifest.json';
+      var out = document.getElementById('outUrl');
+      if (out) out.value = manifest;
+      if (btn && !(needProv && provCount === 0)) btn.href = install;
+
+      var tip = document.getElementById('cfgTokenTip');
+      if (tip) {
+        var keys = Object.keys(o);
+        if (!keys.length) {
+          tip.textContent = root.lang === 'fa'
+            ? 'بدون تنظیم اضافه — همان منیفست عمومی سرور'
+            : 'No extra settings — public server manifest';
+        } else {
+          tip.textContent = (root.lang === 'fa' ? 'فعال: ' : 'Active: ') + keys.join(', ')
+            + ' · ' + token.length + ' chars · ' + token.slice(0, 12) + '…';
+        }
+      }
+    } catch (err) {
+      console.error('configure refresh', err);
+      var tip2 = document.getElementById('cfgTokenTip');
+      if (tip2) tip2.textContent = 'Error: ' + (err && err.message ? err.message : err);
+    }
+  }
+
+  function isConfigControl(el) {
+    if (!el || el.nodeType !== 1) return false;
+    if (el.hasAttribute('data-prov') || el.hasAttribute('data-k')) return true;
     var id = el.id || '';
-    if (/^(optStreamsOnly|optDisableMeta|optDisableCatalog|optDisableSubs|optIptv|optNamakade|f2turkishOn|animexCatalogOn)$/.test(id)) return true;
+    if (id === 'optStreamsOnly' || id === 'optDisableMeta' || id === 'optDisableCatalog' || id === 'optDisableSubs' || id === 'optIptv' || id === 'optNamakade' || id === 'f2turkishOn' || id === 'animexCatalogOn') return true;
     if (el.name === 'metaLang' || el.name === 'addonLang') return true;
     return false;
   }
+
   document.addEventListener('change', function (e) {
-    if (shouldRefresh(e.target)) { syncVipPanels(); refresh(); }
+    if (isConfigControl(e.target)) refresh();
   });
   document.addEventListener('input', function (e) {
-    if (shouldRefresh(e.target)) refresh();
+    if (isConfigControl(e.target)) refresh();
   });
-  var so = document.getElementById('optStreamsOnly');
-  if (so) so.addEventListener('change', function () {
-    if (so.checked) {
-      var dm = document.getElementById('optDisableMeta');
-      var dc = document.getElementById('optDisableCatalog');
-      if (dm) dm.checked = true;
-      if (dc) dc.checked = true;
+  // label clicks on mobile
+  document.addEventListener('click', function (e) {
+    var t = e.target;
+    if (!t) return;
+    if (t.closest && (t.closest('.prov-grid label') || t.closest('label.tog'))) {
+      setTimeout(refresh, 0);
     }
-    refresh();
   });
-  function syncVipPanels(){
-  var d=document.getElementById('provDigi');
-  var a=document.getElementById('provAva');
-  var pd=document.getElementById('vipDigiPanel');
-  var pa=document.getElementById('vipAvaPanel');
-  if(pd){ pd.hidden = !(d && d.checked); }
-  if(pa){ pa.hidden = !(a && a.checked); }
-}
-var digiCb = document.getElementById('provDigi');
-var avaCb = document.getElementById('provAva');
-if (digiCb) digiCb.addEventListener('change', syncVipPanels);
-if (avaCb) avaCb.addEventListener('change', syncVipPanels);
-var btnAll = document.getElementById('btnAll');
+
+  var btnAll = document.getElementById('btnAll');
   var btnNone = document.getElementById('btnNone');
   if (btnAll) btnAll.onclick = function () {
     document.querySelectorAll('[data-prov]:not(:disabled)').forEach(function (cb) { cb.checked = true; });
-    syncVipPanels();
     refresh();
   };
   if (btnNone) btnNone.onclick = function () {
     document.querySelectorAll('[data-prov]:not(:disabled)').forEach(function (cb) { cb.checked = false; });
-    syncVipPanels();
     refresh();
   };
+
   var btnLoad = document.getElementById('btnLoad');
   if (btnLoad) btnLoad.onclick = function () {
     var url = (document.getElementById('loadUrl') || {}).value || '';
     var token = extractCfgToken(url);
     if (!token) {
-      setMsg(r.lang === 'fa' ? 'لینک باید شامل /c/... باشد.' : 'URL must include /c/...', false);
+      setMsg(root.lang === 'fa' ? 'لینک باید شامل /c/... باشد.' : 'URL must include /c/...', false);
       return;
     }
     var obj = fromB64Url(token);
     if (!obj) {
-      setMsg(r.lang === 'fa' ? 'نشد تنظیمات از لینک خوانده شود.' : 'Could not decode config from URL.', false);
+      setMsg(root.lang === 'fa' ? 'نشد تنظیمات از لینک خوانده شود.' : 'Could not decode config from URL.', false);
       return;
     }
     applyObj(obj);
     refresh();
-    setMsg(r.lang === 'fa' ? 'بارگذاری شد — می‌توانید ویرایش و دوباره کپی کنید.' : 'Loaded — edit and copy the new link.', true);
+    setMsg(root.lang === 'fa' ? 'بارگذاری شد.' : 'Loaded.', true);
   };
+
   var btnClear = document.getElementById('btnClearLocal');
   if (btnClear) btnClear.onclick = function () {
     try { localStorage.removeItem(STORE); } catch (e) {}
     applyObj({});
     document.querySelectorAll('[data-prov]').forEach(function (cb) { cb.checked = false; });
-    ['optStreamsOnly','optDisableMeta','optDisableCatalog','optDisableSubs','optIptv','optNamakade'].forEach(function (id) {
-      var el = document.getElementById(id); if (el) { el.checked = false; el.disabled = false; }
+    ['optStreamsOnly','optDisableMeta','optDisableCatalog','optDisableSubs','optIptv','optNamakade','f2turkishOn'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) { el.checked = false; el.disabled = false; }
     });
+    var axc = document.getElementById('animexCatalogOn');
+    if (axc) axc.checked = true;
     refresh();
-    setMsg(r.lang === 'fa' ? 'حافظه پاک شد.' : 'Local save cleared.', true);
-  };
-  var btnCopy = document.getElementById('btnCopy');
-  if (btnCopy) btnCopy.onclick = async function () {
-    var inp = document.getElementById('outUrl');
-    try {
-      await navigator.clipboard.writeText(inp.value);
-      var prev = btnCopy.innerHTML;
-      btnCopy.classList.add('ok');
-      btnCopy.innerHTML = r.lang === 'fa' ? 'کپی شد ✓' : 'Copied ✓';
-      setTimeout(function () { btnCopy.classList.remove('ok'); btnCopy.innerHTML = prev; }, 1600);
-    } catch (e) { if (inp) inp.select(); }
+    setMsg(root.lang === 'fa' ? 'حافظه پاک شد.' : 'Local save cleared.', true);
   };
 
-  // Restore local save
+  var btnCopy = document.getElementById('btnCopy');
+  if (btnCopy) btnCopy.onclick = function () {
+    var inp = document.getElementById('outUrl');
+    if (!inp || !inp.value) return;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(inp.value).then(function () {
+        var prev = btnCopy.innerHTML;
+        btnCopy.innerHTML = root.lang === 'fa' ? 'کپی شد ✓' : 'Copied ✓';
+        setTimeout(function () { btnCopy.innerHTML = prev; }, 1600);
+      }).catch(function () { inp.select(); });
+    } else {
+      inp.select();
+      try { document.execCommand('copy'); } catch (e) {}
+    }
+  };
+
   try {
     var saved = JSON.parse(localStorage.getItem(STORE) || 'null');
     if (saved) applyObj(saved);
   } catch (e) {}
   refresh();
-syncVipPanels();
 })();
 </script>
 </body></html>`
