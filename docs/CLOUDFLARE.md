@@ -1,8 +1,21 @@
 # Deploying to Cloudflare Workers
 
-The Cloudflare entrypoint serves the complete Stremio addon and the image proxy from one Worker. The existing Node.js, Docker, and standalone proxy commands are unchanged.
+The Cloudflare entrypoint serves the complete Stremio addon and the image proxy from one Worker.
 
-## Local development
+## Dashboard (no terminal)
+
+1. Sign in at [dash.cloudflare.com](https://dash.cloudflare.com).
+2. Open **Compute** → **Workers & Pages**.
+3. Create a Worker or connect the GitHub repo / upload `cloudflare/worker.js` (and project as configured in `wrangler.jsonc`).
+4. After deploy: Worker → **Settings** → **Variables and Secrets**.
+5. Add each env var from `.env.example`. Mark `TMDB_API_KEY`, cookies, and passwords as **Secret** so later code deploys do not clear them.
+6. Manifest: `https://YOUR-NAME.workers.dev/manifest.json`
+
+---
+
+## Local development (CLI)
+
+
 
 ```sh
 corepack enable
