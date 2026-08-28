@@ -853,7 +853,6 @@ export function renderConfigurePage({
 <label><input type="checkbox" data-prov="animex"/> Animex</label>
 <label><input type="checkbox" data-prov="digimovie" id="provDigi"/> DigiMovie <span class="diff m">VIP</span></label>
 <label><input type="checkbox" data-prov="avamovie" id="provAva"/> AvaMovie <span class="diff m">VIP</span></label>
-<label class="locked" title="soon"><input type="checkbox" disabled/> PeepBoxTv <span class="diff h"><span class="lang-fa">به‌زودی</span><span class="lang-en">Soon</span></span></label>
 </div>
 
 <div class="vip-block" id="vipDigiPanel" hidden>
@@ -1111,6 +1110,7 @@ export function renderConfigurePage({
     var addVal = (o.ADDON_LANG === 'en') ? 'en' : 'fa';
     document.querySelectorAll('input[name="addonLang"]').forEach(function (r) { r.checked = r.value === addVal; });
     syncStreamToggles();
+    syncVipPanels();
   }
   function syncStreamToggles() {
     var so = document.getElementById('optStreamsOnly');
@@ -1175,19 +1175,19 @@ export function renderConfigurePage({
     }
     refresh();
   });
-  var btnAll = 
-function syncVipPanels(){
+  function syncVipPanels(){
   var d=document.getElementById('provDigi');
   var a=document.getElementById('provAva');
   var pd=document.getElementById('vipDigiPanel');
   var pa=document.getElementById('vipAvaPanel');
-  if(pd) pd.hidden = !(d && d.checked);
-  if(pa) pa.hidden = !(a && a.checked);
+  if(pd){ pd.hidden = !(d && d.checked); }
+  if(pa){ pa.hidden = !(a && a.checked); }
 }
-document.getElementById('provDigi')?.addEventListener('change', syncVipPanels);
-document.getElementById('provAva')?.addEventListener('change', syncVipPanels);
-
-  document.getElementById('btnAll');
+var digiCb = document.getElementById('provDigi');
+var avaCb = document.getElementById('provAva');
+if (digiCb) digiCb.addEventListener('change', syncVipPanels);
+if (avaCb) avaCb.addEventListener('change', syncVipPanels);
+var btnAll = document.getElementById('btnAll');
   var btnNone = document.getElementById('btnNone');
   if (btnAll) btnAll.onclick = function () {
     document.querySelectorAll('[data-prov]:not(:disabled)').forEach(function (cb) { cb.checked = true; });

@@ -1,108 +1,64 @@
 <div align="center">
-  <img src="logo.png" alt="CinemaGraphy" width="120" height="120"/>
+  <img src="logo.png" alt="CinemaGraphy" width="120"/>
   <h1>CinemaGraphy · سینماگرافی</h1>
-  <p>Stremio / Nuvio addon — Iranian HTML providers, FA meta, optional torrent &amp; IPTV</p>
   <p>
-    <img src="https://img.shields.io/badge/version-3.2.7-e8a04a.svg" alt="version" />
-    <img src="https://img.shields.io/badge/node-24.x-339933.svg" alt="node" />
-    <img src="https://img.shields.io/badge/vercel-ready-000.svg" alt="Vercel" />
-    <img src="https://img.shields.io/badge/cloudflare-worker-f38020.svg" alt="Cloudflare" />
-    <img src="https://img.shields.io/badge/Nuvio-compatible-7eb6ff.svg" alt="Nuvio" />
-    <img src="https://img.shields.io/badge/FA%20%7C%20EN-supported-5dcea0.svg" alt="FA EN" />
+    <a href="#english">English</a> · <a href="#فارسی">فارسی</a>
+  </p>
+  <p>
+    <img src="https://img.shields.io/badge/version-3.2.7-e8a04a.svg" alt="3.2.7"/>
+    <img src="https://img.shields.io/badge/Stremio%20%7C%20Nuvio-addon-7eb6ff.svg" alt="addon"/>
+    <img src="https://img.shields.io/badge/FA%20%7C%20EN-yes-5dcea0.svg" alt="lang"/>
   </p>
 </div>
 
 ---
 
-## Quick install
+<a id="فارسی"></a>
 
-```text
-https://YOUR-DOMAIN/manifest.json
-```
+## فارسی
 
-| Path | Role |
-|------|------|
-| `/` | Landing |
-| `/configure` | Personal install builder |
-| `/guide` | Full guide (FA/EN) |
-| `/health` | Health |
-| `/providers.json` | Provider status |
-| `/admin` | Admin panel (`ADMIN_PASSWORD`) |
+**سینماگرافی** یک افزونهٔ استریمیو / نوویو است برای تماشای فیلم و سریال با منابع ایرانی، متای فارسی و کاتالوگ‌های کمکی.
 
-In-app help: open **راهنما / Guide** on the landing page.
+### هدف
+ساده کردن دسترسی به استریم از چند منبع در یک افزونه، با رابط فارسی و امکان شخصی‌سازی برای هر کاربر.
 
----
+### امکانات
+- چند پروایدر ایرانی به‌صورت موازی  
+- متای فارسی و پروکسی پوستر TMDB  
+- کاتالوگ انیمه، سریال ترکی، ماهواره (IPTV) و گزینه‌های بیشتر در شخصی‌سازی  
+- نصب عمومی یا لینک اختصاصی از صفحهٔ Configure  
+- اجرا روی Vercel یا Cloudflare Workers  
 
-## Features (3.2.x)
+جزئیات نصب، Env و راهنمای VIP فقط روی **سایت افزونه** (`/guide` و `/configure`) است.
 
-- Parallel Iranian providers + TMDB image proxy + Persian meta  
-- Catalogs: Turkish (F2), **Animex**, external anime, IPTV (independent), optional Namakade  
-- **DigiMovie / AvaMovie** — VIP only via personal `/configure` (session **cookie** preferred)  
-- Configure UI FA/EN · modular `lib/` · cache · rate limit · admin (Node/VPS)  
-- Deploy: **Vercel** or **Cloudflare Workers**
+### احترام
+با احترام به زحمات **آقای محبّی** و همهٔ کسانی که در مسیر این پروژه نقش داشته‌اند.
 
-### Env (short)
-
-```env
-TMDB_API_KEY=
-F2MEDIA_BASEURL=https://www.film2med.top
-ANIMEX_BASEURL=https://animex.click
-ENABLE_F2_TURKISH=1
-ENABLE_ANIMEX_CATALOG=1
-# VIP (prefer cookie; personal installs only)
-# DIGIMOVIE_BASEURL=https://www.digimoviez.com
-# DIGIMOVIE_COOKIE=
-# AVAMOVIE_BASEURL=https://avamovie.shop
-# AVAMOVIE_COOKIE=
-ADMIN_PASSWORD=
-PORT=7000
-```
-
-Full list: `.env.example` and `/guide#env`.
+### لایسنس
+ISC
 
 ---
 
-## Local
+<a id="english"></a>
 
-```bash
-pnpm install   # or: npm install --omit=dev
-cp .env.example .env
-pnpm start     # or: npm start
-```
+## English
 
----
+**CinemaGraphy** is a Stremio / Nuvio addon for movies and series: Iranian sources, Persian metadata, and optional extra catalogs.
 
-## Cloudflare
+### Purpose
+One addon that aggregates multiple stream sources, with a Persian-first experience and per-user configuration when needed.
 
-**Dashboard:** Compute → Workers & Pages → deploy → **Settings → Variables and Secrets**  
-Use **Secret** for API keys and cookies so they survive code updates.
+### Features
+- Several Iranian providers in parallel  
+- Persian meta and TMDB poster proxy  
+- Anime, Turkish series, IPTV and more via Configure  
+- Public install or a private link from the Configure page  
+- Runs on Vercel or Cloudflare Workers  
 
-**CLI:** see `docs/CLOUDFLARE.md` (`wrangler login` → `.dev.vars` → `wrangler deploy`).
+Full install steps, environment variables, and VIP setup live on the **addon site** (`/guide` and `/configure`) — not duplicated here.
 
-Worker entry: `cloudflare/worker.js` (keep version in sync with `app.js`).
+### Credits
+With respect to **Mr. Mohebbi (آقای محبّی)** and everyone who contributed along the way.
 
----
-
-## Vercel
-
-Import repo → Environment Variables → Deploy.  
-If the project is paused, use the Cloudflare worker as backup.
-
----
-
-## Docs
-
-| File | Content |
-|------|---------|
-| `/guide` | Install, CF, Vercel, env table, VIP cookie |
-| `docs/CLOUDFLARE.md` | Wrangler details |
-| `docs/ADDING-A-PROVIDER.md` | New provider checklist |
-| `.env.example` | All variables |
-
-Support: [t.me/nerdcow](https://t.me/nerdcow) · [channel](https://t.me/cinemmagraphy)
-
----
-
-## License
-
+### License
 ISC
