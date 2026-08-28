@@ -1026,7 +1026,15 @@ export function renderConfigurePage({
   function toB64Url(obj) {
     var s = JSON.stringify(obj);
     var b64 = btoa(unescape(encodeURIComponent(s)));
-    return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+    var out = '';
+    for (var i = 0; i < b64.length; i++) {
+      var ch = b64.charAt(i);
+      if (ch === '+') out += '-';
+      else if (ch === '/') out += '_';
+      else if (ch === '=') continue;
+      else out += ch;
+    }
+    return out;
   }
   function fromB64Url(str) {
     try {
@@ -1036,11 +1044,24 @@ export function renderConfigurePage({
     } catch (e) { return null; }
   }
   function stripProto(u) {
-    return String(u || '').replace(/^https?:\/\//i, '');
+    var s = String(u || '');
+    if (s.slice(0, 8).toLowerCase() === 'https://') return s.slice(8);
+    if (s.slice(0, 7).toLowerCase() === 'http://') return s.slice(7);
+    return s;
   }
   function extractCfgToken(url) {
-    var m = String(url || '').match(/\/c\/([^\/\s?#]+)(?:\/|$)/i);
-    return m ? decodeURIComponent(m[1]) : null;
+    var s = String(url || '');
+    var marker = '/c/';
+    var idx = s.indexOf(marker);
+    if (idx < 0) return null;
+    var rest = s.slice(idx + marker.length);
+    var cut = rest.length;
+    for (var i = 0; i < rest.length; i++) {
+      var c = rest.charAt(i);
+      if (c === '/' || c === '?' || c === '#' || c === ' ') { cut = i; break; }
+    }
+    var token = rest.slice(0, cut);
+    try { return decodeURIComponent(token); } catch (e) { return token; }
   }
 
   function syncVipPanels() {
