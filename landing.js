@@ -1315,10 +1315,20 @@ export function renderConfigurePage({
     }
   };
 
-  try {
-    var saved = JSON.parse(localStorage.getItem(STORE) || 'null');
-    if (saved) applyObj(saved);
-  } catch (e) {}
+  // Always start clean on full page load / refresh — do not auto-restore.
+  // Use «بارگذاری از لینک» to load a previous /c/… manifest URL.
+  try { localStorage.removeItem(STORE); } catch (e) {}
+  applyObj({});
+  document.querySelectorAll('[data-prov]').forEach(function (cb) { cb.checked = false; });
+  ['optStreamsOnly','optDisableMeta','optDisableCatalog','optDisableSubs','optIptv','optNamakade','f2turkishOn'].forEach(function (id) {
+    var el = document.getElementById(id);
+    if (el) { el.checked = false; el.disabled = false; }
+  });
+  var axc0 = document.getElementById('animexCatalogOn');
+  if (axc0) axc0.checked = false;
+  document.querySelectorAll('[data-k]').forEach(function (inp) { inp.value = ''; });
+  var loadUrl = document.getElementById('loadUrl');
+  if (loadUrl) loadUrl.value = '';
   refresh();
 })();
 </script>
