@@ -12,6 +12,7 @@ import {landingUrlsFromRequest, renderLandingPage, renderGuidePage, renderConfig
 import Aslmoviez from './sources/aslmoviez.js'
 import Cinamatic from './sources/cinamatic.js'
 import Digimovie from './sources/digimovie.js'
+import Avamovie from './sources/avamovie.js'
 import Animex from './sources/animex.js'
 import {
     isNamakadeEnabled,
@@ -55,7 +56,7 @@ import {createRateLimitMiddleware} from './lib/rate-limit.js'
 import {registerAdminRoutes} from './lib/admin.js'
 
 export const ADDON_PREFIX = 'ip'
-export const ADDON_VERSION = '3.2.6'
+export const ADDON_VERSION = '3.2.7'
 
 // Re-export config helpers for tests / external consumers
 export {decodeAddonConfig, mergeEnv, DEFAULT_IPTV_BRIDGE_MANIFEST_URL, isConfigFlagOn}
@@ -68,6 +69,7 @@ const CATALOGS = [
     {key: 'aslmoviez', name: 'AslMoviez', catalogType: 'movies'},
     {key: 'serialblog', name: 'SerialBlog', catalogType: 'movies'},
     {key: 'digimovie', name: 'DigiMovie', catalogType: 'movies'},
+    {key: 'avamovie', name: 'AvaMovie', catalogType: 'movies'},
     {key: 'donyayeserial', name: 'DonyayeSerial', catalogType: 'movies'},
     {key: 'animex', name: 'Animex', catalogType: 'movies'},
 ]
@@ -207,6 +209,7 @@ export function createProviders({env = process.env, logger = console, httpClient
         new Aslmoviez(env.ASLMOVIEZ_BASEURL, logger, httpClient, env),
         new Serialblog(env.SERIALBLOG_BASEURL, logger, httpClient, env),
         new Digimovie(env.DIGIMOVIE_BASEURL, logger, httpClient, env),
+        new Avamovie(env.AVAMOVIE_BASEURL, logger, httpClient, env),
         new Donyayeserial(env.DONYAYESERIAL_BASEURL, logger, httpClient),
         new Animex(env.ANIMEX_BASEURL, logger, httpClient),
     ]
@@ -228,6 +231,7 @@ export const PROVIDER_REGISTRY = [
     {key: 'aslmoviez', name: 'AslMoviez', envKey: 'ASLMOVIEZ_BASEURL'},
     {key: 'serialblog', name: 'SerialBlog', envKey: 'SERIALBLOG_BASEURL'},
     {key: 'digimovie', name: 'DigiMovie', envKey: 'DIGIMOVIE_BASEURL'},
+    {key: 'avamovie', name: 'AvaMovie', envKey: 'AVAMOVIE_BASEURL'},
     {key: 'donyayeserial', name: 'DonyayeSerial', envKey: 'DONYAYESERIAL_BASEURL'},
     {key: 'animex', name: 'Animex', envKey: 'ANIMEX_BASEURL'},
 ]
