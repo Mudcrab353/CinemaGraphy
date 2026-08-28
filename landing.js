@@ -705,6 +705,10 @@ export function renderConfigurePage({
 .prov-grid label:has(input:checked){border-color:rgba(232,160,74,.55);background:rgba(232,160,74,.12)}
 .prov-grid input{width:18px;height:18px;accent-color:#e8a04a}
 .prov-grid label.locked{filter:blur(1.2px);opacity:.45;pointer-events:none;cursor:not-allowed;position:relative}
+.vip-block input[data-k]{width:100%;box-sizing:border-box;margin:0;background:rgba(0,0,0,.28);border:1px solid var(--gb);border-radius:10px;color:var(--t);padding:10px 12px;font-family:inherit;font-size:.85rem}
+.vip-block[hidden]{display:none!important}
+.vip-block .hint{font-size:.78rem;color:var(--m);font-weight:600}
+
 .sel-row{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px}
 .toggle-grid{display:grid;gap:10px;margin-bottom:16px}
 .toggle-grid label.tog{display:flex;gap:12px;align-items:flex-start;padding:14px 16px;cursor:pointer}
@@ -847,35 +851,43 @@ export function renderConfigurePage({
 <label><input type="checkbox" data-prov="serialblog"/> SerialBlog</label>
 <label><input type="checkbox" data-prov="donyayeserial"/> DonyayeSerial</label>
 <label><input type="checkbox" data-prov="animex"/> Animex</label>
+<label><input type="checkbox" data-prov="digimovie" id="provDigi"/> DigiMovie <span class="diff m">VIP</span></label>
+<label><input type="checkbox" data-prov="avamovie" id="provAva"/> AvaMovie <span class="diff m">VIP</span></label>
+<label class="locked" title="soon"><input type="checkbox" disabled/> PeepBoxTv <span class="diff h"><span class="lang-fa">به‌زودی</span><span class="lang-en">Soon</span></span></label>
+</div>
 
-<div class="glass" style="padding:14px;margin:12px 0;border:1px solid rgba(232,160,74,.35)">
-<h3 class="lang-fa" style="margin:0 0 8px;font-size:1rem">پروایدرهای VIP (دیجی / آوا)</h3>
-<h3 class="lang-en" style="margin:0 0 8px;font-size:1rem">VIP providers (Digi / Ava)</h3>
-<p class="note lang-fa" style="margin:0 0 10px;font-size:.82rem;line-height:1.5">فقط در <b>لینک شخصی</b> شما. اکانت و اشتراک مال خودتان است؛ ریسک مسدود شدن با شماست. ترجیحاً <b>کوکی سشن</b> از مرورگر بگذارید تا سرور ما معما/کپچا حل نکند (سشن معمولاً چند ساعت تا یک روز).</p>
-<p class="note lang-en" style="margin:0 0 10px;font-size:.82rem;line-height:1.5">Only in your personal install link. Use your own VIP account — ban risk is yours. Prefer a browser <b>session cookie</b> so the addon host does not solve captchas (sessions often last hours to a day).</p>
-<div class="cfg-item" style="margin-bottom:10px">
-<div class="hint">DIGIMOVIE_BASEURL</div>
+<div class="vip-block" id="vipDigiPanel" hidden>
+<div class="glass" style="padding:14px;margin:0 0 12px;border:1px solid rgba(232,160,74,.4)">
+<div style="font-weight:800;margin-bottom:6px">DigiMovie · VIP</div>
+<p class="note lang-fa" style="margin:0 0 10px;font-size:.8rem;line-height:1.45">لینک شخصی. ترجیحاً <b>کوکی سشن</b> از مرورگر. ریسک اکانت با شماست.</p>
+<p class="note lang-en" style="margin:0 0 10px;font-size:.8rem;line-height:1.45">Personal link only. Prefer browser <b>session cookie</b>. Account risk is yours.</p>
+<label class="hint" style="display:block;margin-bottom:4px">BASEURL</label>
 <input data-k="DIGIMOVIE_BASEURL" placeholder="https://www.digimoviez.com" autocomplete="off"/>
-<div class="hint" style="margin-top:6px">DIGIMOVIE_COOKIE <span class="lang-fa">(ترجیحی)</span><span class="lang-en">(preferred)</span></div>
-<input data-k="DIGIMOVIE_COOKIE" placeholder="wordpress_logged_in_…=…; …" autocomplete="off" style="font-family:ui-monospace,monospace;font-size:.75rem"/>
-<div class="hint" style="margin-top:6px">DIGIMOVIE_USERNAME / PASSWORD <span class="lang-fa">(اختیاری اگر کوکی دارید)</span><span class="lang-en">(optional if cookie set)</span></div>
-<input data-k="DIGIMOVIE_USERNAME" placeholder="username" autocomplete="off" style="margin-bottom:4px"/>
+<label class="hint" style="display:block;margin:10px 0 4px">COOKIE <span class="lang-fa">(ترجیحی)</span><span class="lang-en">(preferred)</span></label>
+<input data-k="DIGIMOVIE_COOKIE" placeholder="name=value; name2=value2" autocomplete="off" style="font-family:ui-monospace,monospace;font-size:.75rem;direction:ltr"/>
+<label class="hint" style="display:block;margin:10px 0 4px">USERNAME / PASSWORD <span class="lang-fa">(اختیاری)</span><span class="lang-en">(optional)</span></label>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+<input data-k="DIGIMOVIE_USERNAME" placeholder="username" autocomplete="off"/>
 <input data-k="DIGIMOVIE_PASSWORD" type="password" placeholder="password" autocomplete="off"/>
 </div>
-<div class="cfg-item">
-<div class="hint">AVAMOVIE_BASEURL <span class="lang-fa">(خالی = avamovie.shop)</span><span class="lang-en">(empty = avamovie.shop)</span></div>
+</div>
+</div>
+
+<div class="vip-block" id="vipAvaPanel" hidden>
+<div class="glass" style="padding:14px;margin:0 0 16px;border:1px solid rgba(232,160,74,.4)">
+<div style="font-weight:800;margin-bottom:6px">AvaMovie · VIP</div>
+<p class="note lang-fa" style="margin:0 0 10px;font-size:.8rem;line-height:1.45">لینک شخصی. کوکی بعد از ورود VIP. پیش‌فرض سایت: avamovie.shop</p>
+<p class="note lang-en" style="margin:0 0 10px;font-size:.8rem;line-height:1.45">Personal link. Cookie after VIP login. Default site: avamovie.shop</p>
+<label class="hint" style="display:block;margin-bottom:4px">BASEURL</label>
 <input data-k="AVAMOVIE_BASEURL" placeholder="https://avamovie.shop" autocomplete="off"/>
-<div class="hint" style="margin-top:6px">AVAMOVIE_COOKIE <span class="lang-fa">(ترجیحی — بعد از ورود VIP)</span><span class="lang-en">(preferred — after VIP login)</span></div>
-<input data-k="AVAMOVIE_COOKIE" placeholder="Cookie header from browser" autocomplete="off" style="font-family:ui-monospace,monospace;font-size:.75rem"/>
-<div class="hint" style="margin-top:6px">AVAMOVIE_USERNAME / PASSWORD</div>
-<input data-k="AVAMOVIE_USERNAME" placeholder="email / user" autocomplete="off" style="margin-bottom:4px"/>
+<label class="hint" style="display:block;margin:10px 0 4px">COOKIE <span class="lang-fa">(ترجیحی)</span><span class="lang-en">(preferred)</span></label>
+<input data-k="AVAMOVIE_COOKIE" placeholder="Cookie header from browser" autocomplete="off" style="font-family:ui-monospace,monospace;font-size:.75rem;direction:ltr"/>
+<label class="hint" style="display:block;margin:10px 0 4px">USERNAME / PASSWORD</label>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+<input data-k="AVAMOVIE_USERNAME" placeholder="email / user" autocomplete="off"/>
 <input data-k="AVAMOVIE_PASSWORD" type="password" placeholder="password" autocomplete="off"/>
 </div>
 </div>
-
-<label class="locked" title="soon"><input type="checkbox" disabled/> PeepBoxTv <span class="diff h"><span class="lang-fa">به‌زودی</span><span class="lang-en">Soon</span></span></label>
-<label><input type="checkbox" data-prov="digimovie"/> DigiMovie <span class="diff m"><span class="lang-fa">VIP</span><span class="lang-en">VIP</span></span></label>
-<label><input type="checkbox" data-prov="avamovie"/> AvaMovie <span class="diff m"><span class="lang-fa">VIP</span><span class="lang-en">VIP</span></span></label>
 </div>
 
 <h2 class="lang-fa">کلیدها و کاتالوگ‌های خارجی</h2>
@@ -1163,14 +1175,28 @@ export function renderConfigurePage({
     }
     refresh();
   });
-  var btnAll = document.getElementById('btnAll');
+  var btnAll = 
+function syncVipPanels(){
+  var d=document.getElementById('provDigi');
+  var a=document.getElementById('provAva');
+  var pd=document.getElementById('vipDigiPanel');
+  var pa=document.getElementById('vipAvaPanel');
+  if(pd) pd.hidden = !(d && d.checked);
+  if(pa) pa.hidden = !(a && a.checked);
+}
+document.getElementById('provDigi')?.addEventListener('change', syncVipPanels);
+document.getElementById('provAva')?.addEventListener('change', syncVipPanels);
+
+  document.getElementById('btnAll');
   var btnNone = document.getElementById('btnNone');
   if (btnAll) btnAll.onclick = function () {
     document.querySelectorAll('[data-prov]:not(:disabled)').forEach(function (cb) { cb.checked = true; });
+    syncVipPanels();
     refresh();
   };
   if (btnNone) btnNone.onclick = function () {
     document.querySelectorAll('[data-prov]:not(:disabled)').forEach(function (cb) { cb.checked = false; });
+    syncVipPanels();
     refresh();
   };
   var btnLoad = document.getElementById('btnLoad');
@@ -1219,6 +1245,7 @@ export function renderConfigurePage({
     if (saved) applyObj(saved);
   } catch (e) {}
   refresh();
+syncVipPanels();
 })();
 </script>
 </body></html>`

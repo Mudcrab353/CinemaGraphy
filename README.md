@@ -1,4 +1,5 @@
 <div align="center">
+  <img src="logo.png" alt="CinemaGraphy" width="120" height="120"/>
   <h1>CinemaGraphy · سینماگرافی</h1>
   <p>Stremio / Nuvio addon — Iranian HTML providers, FA meta, optional torrent &amp; IPTV</p>
   <p>
