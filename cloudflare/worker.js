@@ -83,7 +83,11 @@ export function createWorkerManifest(env = {}) {
             {name: 'subtitles', types: ['series', 'movie'], idPrefixes: [ADDON_PREFIX, 'tt', 'kitsu:', 'tmdb:']},
         ],
         types: ['movie', 'series', 'tv'],
-        behaviorHints: {p2p: Boolean(env.TORRENT_METEOR_MANIFEST_URL)},
+        behaviorHints: {
+            p2p: Boolean(env.TORRENT_METEOR_MANIFEST_URL),
+            configurable: true,
+            configurationRequired: false,
+        },
         stremioAddonsConfig: {
             issuer: 'https://stremio-addons.net',
             signature: 'eyJhbGciOiJkaXIiLCJlbmMiOiJBMTI4Q0JDLUhTMjU2In0..qYqYdUtntg-bF3wGDjsiww.IBIrE7RSO9aaALvNQROynW-pBh-OQLl3t-nFXqhEAO4AYl2qHvSGJWNP6WTwzU1yD8DjmYbnjDVdgkIDYw75MtInyH_cG0uEYr2VXEIGbHNZVlWlPH-C5go_8UyAMxCc.bM45Z1wp81dep2eCW5dt8A',
