@@ -1517,33 +1517,39 @@ details.faq summary{cursor:pointer;font-weight:700}
 </div>
 
 <div class="gbox glass" id="env">
-<h2 class="lang-fa">۶) جدول متغیرها (پیشنهادی لایو)</h2>
-<h2 class="lang-en">6) Env table (recommended live set)</h2>
-<p class="lang-fa muted">روی Worker: Settings → Variables and Secrets. VIP دیجی/آوا را اینجا نگذارید — فقط <a href="/configure">/configure</a>.</p>
-<p class="lang-en muted">On Worker: Settings → Variables and Secrets. No Digi/Ava VIP here — only <a href="/configure">/configure</a>.</p>
+<h2 class="lang-fa">۶) جدول متغیرها (عین تنظیمات لایو)</h2>
+<h2 class="lang-en">6) Env table (live Cloudflare set)</h2>
+<p class="lang-fa muted">Worker → <b>Settings</b> → <b>Variables and Secrets</b>. نام را <b>کامل</b> بنویسید. <code>TMDB_API_KEY</code> را Secret کنید. VIP دیجی/آوا را اینجا نگذارید — فقط <a href="/configure">/configure</a>.</p>
+<p class="lang-en muted">Worker → <b>Settings</b> → <b>Variables and Secrets</b>. Use <b>full</b> names. Mark <code>TMDB_API_KEY</code> as Secret. No Digi/Ava VIP here — only <a href="/configure">/configure</a>.</p>
 <div class="env-wrap"><table>
 <thead><tr>
-<th>Var</th>
-<th><span class="lang-fa">پیشنهاد</span><span class="lang-en">Suggested</span></th>
-<th><span class="lang-fa">یادداشت</span><span class="lang-en">Note</span></th>
+<th>Name</th>
+<th>Type</th>
+<th><span class="lang-fa">مقدار / توضیح</span><span class="lang-en">Value / note</span></th>
 </tr></thead>
 <tbody>
-<tr><td><code>TMDB_API_KEY</code></td><td>Secret</td><td><span class="lang-fa">لازم — متا/پوستر</span><span class="lang-en">Required — meta/posters</span></td></tr>
-<tr><td><code>F2MEDIA_BASEURL</code></td><td><code>https://www.film2med.top</code></td><td>F2 + Turkish</td></tr>
-<tr><td><code>ENABLE_F2_TURKISH</code></td><td><code>1</code></td><td>Text</td></tr>
-<tr><td><code>ANIMEX_BASEURL</code></td><td><code>https://animex.click</code></td><td>—</td></tr>
-<tr><td><code>ENABLE_ANIMEX_CATALOG</code></td><td><code>1</code></td><td>Text</td></tr>
-<tr><td><code>CINAMATIC_BASEURL</code> …</td><td><span class="lang-fa">در صورت دسترسی</span><span class="lang-en">if you have access</span></td><td><span class="lang-fa">خالی = خاموش</span><span class="lang-en">empty = off</span></td></tr>
-<tr><td><code>CATALOG101_MANIFEST_URL</code></td><td>meta/off URL</td><td><a href="https://config.101catalogs.xyz/" target="_blank" rel="noopener">101 configure</a></td></tr>
-<tr><td><code>CATALOG_ANIME_MANIFEST_URL</code></td><td>from anime configure</td><td><span class="lang-fa">نام کامل متغیر</span><span class="lang-en">full var name</span></td></tr>
-<tr><td><code>CATALOG_IPTVBRIDGE_MANIFEST_URL</code></td><td>from IPTV configure</td><td>—</td></tr>
-<tr><td><code>TORRENT_METEOR_MANIFEST_URL</code></td><td>optional</td><td>Meteor</td></tr>
-<tr><td><code>SUBSOURCE_MANIFEST_URL</code></td><td>optional</td><td>—</td></tr>
-<tr><td><code>PROXY_ENABLE</code></td><td><code>false</code> یا <code>true</code></td><td><span class="lang-fa">پوستر TMDB جداست</span><span class="lang-en">TMDB posters separate</span></td></tr>
-<tr><td><code>PROXY_PATH</code></td><td><code>proxy</code></td><td>—</td></tr>
-<tr><td><code>LOG_LEVEL</code></td><td><code>info</code></td><td>—</td></tr>
-<tr><td><code>DEV_MODE</code></td><td><code>false</code></td><td>—</td></tr>
+<tr><td><code>TMDB_API_KEY</code></td><td>Secret</td><td><span class="lang-fa">کلید TMDB (لازم)</span><span class="lang-en">TMDB key (required)</span></td></tr>
+<tr><td><code>F2MEDIA_BASEURL</code></td><td>Secret / Text</td><td><code>https://www.film2med.top</code></td></tr>
+<tr><td><code>ENABLE_F2_TURKISH</code></td><td>Text</td><td><code>1</code></td></tr>
+<tr><td><code>ANIMEX_BASEURL</code></td><td>Secret / Text</td><td><span class="lang-fa">دامنه انیمکس</span><span class="lang-en">Animex base URL</span></td></tr>
+<tr><td><code>ENABLE_ANIMEX_CATALOG</code></td><td>Text</td><td><code>1</code></td></tr>
+<tr><td><code>CINAMATIC_BASEURL</code></td><td>Secret / Text</td><td><span class="lang-fa">اگر دسترسی دارید</span><span class="lang-en">if you have access</span></td></tr>
+<tr><td><code>ASLMOVIEZ_BASEURL</code></td><td>Secret / Text</td><td><span class="lang-fa">اگر دسترسی دارید</span><span class="lang-en">if you have access</span></td></tr>
+<tr><td><code>SERIALBLOG_BASEURL</code></td><td>Secret / Text</td><td><span class="lang-fa">اگر دسترسی دارید</span><span class="lang-en">if you have access</span></td></tr>
+<tr><td><code>DONYAYESERIAL_BASEURL</code></td><td>Secret / Text</td><td><span class="lang-fa">اگر دسترسی دارید</span><span class="lang-en">if you have access</span></td></tr>
+<tr><td><code>CATALOG101_MANIFEST_URL</code></td><td>Secret / Text</td><td><span class="lang-fa">منیفست ۱۰۱ — ترجیحاً </span><code>meta/off</code><span class="lang-en"> 101 manifest — prefer </span><code>meta/off</code></td></tr>
+<tr><td><code>CATALOG_ANIME_MANIFEST_URL</code></td><td>Secret / Text</td><td><span class="lang-fa">منیفست کاتالوگ انیمه</span><span class="lang-en">anime catalogs manifest</span></td></tr>
+<tr><td><code>CATALOG_IPTVBRIDGE_MANIFEST_URL</code></td><td>Secret / Text</td><td><span class="lang-fa">منیفست IPTV Bridge</span><span class="lang-en">IPTV Bridge manifest</span></td></tr>
+<tr><td><code>TORRENT_METEOR_MANIFEST_URL</code></td><td>Secret / Text</td><td><span class="lang-fa">اختیاری — Meteor</span><span class="lang-en">optional — Meteor</span></td></tr>
+<tr><td><code>SUBSOURCE_MANIFEST_URL</code></td><td>Secret / Text</td><td><span class="lang-fa">اختیاری — زیرنویس</span><span class="lang-en">optional — subtitles</span></td></tr>
+<tr><td><code>PROXY_ENABLE</code></td><td>Text</td><td><code>true</code></td></tr>
+<tr><td><code>PROXY_PATH</code></td><td>Text</td><td><code>proxy</code></td></tr>
+<tr><td><code>PROXY_ALLOWED_URLS</code></td><td>Text</td><td><code>metahub.space,imdb.com,strem.io,tmdb.org</code></td></tr>
+<tr><td><code>LOG_LEVEL</code></td><td>Text</td><td><code>info</code></td></tr>
+<tr><td><code>DEV_MODE</code></td><td>Text</td><td><code>false</code></td></tr>
 </tbody></table></div>
+<p class="lang-fa muted" style="margin-top:10px">در داشبورد Cloudflare گاهی نام‌ها کوتاه دیده می‌شوند؛ باید دقیقاً همین اسم‌های کامل را وارد کنید (مثلاً <code>CATALOG_ANIME_MANIFEST_URL</code> نه نسخهٔ ناقص).</p>
+<p class="lang-en muted" style="margin-top:10px">Cloudflare may truncate names in the UI — enter the full names exactly as above.</p>
 </div>
 
 <div class="gbox glass" id="vip">
