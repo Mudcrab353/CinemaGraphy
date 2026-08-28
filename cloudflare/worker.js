@@ -1,6 +1,7 @@
 import Aslmoviez from '../sources/aslmoviez.js'
 import Cinamatic from '../sources/cinamatic.js'
 import Digimovie from '../sources/digimovie.js'
+import Avamovie from '../sources/avamovie.js'
 import Animex from '../sources/animex.js'
 import Donyayeserial from '../sources/donyayeserial.js'
 import F2Media from '../sources/f2media.js'
@@ -26,7 +27,7 @@ import {createWorkerProxyConfig, handleProxyRequest} from './proxy.js'
 import {decodeAddonConfig, mergeEnv} from './config.js'
 
 const ADDON_PREFIX = 'ip'
-const ADDON_VERSION = '3.2.6'
+const ADDON_VERSION = '3.2.7'
 
 const CATALOGS = [
     {key: 'f2media', name: 'F2Media', catalogType: 'movies'},
@@ -35,6 +36,7 @@ const CATALOGS = [
     {key: 'aslmoviez', name: 'AslMoviez', catalogType: 'movies'},
     {key: 'serialblog', name: 'SerialBlog', catalogType: 'movies'},
     {key: 'digimovie', name: 'DigiMovie', catalogType: 'movies'},
+    {key: 'avamovie', name: 'AvaMovie', catalogType: 'movies'},
     {key: 'donyayeserial', name: 'DonyayeSerial', catalogType: 'movies'},
     {key: 'animex', name: 'Animex', catalogType: 'movies'},
 ]
@@ -97,6 +99,7 @@ export function createWorkerProviders({env = {}, logger = console, httpClient} =
         new Aslmoviez(env.ASLMOVIEZ_BASEURL, logger, httpClient, env),
         new Serialblog(env.SERIALBLOG_BASEURL, logger, httpClient, env),
         new Digimovie(env.DIGIMOVIE_BASEURL, logger, httpClient, env),
+        new Avamovie(env.AVAMOVIE_BASEURL, logger, httpClient, env),
         new Donyayeserial(env.DONYAYESERIAL_BASEURL, logger, httpClient),
         new Animex(env.ANIMEX_BASEURL, logger, httpClient),
     ]
@@ -714,7 +717,7 @@ export function createWorkerHandler(options = {}) {
                     {key:'cinamatic',name:'Cinamatic',envKey:'CINAMATIC_BASEURL'},
                     {key:'aslmoviez',name:'AslMoviez',envKey:'ASLMOVIEZ_BASEURL'},
                     {key:'serialblog',name:'SerialBlog',envKey:'SERIALBLOG_BASEURL'},
-                    {key:'digimovie',name:'DigiMovie',envKey:'DIGIMOVIE_BASEURL'},
+                    {key:'digimovie',name:'DigiMovie',envKey:'DIGIMOVIE_BASEURL'},{key:'avamovie',name:'AvaMovie',envKey:'AVAMOVIE_BASEURL'},
                     {key:'donyayeserial',name:'DonyayeSerial',envKey:'DONYAYESERIAL_BASEURL'},
                     {key:'animex',name:'Animex',envKey:'ANIMEX_BASEURL'},
                 ]
