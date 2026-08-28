@@ -1,13 +1,10 @@
 <div align="center">
-  <img src="./logo.png" alt="Cinemagraphy" width="128" height="128" />
-  <h1>سینماگرافی — Cinemagraphy</h1>
+  <h1>CinemaGraphy · سینماگرافی</h1>
+  <p>Stremio / Nuvio addon — Iranian HTML providers, FA meta, optional torrent &amp; IPTV</p>
   <p>
-    <b>افزونهٔ رایگان استریمیو برای فیلم، سریال، انیمه و منابع ایرانی</b><br/>
-    Free Stremio addon — Iranian sources, Persian metadata, optional torrents &amp; IPTV
-  </p>
-  <p>
-    <img src="https://img.shields.io/badge/version-3.2.1-blue.svg" alt="3.2.1" />
-    <img src="https://img.shields.io/badge/vercel-ready-black.svg" alt="Vercel" />
+    <img src="https://img.shields.io/badge/version-3.2.7-e8a04a.svg" alt="version" />
+    <img src="https://img.shields.io/badge/node-24.x-339933.svg" alt="node" />
+    <img src="https://img.shields.io/badge/vercel-ready-000.svg" alt="Vercel" />
     <img src="https://img.shields.io/badge/cloudflare-worker-f38020.svg" alt="Cloudflare" />
     <img src="https://img.shields.io/badge/Nuvio-compatible-7eb6ff.svg" alt="Nuvio" />
     <img src="https://img.shields.io/badge/FA%20%7C%20EN-supported-5dcea0.svg" alt="FA EN" />
@@ -16,75 +13,95 @@
 
 ---
 
-## نصب سریع
-
-منیفست (دامنهٔ خودتان بعد از deploy):
+## Quick install
 
 ```text
 https://YOUR-DOMAIN/manifest.json
 ```
 
-اگر Vercel فعال باشد: `https://cinemagraphy.vercel.app/manifest.json`
+| Path | Role |
+|------|------|
+| `/` | Landing |
+| `/configure` | Personal install builder |
+| `/guide` | Full guide (FA/EN) |
+| `/health` | Health |
+| `/providers.json` | Provider status |
+| `/admin` | Admin panel (`ADMIN_PASSWORD`) |
 
-> اگر Vercel روی **Pause** باشد تا Resume سایت و منیفست از آن دامنه کار نمی‌کنند. در این مدت Cloudflare Worker یا اجرای محلی.
-
-| مسیر | توضیح |
-|------|--------|
-| `/` | لندینگ |
-| `/configure` | شخصی‌سازی |
-| `/guide` | راهنما |
-| `/health` | سلامت |
-| `/providers.json` | وضعیت پروایدرها |
-| `/admin` | پنل مدیریت (نیاز به `ADMIN_PASSWORD`) |
+In-app help: open **راهنما / Guide** on the landing page.
 
 ---
 
-## نسخه ۳.۲.۱
+## Features (3.2.x)
 
-- منابع ایرانی موازی + پروکسی تصویر TMDB + متای فارسی
-- کاتالوگ **ترکی (F2)** و **انیمه - انیمکس** (ترتیب: ترکی → انیمکس → انیمه خارجی → ماهواره)
-- IPTV مستقل · تورنت اختیاری · Configure با FA/EN
-- `lib/` ماژولار · کش · rate limit · پنل ادمین (Node/VPS)
-- سازگار با Stremio و Nuvio · Vercel و Cloudflare Worker
+- Parallel Iranian providers + TMDB image proxy + Persian meta  
+- Catalogs: Turkish (F2), **Animex**, external anime, IPTV (independent), optional Namakade  
+- **DigiMovie / AvaMovie** — VIP only via personal `/configure` (session **cookie** preferred)  
+- Configure UI FA/EN · modular `lib/` · cache · rate limit · admin (Node/VPS)  
+- Deploy: **Vercel** or **Cloudflare Workers**
 
-### env نمونه
+### Env (short)
 
 ```env
 TMDB_API_KEY=
-F2MEDIA_BASEURL=
+F2MEDIA_BASEURL=https://www.film2med.top
 ANIMEX_BASEURL=https://animex.click
 ENABLE_F2_TURKISH=1
 ENABLE_ANIMEX_CATALOG=1
+# VIP (prefer cookie; personal installs only)
+# DIGIMOVIE_BASEURL=https://www.digimoviez.com
+# DIGIMOVIE_COOKIE=
+# AVAMOVIE_BASEURL=https://avamovie.shop
+# AVAMOVIE_COOKIE=
 ADMIN_PASSWORD=
-RATE_LIMIT_ENABLED=0
 PORT=7000
 ```
 
-جزئیات کامل در `.env.example`.
+Full list: `.env.example` and `/guide#env`.
 
 ---
 
-## اجرای محلی
+## Local
 
 ```bash
-npm install --omit=dev
+pnpm install   # or: npm install --omit=dev
 cp .env.example .env
-npm start
+pnpm start     # or: npm start
 ```
 
 ---
 
 ## Cloudflare
 
-ببینید `docs/CLOUDFLARE.md`. نسخه Worker در `cloudflare/worker.js` باید **۳.۲.۱** باشد.
+**Dashboard:** Compute → Workers & Pages → deploy → **Settings → Variables and Secrets**  
+Use **Secret** for API keys and cookies so they survive code updates.
+
+**CLI:** see `docs/CLOUDFLARE.md` (`wrangler login` → `.dev.vars` → `wrangler deploy`).
+
+Worker entry: `cloudflare/worker.js` (keep version in sync with `app.js`).
 
 ---
 
-## ساختار
+## Vercel
 
-```text
-app.js  index.js  landing.js  utils.js
-lib/  sources/  cloudflare/  api/  docs/
-```
+Import repo → Environment Variables → Deploy.  
+If the project is paused, use the Cloudflare worker as backup.
 
-مجوز: ISC.
+---
+
+## Docs
+
+| File | Content |
+|------|---------|
+| `/guide` | Install, CF, Vercel, env table, VIP cookie |
+| `docs/CLOUDFLARE.md` | Wrangler details |
+| `docs/ADDING-A-PROVIDER.md` | New provider checklist |
+| `.env.example` | All variables |
+
+Support: [t.me/nerdcow](https://t.me/nerdcow) · [channel](https://t.me/cinemmagraphy)
+
+---
+
+## License
+
+ISC

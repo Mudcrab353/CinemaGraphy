@@ -275,7 +275,7 @@ overscroll-behavior-x:contain;scrollbar-width:none!important;-ms-overflow-style:
 <a class="btn bp" href="${install}"><span class="lang-fa">نصب در نوویو و استریمیو</span><span class="lang-en">Install in Nuvio &amp; Stremio</span></a>
 <button class="btn bp" id="manifestCopyBtn" type="button"><span class="lang-fa">لینک منیفست</span><span class="lang-en">Manifest link</span></button>
 <a class="btn bp" href="/configure" style="background:rgba(255,255,255,.1);color:var(--t);box-shadow:none;border:1px solid var(--gb)"><span class="lang-fa">شخصی‌سازی</span><span class="lang-en">Configure</span></a>
-<a class="btn bp" href="/guide" style="background:rgba(255,255,255,.08);color:var(--t);box-shadow:none;border:1px solid var(--gb)"><span class="lang-fa">📖 آموزش / راهنما</span><span class="lang-en">📖 Guide</span></a>
+<a class="btn bp" href="/guide" style="background:rgba(255,255,255,.08);color:var(--t);box-shadow:none;border:1px solid var(--gb)"><span class="lang-fa">📖 راهنما</span><span class="lang-en">📖 Guide</span></a>
 <button class="btn bp" type="button" disabled style="opacity:.72;cursor:default;background:rgba(232,160,74,.12);color:var(--a);box-shadow:none;border:1px solid rgba(232,160,74,.35)" title="به‌زودی — حمایت از ایران و خارج (کریپتو و …)"><span class="lang-fa">♥ حمایت مالی · به‌زودی</span><span class="lang-en">♥ Support · Soon</span></button>
 </div>
 <input type="hidden" id="manifestUrl" value="${m}"/>
@@ -1242,31 +1242,28 @@ export function renderGuidePage({
 <title>Guide — CinemaGraphy / راهنما — سینماگرافی</title>
 <link rel="icon" href="${logo}"/>
 <style>${shellStyle()}
-.gbox{padding:16px;margin-bottom:14px;max-width:100%;overflow:hidden}
-.gbox h2{margin:0 0 10px;font-size:1.05rem}
-.gbox h3{margin:14px 0 8px;font-size:.95rem;color:var(--a)}
-.gbox .row{margin-top:12px;display:flex;flex-wrap:wrap;gap:10px}
-.olist{display:grid;gap:8px;margin-top:8px;max-width:100%}
-.olist .step{margin:0}
-.muted{color:var(--m);font-size:.9rem;overflow-wrap:anywhere;word-break:break-word;line-height:1.55}
-.gbox p,.gbox li{overflow-wrap:anywhere;word-break:break-word;max-width:100%;line-height:1.55}
-.gbox code{display:inline-block;max-width:100%;overflow-wrap:anywhere;word-break:break-all;font-size:.82rem;background:rgba(0,0,0,.25);padding:2px 6px;border-radius:6px}
-.toc{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 4px}
-.toc a{font-size:.82rem;padding:8px 12px;border-radius:999px;border:1px solid var(--gb);color:var(--t);text-decoration:none;background:rgba(255,255,255,.04)}
+.gbox{padding:14px;margin-bottom:12px}
+.gbox h2{margin:0 0 8px;font-size:1rem}
+.gbox h3{margin:12px 0 6px;font-size:.9rem;color:var(--a)}
+.muted{color:var(--m);font-size:.88rem;line-height:1.55;overflow-wrap:anywhere}
+.gbox p,.gbox li{line-height:1.55;overflow-wrap:anywhere;margin:0 0 8px}
+.gbox code{font-size:.8rem;background:rgba(0,0,0,.22);padding:1px 5px;border-radius:5px;word-break:break-all}
+.toc{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 14px}
+.toc a{font-size:.78rem;padding:7px 12px;border-radius:999px;border:1px solid var(--gb);color:var(--t);text-decoration:none;background:rgba(255,255,255,.04)}
 .toc a:hover{border-color:var(--a);color:var(--a)}
-.env-table{width:100%;border-collapse:collapse;font-size:.78rem;margin-top:10px;display:block;overflow-x:auto;-webkit-overflow-scrolling:touch}
-.env-table table{width:100%;min-width:520px;border-collapse:collapse}
-.env-table th,.env-table td{border:1px solid var(--gb);padding:8px 10px;text-align:start;vertical-align:top}
-.env-table th{background:rgba(232,160,74,.12);color:var(--a);font-weight:700}
-.env-table td code{font-size:.75rem}
-.nav-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.btn-guide{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:12px 18px;border-radius:14px;font-weight:800;font-size:.9rem;text-decoration:none;border:1px solid rgba(232,160,74,.45);background:rgba(232,160,74,.12);color:var(--a);font-family:inherit}
-.btn-guide:hover{transform:translateY(-1px)}
+.olist{display:grid;gap:6px;margin:8px 0}
+.step{padding:10px 12px;border-radius:12px;border:1px solid var(--gb);background:rgba(0,0,0,.15);font-size:.88rem;line-height:1.5}
+.step b{color:var(--a);margin-inline-end:6px}
+.env-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin-top:8px;border-radius:10px;border:1px solid var(--gb)}
+.env-wrap table{width:100%;min-width:480px;border-collapse:collapse;font-size:.75rem}
+.env-wrap th,.env-wrap td{border-bottom:1px solid var(--gb);padding:7px 9px;text-align:start;vertical-align:top}
+.env-wrap th{background:rgba(232,160,74,.1);color:var(--a);font-weight:700;position:sticky;top:0}
+.env-wrap td code{font-size:.72rem}
+details.faq{margin:6px 0;padding:10px 12px;border-radius:12px;border:1px solid var(--gb);background:rgba(0,0,0,.12)}
+details.faq summary{cursor:pointer;font-weight:700}
 @media (max-width:640px){
-  .gbox{padding:14px 12px}
-  .toc a{flex:1 1 calc(50% - 8px);text-align:center}
-  .env-table{font-size:.72rem}
-  .btn-guide{width:100%}
+  .gbox{padding:12px}
+  .toc a{flex:1 1 calc(50% - 6px);text-align:center}
 }
 </style>
 </head>
@@ -1274,35 +1271,26 @@ export function renderGuidePage({
 <div class="wrap">
 <header>
 <a class="brand" href="/"><img src="${logo}" alt=""/><span class="lang-fa">سینماگرافی</span><span class="lang-en">CinemaGraphy</span></a>
-<div class="nav-actions">
+<div style="display:flex;gap:8px;flex-wrap:wrap">
 <button class="chip" type="button" id="langBtn">EN</button>
 <a class="chip" href="/configure"><span class="lang-fa">شخصی‌سازی</span><span class="lang-en">Configure</span></a>
 <a class="chip" href="/"><span class="lang-fa">خانه</span><span class="lang-en">Home</span></a>
 </div>
 </header>
 
-<p style="font-size:.75rem;color:var(--a)">v${ver}</p>
-<h1 class="lang-fa">📖 راهنمای کامل</h1>
-<h1 class="lang-en">📖 Full guide</h1>
-
-<div class="gbox glass">
-<p class="lang-fa muted" style="margin:0">استریمیو / نوویو یک Media Center هستند؛ افزونه منبع و قابلیت اضافه می‌کند. سینماگرافی منابع ایرانی، تورنت اختیاری، زیرنویس و متای فارسی را یکجا می‌آورد. این صفحه برای نصب، دیپلوی و تنظیمات پیشرفته است.</p>
-<p class="lang-en muted" style="margin:0">Stremio / Nuvio are media centers; addons add sources. CinemaGraphy bundles Iranian sources, optional torrents, subtitles and Persian metadata. This page covers install, self-host deploy, and advanced setup.</p>
-<div class="row" style="margin-top:14px">
-<a class="btn-guide" href="#deploy-cf"><span class="lang-fa">☁ Cloudflare</span><span class="lang-en">☁ Cloudflare</span></a>
-<a class="btn-guide" href="#deploy-vercel"><span class="lang-fa">▲ Vercel</span><span class="lang-en">▲ Vercel</span></a>
-<a class="btn-guide" href="#env"><span class="lang-fa">جدول متغیرها</span><span class="lang-en">Env table</span></a>
-<a class="btn-guide" href="#vip-session"><span class="lang-fa">سشن Digi / Ava</span><span class="lang-en">Digi / Ava session</span></a>
-</div>
-</div>
+<p style="font-size:.75rem;color:var(--a);margin:0 0 4px">v${ver}</p>
+<h1 class="lang-fa" style="margin:0 0 8px">📖 راهنما</h1>
+<h1 class="lang-en" style="margin:0 0 8px">📖 Guide</h1>
+<p class="lang-fa muted">نصب کلاینت، دیپلوی، متغیرها و سشن VIP.</p>
+<p class="lang-en muted">Client install, deploy, env vars, and VIP session.</p>
 
 <nav class="toc" aria-label="Sections">
-<a href="#install"><span class="lang-fa">نصب کلاینت</span><span class="lang-en">Client install</span></a>
+<a href="#install"><span class="lang-fa">نصب</span><span class="lang-en">Install</span></a>
 <a href="#configure"><span class="lang-fa">شخصی‌سازی</span><span class="lang-en">Configure</span></a>
-<a href="#deploy-cf"><span class="lang-fa">دیپلوی CF</span><span class="lang-en">CF deploy</span></a>
-<a href="#deploy-vercel"><span class="lang-fa">دیپلوی Vercel</span><span class="lang-en">Vercel deploy</span></a>
-<a href="#env"><span class="lang-fa">Env</span><span class="lang-en">Env</span></a>
-<a href="#vip-session"><span class="lang-fa">VIP کوکی</span><span class="lang-en">VIP cookie</span></a>
+<a href="#cf"><span class="lang-fa">Cloudflare</span><span class="lang-en">Cloudflare</span></a>
+<a href="#vercel"><span class="lang-fa">Vercel</span><span class="lang-en">Vercel</span></a>
+<a href="#env">Env</a>
+<a href="#vip"><span class="lang-fa">کوکی VIP</span><span class="lang-en">VIP cookie</span></a>
 <a href="#faq">FAQ</a>
 </nav>
 
@@ -1310,191 +1298,175 @@ export function renderGuidePage({
 <h2 class="lang-fa">۱) نصب در استریمیو / نوویو</h2>
 <h2 class="lang-en">1) Install in Stremio / Nuvio</h2>
 <div class="olist">
-<div class="step glass"><b>1</b>
-<span class="lang-fa">کلاینت را نصب کنید: <a href="https://www.stremio.com/downloads" target="_blank" rel="noopener">Stremio</a> یا <a href="https://github.com/NuvioMedia/NuvioMobile/releases/latest" target="_blank" rel="noopener">Nuvio</a>.</span>
-<span class="lang-en">Install <a href="https://www.stremio.com/downloads" target="_blank" rel="noopener">Stremio</a> or <a href="https://github.com/NuvioMedia/NuvioMobile/releases/latest" target="_blank" rel="noopener">Nuvio</a>.</span>
+<div class="step"><b>1</b>
+<span class="lang-fa">کلاینت: <a href="https://www.stremio.com/downloads" target="_blank" rel="noopener">Stremio</a> یا <a href="https://github.com/NuvioMedia/NuvioMobile/releases/latest" target="_blank" rel="noopener">Nuvio</a></span>
+<span class="lang-en">Client: <a href="https://www.stremio.com/downloads" target="_blank" rel="noopener">Stremio</a> or <a href="https://github.com/NuvioMedia/NuvioMobile/releases/latest" target="_blank" rel="noopener">Nuvio</a></span>
 </div>
-<div class="step glass"><b>2</b>
-<span class="lang-fa">افزونه‌ها → لینک منیفست را اضافه کنید (دکمه نصب در صفحه اصلی، یا از <a href="/configure">شخصی‌سازی</a> لینک اختصاصی بسازید).</span>
-<span class="lang-en">Addons → paste the manifest URL (home Install button, or build a private link on <a href="/configure">Configure</a>).</span>
+<div class="step"><b>2</b>
+<span class="lang-fa">افزونه‌ها → لینک منیفست (دکمه نصب در خانه، یا <a href="/configure">شخصی‌سازی</a>)</span>
+<span class="lang-en">Addons → manifest URL (home Install, or <a href="/configure">Configure</a>)</span>
 </div>
-<div class="step glass"><b>3</b>
-<span class="lang-fa">برای متای فارسی پایدار، سینماگرافی را بالاتر از Cinemeta بکشید.</span>
-<span class="lang-en">For stable Persian meta, keep CinemaGraphy above Cinemeta in the addon list.</span>
+<div class="step"><b>3</b>
+<span class="lang-fa">برای متای فارسی پایدار، سینماگرافی را بالاتر از Cinemeta بگذارید.</span>
+<span class="lang-en">Keep CinemaGraphy above Cinemeta for stable Persian meta.</span>
 </div>
 </div>
-<p class="lang-fa muted" style="margin-top:10px">نصب سریع: <a href="${install}">لینک stremio://</a></p>
-<p class="lang-en muted" style="margin-top:10px">Quick install: <a href="${install}">stremio:// link</a></p>
+<p class="muted"><a href="${install}"><span class="lang-fa">لینک نصب stremio://</span><span class="lang-en">stremio:// install link</span></a></p>
 </div>
 
 <div class="gbox glass" id="configure">
-<h2 class="lang-fa">۲) شخصی‌سازی (/configure)</h2>
-<h2 class="lang-en">2) Configure (/configure)</h2>
-<p class="lang-fa muted">پروایدرها، زبان متا، IPTV، Namakade، کلید TMDB و پروایدرهای VIP را اینجا تنظیم کنید. خروجی یک لینک <code>/c/…/manifest.json</code> است — عمومی منتشر نکنید (ممکن است رمز و کوکی داخلش باشد).</p>
-<p class="lang-en muted">Toggle providers, meta language, IPTV, Namakade, TMDB key and VIP providers here. You get a <code>/c/…/manifest.json</code> link — do not share it publicly (it may embed secrets).</p>
+<h2 class="lang-fa">۲) شخصی‌سازی</h2>
+<h2 class="lang-en">2) Configure</h2>
+<p class="lang-fa muted">پروایدر، زبان، IPTV، TMDB و VIP را در <a href="/configure">/configure</a> تنظیم کنید. خروجی <code>/c/…/manifest.json</code> است — عمومی پخش نکنید (ممکن است کوکی/رمز داخلش باشد).</p>
+<p class="lang-en muted">Set providers, language, IPTV, TMDB and VIP on <a href="/configure">/configure</a>. You get <code>/c/…/manifest.json</code> — do not share it publicly.</p>
 </div>
 
-<div class="gbox glass" id="deploy-cf">
-<h2 class="lang-fa">۳) دیپلوی روی Cloudflare Workers</h2>
-<h2 class="lang-en">3) Deploy on Cloudflare Workers</h2>
-<p class="lang-fa muted">مناسب وقتی Vercel در دسترس نیست. پروژه از قبل پوشه <code>cloudflare/</code> و <code>wrangler</code> دارد.</p>
-<p class="lang-en muted">Good when Vercel is unavailable. The repo already includes <code>cloudflare/</code> and Wrangler config.</p>
+<div class="gbox glass" id="cf">
+<h2 class="lang-fa">۳) Cloudflare Workers</h2>
+<h2 class="lang-en">3) Cloudflare Workers</h2>
+<p class="lang-fa muted">ریپو: <a href="https://github.com/TheNerdCow/CinemaGraphy" target="_blank" rel="noopener">TheNerdCow/CinemaGraphy</a></p>
+<p class="lang-en muted">Repo: <a href="https://github.com/TheNerdCow/CinemaGraphy" target="_blank" rel="noopener">TheNerdCow/CinemaGraphy</a></p>
+
+<h3 class="lang-fa">الف) از داشبورد (بدون ترمینال)</h3>
+<h3 class="lang-en">A) Dashboard (no terminal)</h3>
 <div class="olist">
-<div class="step glass"><b>1</b>
-<span class="lang-fa">ریپو را فورک/کلون کنید: <a href="https://github.com/TheNerdCow/CinemaGraphy" target="_blank" rel="noopener">github.com/TheNerdCow/CinemaGraphy</a></span>
-<span class="lang-en">Fork/clone: <a href="https://github.com/TheNerdCow/CinemaGraphy" target="_blank" rel="noopener">github.com/TheNerdCow/CinemaGraphy</a></span>
+<div class="step"><b>1</b>
+<span class="lang-fa">ورود به <a href="https://dash.cloudflare.com" target="_blank" rel="noopener">dash.cloudflare.com</a></span>
+<span class="lang-en">Sign in at <a href="https://dash.cloudflare.com" target="_blank" rel="noopener">dash.cloudflare.com</a></span>
 </div>
-<div class="step glass"><b>2</b>
-<span class="lang-fa">Node + pnpm: <code>pnpm install</code></span>
-<span class="lang-en">Node + pnpm: <code>pnpm install</code></span>
+<div class="step"><b>2</b>
+<span class="lang-fa"><b>Compute</b> → <b>Workers &amp; Pages</b> → Create / اتصال به GitHub یا آپلود کد Worker</span>
+<span class="lang-en"><b>Compute</b> → <b>Workers &amp; Pages</b> → Create / connect GitHub or upload Worker</span>
 </div>
-<div class="step glass"><b>3</b>
-<span class="lang-fa">ورود Wrangler: <code>npx wrangler login</code></span>
-<span class="lang-en">Login: <code>npx wrangler login</code></span>
+<div class="step"><b>3</b>
+<span class="lang-fa">بعد از دیپلوی: Worker را باز کنید → <b>Settings</b> → <b>Variables and Secrets</b></span>
+<span class="lang-en">After deploy: open the Worker → <b>Settings</b> → <b>Variables and Secrets</b></span>
 </div>
-<div class="step glass"><b>4</b>
-<span class="lang-fa">متغیرها را در Cloudflare Dashboard → Worker → Settings → Variables بگذارید (جدول Env پایین). برای لوکال می‌توانید <code>.dev.vars</code> بسازید.</span>
-<span class="lang-en">Set variables in Dashboard → Worker → Settings → Variables (see Env table). Locally you can use <code>.dev.vars</code>.</span>
+<div class="step"><b>4</b>
+<span class="lang-fa">هر متغیر را دستی اضافه کنید (جدول Env). برای کلیدها و کوکی‌ها نوع <b>Secret</b> را بزنید تا بعد از آپدیت کد پاک نشوند.</span>
+<span class="lang-en">Add each variable (Env table). Mark keys/cookies as <b>Secret</b> so code deploys do not wipe them.</span>
 </div>
-<div class="step glass"><b>5</b>
-<span class="lang-fa">دیپلوی: <code>npx wrangler deploy</code> (از ریشه پروژه طبق <code>docs/CLOUDFLARE.md</code>)</span>
-<span class="lang-en">Deploy: <code>npx wrangler deploy</code> (see <code>docs/CLOUDFLARE.md</code>)</span>
+<div class="step"><b>5</b>
+<span class="lang-fa">منیفست: <code>https://YOUR-NAME.workers.dev/manifest.json</code></span>
+<span class="lang-en">Manifest: <code>https://YOUR-NAME.workers.dev/manifest.json</code></span>
 </div>
-<div class="step glass"><b>6</b>
-<span class="lang-fa">منیفست: <code>https://YOUR-WORKER.workers.dev/manifest.json</code></span>
-<span class="lang-en">Manifest: <code>https://YOUR-WORKER.workers.dev/manifest.json</code></span>
-</div>
-</div>
-<p class="lang-fa muted">محدودیت رایگان CF: CPU/زمان کوتاه؛ برای ترافیک سنگین ممکن است استریم همزمان محدود شود.</p>
-<p class="lang-en muted">CF Free limits CPU time; heavy concurrent stream lookups may fail more often than on Vercel.</p>
 </div>
 
-<div class="gbox glass" id="deploy-vercel">
-<h2 class="lang-fa">۴) دیپلوی روی Vercel</h2>
-<h2 class="lang-en">4) Deploy on Vercel</h2>
+<h3 class="lang-fa">ب) با Wrangler (توسعه‌دهنده)</h3>
+<h3 class="lang-en">B) Wrangler (developers)</h3>
 <div class="olist">
-<div class="step glass"><b>1</b>
-<span class="lang-fa">ریپو را به Vercel Import کنید (Framework: Other / Node).</span>
-<span class="lang-en">Import the repo into Vercel (Other / Node).</span>
+<div class="step"><b>1</b> <code>pnpm install</code> → <code>npx wrangler login</code></div>
+<div class="step"><b>2</b>
+<span class="lang-fa">فایل <code>.dev.vars</code> از روی <code>.env.example</code> (در Git نرود)</span>
+<span class="lang-en"><code>.dev.vars</code> from <code>.env.example</code> (never commit)</span>
 </div>
-<div class="step glass"><b>2</b>
-<span class="lang-fa">در Project → Settings → Environment Variables همان جدول Env را پر کنید. حداقل <code>TMDB_API_KEY</code> برای متای فارسی مفید است.</span>
-<span class="lang-en">Project → Settings → Environment Variables — fill the Env table. At least <code>TMDB_API_KEY</code> helps Persian meta.</span>
+<div class="step"><b>3</b> <code>npx wrangler deploy</code>
+<span class="lang-fa"> — جزئیات: </span><span class="lang-en"> — see </span><code>docs/CLOUDFLARE.md</code>
 </div>
-<div class="step glass"><b>3</b>
-<span class="lang-fa">Deploy. منیفست: <code>https://YOUR-APP.vercel.app/manifest.json</code></span>
-<span class="lang-en">Deploy. Manifest: <code>https://YOUR-APP.vercel.app/manifest.json</code></span>
 </div>
-<div class="step glass"><b>4</b>
-<span class="lang-fa">اگر Billing pause شد، از Cloudflare به‌عنوان پشتیبان استفاده کنید.</span>
+<p class="lang-fa muted">پلن رایگان CF محدودیت CPU دارد؛ ترافیک خیلی همزمان ممکن است ضعیف‌تر از Vercel باشد.</p>
+<p class="lang-en muted">CF Free has CPU limits; heavy concurrency may be weaker than Vercel.</p>
+</div>
+
+<div class="gbox glass" id="vercel">
+<h2 class="lang-fa">۴) Vercel</h2>
+<h2 class="lang-en">4) Vercel</h2>
+<div class="olist">
+<div class="step"><b>1</b>
+<span class="lang-fa">Import ریپو در Vercel (Node / Other)</span>
+<span class="lang-en">Import the repo in Vercel (Node / Other)</span>
+</div>
+<div class="step"><b>2</b>
+<span class="lang-fa">Settings → Environment Variables — جدول Env. حداقل <code>TMDB_API_KEY</code></span>
+<span class="lang-en">Settings → Environment Variables — Env table. At least <code>TMDB_API_KEY</code></span>
+</div>
+<div class="step"><b>3</b>
+<span class="lang-fa">Deploy → <code>https://YOUR-APP.vercel.app/manifest.json</code></span>
+<span class="lang-en">Deploy → <code>https://YOUR-APP.vercel.app/manifest.json</code></span>
+</div>
+<div class="step"><b>4</b>
+<span class="lang-fa">اگر Billing pause شد، از Cloudflare پشتیبان بگیرید.</span>
 <span class="lang-en">If billing is paused, use Cloudflare as backup.</span>
 </div>
 </div>
 </div>
 
 <div class="gbox glass" id="env">
-<h2 class="lang-fa">۵) جدول متغیرهای محیطی (Env)</h2>
+<h2 class="lang-fa">۵) متغیرهای محیطی</h2>
 <h2 class="lang-en">5) Environment variables</h2>
-<p class="lang-fa muted">روی سرور (Vercel/CF) برای نمونهٔ عمومی. برای نصب شخصی، بسیاری از این‌ها از طریق <a href="/configure">/configure</a> داخل لینک <code>/c/…</code> هم قابل تنظیم‌اند.</p>
-<p class="lang-en muted">Set on the host for a public instance. For private installs, many can also be encoded via <a href="/configure">/configure</a> into <code>/c/…</code>.</p>
-<div class="env-table"><table>
+<p class="lang-fa muted">روی سرور برای نمونهٔ عمومی. خیلی‌ها از <a href="/configure">/configure</a> هم در لینک شخصی ست می‌شوند.</p>
+<p class="lang-en muted">On the host for a public instance. Many can also be set via <a href="/configure">/configure</a> in a personal link.</p>
+<div class="env-wrap"><table>
 <thead><tr>
-<th><span class="lang-fa">متغیر</span><span class="lang-en">Variable</span></th>
+<th>Var</th>
 <th><span class="lang-fa">توضیح</span><span class="lang-en">Meaning</span></th>
-<th><span class="lang-fa">مثال / پیش‌فرض</span><span class="lang-en">Example / default</span></th>
+<th><span class="lang-fa">نمونه</span><span class="lang-en">Example</span></th>
 </tr></thead>
 <tbody>
-<tr><td><code>TMDB_API_KEY</code></td><td><span class="lang-fa">کلید API متای TMDB (فارسی/انگلیسی)</span><span class="lang-en">TMDB API key for meta</span></td><td><code>…</code></td></tr>
+<tr><td><code>TMDB_API_KEY</code></td><td><span class="lang-fa">متای TMDB</span><span class="lang-en">TMDB meta</span></td><td>—</td></tr>
 <tr><td><code>F2MEDIA_BASEURL</code></td><td>F2Media</td><td><code>https://www.film2med.top</code></td></tr>
 <tr><td><code>CINAMATIC_BASEURL</code></td><td>Cinamatic</td><td><code>https://cinamatic.top</code></td></tr>
-<tr><td><code>ASLMOVIEZ_BASEURL</code></td><td>AslMoviez</td><td><code>https://www.aslmoviez.com</code></td></tr>
-<tr><td><code>SERIALBLOG_BASEURL</code></td><td>SerialBlog</td><td><code>https://serialblog1.top</code></td></tr>
-<tr><td><code>DONYAYESERIAL_BASEURL</code></td><td>DonyayeSerial</td><td><span class="lang-fa">دامنهٔ فعلی سایت</span><span class="lang-en">current site domain</span></td></tr>
+<tr><td><code>ASLMOVIEZ_BASEURL</code></td><td>AslMoviez</td><td>—</td></tr>
+<tr><td><code>SERIALBLOG_BASEURL</code></td><td>SerialBlog</td><td>—</td></tr>
+<tr><td><code>DONYAYESERIAL_BASEURL</code></td><td>DonyayeSerial</td><td>—</td></tr>
 <tr><td><code>ANIMEX_BASEURL</code></td><td>Animex</td><td><code>https://animex.click</code></td></tr>
-<tr><td><code>DIGIMOVIE_BASEURL</code></td><td><span class="lang-fa">آدرس سایت دیجی (الزامی اگر VIP)</span><span class="lang-en">Digi site URL (required if VIP)</span></td><td><code>https://www.digimoviez.com</code></td></tr>
-<tr><td><code>DIGIMOVIE_COOKIE</code></td><td><span class="lang-fa">کوکی سشن VIP (ترجیحی)</span><span class="lang-en">VIP session cookie (preferred)</span></td><td><span class="lang-fa">از مرورگر</span><span class="lang-en">from browser</span></td></tr>
-<tr><td><code>DIGIMOVIE_USERNAME</code> / <code>PASSWORD</code></td><td><span class="lang-fa">اختیاری اگر کوکی دارید</span><span class="lang-en">optional if cookie set</span></td><td>—</td></tr>
-<tr><td><code>AVAMOVIE_BASEURL</code></td><td><span class="lang-fa">آدرس آوامووی</span><span class="lang-en">AvaMovie site URL</span></td><td><code>https://avamovie.shop</code></td></tr>
-<tr><td><code>AVAMOVIE_COOKIE</code></td><td><span class="lang-fa">کوکی سشن VIP (ترجیحی)</span><span class="lang-en">VIP session cookie (preferred)</span></td><td><span class="lang-fa">از مرورگر</span><span class="lang-en">from browser</span></td></tr>
-<tr><td><code>AVAMOVIE_USERNAME</code> / <code>PASSWORD</code></td><td><span class="lang-fa">کپچا مانع لاگین خودکار است</span><span class="lang-en">captcha blocks auto-login</span></td><td>—</td></tr>
-<tr><td><code>ENABLED_PROVIDERS</code></td><td><span class="lang-fa">لیست پروایدر با ویرگول</span><span class="lang-en">comma-separated provider keys</span></td><td><code>f2media,animex</code></td></tr>
+<tr><td><code>DIGIMOVIE_BASEURL</code></td><td>DigiMovie</td><td><code>https://www.digimoviez.com</code></td></tr>
+<tr><td><code>DIGIMOVIE_COOKIE</code></td><td><span class="lang-fa">سشن VIP (ترجیحی)</span><span class="lang-en">VIP session (preferred)</span></td><td>—</td></tr>
+<tr><td><code>AVAMOVIE_BASEURL</code></td><td>AvaMovie</td><td><code>https://avamovie.shop</code></td></tr>
+<tr><td><code>AVAMOVIE_COOKIE</code></td><td><span class="lang-fa">سشن VIP (ترجیحی)</span><span class="lang-en">VIP session (preferred)</span></td><td>—</td></tr>
+<tr><td><code>ENABLED_PROVIDERS</code></td><td><span class="lang-fa">لیست با ویرگول</span><span class="lang-en">comma list</span></td><td><code>f2media,animex</code></td></tr>
 <tr><td><code>CATALOG_IPTVBRIDGE_MANIFEST_URL</code></td><td>IPTV</td><td><code>https://iptvbridge.vercel.app/manifest.json</code></td></tr>
 <tr><td><code>ENABLE_NAMAKADE</code></td><td>Namakade</td><td><code>1</code></td></tr>
-<tr><td><code>PROXY_ENABLE</code></td><td><span class="lang-fa">پروکسی عمومی meta (غیر از TMDB image)</span><span class="lang-en">generic meta URL proxy (not TMDB images)</span></td><td><code>false</code></td></tr>
-<tr><td><code>LOG_LEVEL</code></td><td>info / debug</td><td><code>info</code></td></tr>
+<tr><td><code>PROXY_ENABLE</code></td><td><span class="lang-fa">پروکسی عمومی (غیر TMDB image)</span><span class="lang-en">generic proxy (not TMDB images)</span></td><td><code>false</code></td></tr>
 </tbody></table></div>
 </div>
 
-<div class="gbox glass" id="vip-session">
-<h2 class="lang-fa">۶) سشن / کوکی برای DigiMovie و AvaMovie (VIP)</h2>
-<h2 class="lang-en">6) Session cookie for DigiMovie &amp; AvaMovie (VIP)</h2>
-<p class="lang-fa muted"><b>مهم:</b> این پروایدرها فقط در نصب شخصی (<code>/configure</code>) معنا دارند. اکانت و اشتراک مال خود شماست؛ مسدود شدن حساب به عهدهٔ شماست. روی منیفست عمومی سرور مشترک قرار ندهید.</p>
-<p class="lang-en muted"><b>Important:</b> These providers belong in a personal install only. You use your own VIP account — ban risk is yours. Do not put shared credentials on a public server env.</p>
-
-<h3 class="lang-fa">پیش‌فرض آدرس سایت (BASEURL)</h3>
-<h3 class="lang-en">Default site BASEURL</h3>
-<ul class="muted">
-<li><b>AvaMovie:</b> <code>https://avamovie.shop</code> — <span class="lang-fa">کاربر می‌تواند عوض کند اگر دامنه عوض شد</span><span class="lang-en">override if the domain changes</span></li>
-<li><b>DigiMovie:</b> <code>https://www.digimoviez.com</code> — <span class="lang-fa">حتماً در شخصی‌سازی وارد کنید (یا env)</span><span class="lang-en">set explicitly in Configure or env</span></li>
-</ul>
-
-<h3 class="lang-fa">چگونه کوکی بگیریم؟ (دسکتاپ Chrome / Edge)</h3>
-<h3 class="lang-en">How to copy the cookie (desktop Chrome / Edge)</h3>
+<div class="gbox glass" id="vip">
+<h2 class="lang-fa">۶) کوکی VIP — Digi و Ava</h2>
+<h2 class="lang-en">6) VIP cookie — Digi &amp; Ava</h2>
+<p class="lang-fa muted">فقط نصب شخصی. اکانت مال شماست. روی env عمومی سرور نگذارید.</p>
+<p class="lang-en muted">Personal installs only. Your own account. Do not put on a public server env.</p>
+<p class="muted"><b>BASEURL:</b> Digi <code>https://www.digimoviez.com</code> · Ava <code>https://avamovie.shop</code></p>
 <div class="olist">
-<div class="step glass"><b>1</b>
-<span class="lang-fa">با اکانت <b>دارای اشتراک فعال</b> وارد سایت شوید و یک صفحهٔ دانلود که لینک واقعی دارد باز کنید.</span>
-<span class="lang-en">Log in with an <b>active VIP</b> account and open a title page that shows real download links.</span>
+<div class="step"><b>1</b>
+<span class="lang-fa">با اشتراک فعال وارد سایت شوید و صفحه‌ای که لینک دانلود واقعی دارد باز کنید.</span>
+<span class="lang-en">Log in with active VIP and open a page that shows real download links.</span>
 </div>
-<div class="step glass"><b>2</b>
-<span class="lang-fa"><kbd>F12</kbd> → تب <b>Application</b> (یا Storage) → Cookies → دامنهٔ سایت.</span>
-<span class="lang-en"><kbd>F12</kbd> → <b>Application</b> (or Storage) → Cookies → site domain.</span>
+<div class="step"><b>2</b>
+<span class="lang-fa">دسکتاپ: F12 → Application → Cookies (یا Network → هدر Cookie)</span>
+<span class="lang-en">Desktop: F12 → Application → Cookies (or Network → Cookie header)</span>
 </div>
-<div class="step glass"><b>3</b>
-<span class="lang-fa">همهٔ کوکی‌های مهم را به صورت یک رشته کپی کنید: <code>name=value; name2=value2</code> (از تب Network روی یک درخواست HTML هم می‌توانید هدر <code>Cookie</code> را کپی کنید).</span>
-<span class="lang-en">Copy cookies as one string: <code>name=value; name2=value2</code> (or copy the Request <code>Cookie</code> header from Network).</span>
+<div class="step"><b>3</b>
+<span class="lang-fa">رشته را در <a href="/configure">شخصی‌سازی</a> در <code>DIGIMOVIE_COOKIE</code> / <code>AVAMOVIE_COOKIE</code> بچسبانید، تیک پروایدر و BASEURL را بزنید.</span>
+<span class="lang-en">Paste into <a href="/configure">Configure</a> as <code>DIGIMOVIE_COOKIE</code> / <code>AVAMOVIE_COOKIE</code>, enable provider + BASEURL.</span>
 </div>
-<div class="step glass"><b>4</b>
-<span class="lang-fa">در <a href="/configure">شخصی‌سازی</a> تیک Digi یا Ava را بزنید، BASEURL را پر کنید، کوکی را در <code>DIGIMOVIE_COOKIE</code> یا <code>AVAMOVIE_COOKIE</code> بچسبانید، لینک را کپی و در استریمیو نصب کنید.</span>
-<span class="lang-en">On <a href="/configure">Configure</a>, enable Digi/Ava, set BASEURL, paste into <code>DIGIMOVIE_COOKIE</code> / <code>AVAMOVIE_COOKIE</code>, install the generated link.</span>
+<div class="step"><b>4</b>
+<span class="lang-fa">سشن اغلب چند ساعت تا حدود یک روز است؛ استریم خالی شد → کوکی تازه.</span>
+<span class="lang-en">Sessions often last hours to ~a day; empty streams → refresh cookie.</span>
 </div>
 </div>
-
-<h3 class="lang-fa">موبایل</h3>
-<h3 class="lang-en">Mobile</h3>
-<p class="lang-fa muted">گرفتن کوکی روی موبایل سخت‌تر است. ترجیحاً از دسکتاپ کپی کنید، یا از مرورگر دسکتاپ‌حالت (Kiwi / desktop mode) استفاده کنید. سشن معمولاً چند ساعت تا حدود یک روز منقضی می‌شود — با خطای خالی شدن استریم، کوکی را تازه کنید.</p>
-<p class="lang-en muted">Mobile cookie export is awkward. Prefer desktop, or a desktop-mode browser. Sessions often last hours to about a day — refresh the cookie when streams go empty.</p>
-
-<h3 class="lang-fa">چرا کوکی بهتر از رمز است؟</h3>
-<h3 class="lang-en">Why cookie instead of password?</h3>
-<p class="lang-fa muted">آوا کپچا دارد؛ دیجی سوال امنیتی. هر بار لاگین خودکار فشار روی سرور افزونه و ریسک بن است. با کوکی، فقط درخواست صفحه با سشن شما زده می‌شود.</p>
-<p class="lang-en muted">Ava uses captcha; Digi uses a security question. Auto-login every time loads the addon host and risks bans. A cookie reuses your existing browser session.</p>
-</div>
-
-<div class="gbox glass">
-<h2 class="lang-fa">نکته Animex</h2>
-<h2 class="lang-en">Animex note</h2>
-<p class="lang-fa muted">لیست پوشهٔ چندقسمتی گاهی فقط با IP ایران کامل است. اگر سرور خارج نتواند لیست کند، لینک «باز کردن در مرورگر» نشان داده می‌شود.</p>
-<p class="lang-en muted">Multi-episode directory listings may be IR-only. Outside hosts may show an “open in browser” fallback.</p>
+<p class="lang-fa muted">کوکی بهتر از رمز است: آوا کپچا دارد، دیجی سوال امنیتی — لاگین خودکار فشار و ریسک بن دارد.</p>
+<p class="lang-en muted">Cookie beats password: Ava has captcha, Digi a security question — auto-login loads the host and risks bans.</p>
 </div>
 
 <div class="gbox glass" id="faq">
 <h2>FAQ</h2>
-<div class="faq">
-<details class="glass"><summary class="lang-fa">استریم خالی است؟</summary><summary class="lang-en">No streams?</summary>
-<p class="lang-fa">پروایدر عنوان را ندارد، آفلاین است، یا برای VIP سشن/اشتراک منقضی شده.</p>
-<p class="lang-en">Missing title, provider offline, or expired VIP session.</p></details>
-<details class="glass"><summary class="lang-fa">پوستر نمی‌آید؟</summary><summary class="lang-en">Missing posters?</summary>
-<p class="lang-fa">پروکسی تصویر TMDB (<code>/api/tmdb-image/…</code>) باید از همان دامنهٔ افزونه در دسترس باشد. <code>PROXY_ENABLE</code> جداست و برای پوستر TMDB لازم نیست.</p>
-<p class="lang-en">TMDB image proxy must be reachable on the addon origin. <code>PROXY_ENABLE</code> is separate and not required for TMDB posters.</p></details>
-<details class="glass"><summary class="lang-fa">پشتیبانی</summary><summary class="lang-en">Support</summary>
-<p><a href="https://t.me/nerdcow" target="_blank" rel="noopener">t.me/nerdcow</a> · <a href="https://t.me/cinemmagraphy" target="_blank" rel="noopener">channel</a> · <a href="https://github.com/TheNerdCow/CinemaGraphy" target="_blank" rel="noopener">GitHub</a></p></details>
-</div>
+<details class="faq"><summary class="lang-fa">استریم خالی؟</summary><summary class="lang-en">No streams?</summary>
+<p class="lang-fa muted" style="margin-top:8px">عنوان نیست، پروایدر آفلاین، یا سشن/VIP منقضی.</p>
+<p class="lang-en muted" style="margin-top:8px">Missing title, offline provider, or expired VIP session.</p>
+</details>
+<details class="faq"><summary class="lang-fa">پوستر نمی‌آید؟</summary><summary class="lang-en">Missing posters?</summary>
+<p class="lang-fa muted" style="margin-top:8px">پروکسی تصویر TMDB روی همان دامنهٔ افزونه باید در دسترس باشد. <code>PROXY_ENABLE</code> برای پوستر TMDB لازم نیست.</p>
+<p class="lang-en muted" style="margin-top:8px">TMDB image proxy must be on the addon origin. <code>PROXY_ENABLE</code> is not required for TMDB posters.</p>
+</details>
+<details class="faq"><summary class="lang-fa">پشتیبانی</summary><summary class="lang-en">Support</summary>
+<p style="margin-top:8px"><a href="https://t.me/nerdcow" target="_blank" rel="noopener">t.me/nerdcow</a> · <a href="https://t.me/cinemmagraphy" target="_blank" rel="noopener">channel</a> · <a href="https://github.com/TheNerdCow/CinemaGraphy" target="_blank" rel="noopener">GitHub</a></p>
+</details>
 </div>
 
-<p style="margin-top:18px;display:flex;flex-wrap:wrap;gap:10px">
-<a class="chip" href="/"><span class="lang-fa">🎬 خانه</span><span class="lang-en">🎬 Home</span></a>
+<p style="margin-top:16px;display:flex;flex-wrap:wrap;gap:8px">
+<a class="chip" href="/"><span class="lang-fa">خانه</span><span class="lang-en">Home</span></a>
 <a class="chip" href="/configure"><span class="lang-fa">شخصی‌سازی</span><span class="lang-en">Configure</span></a>
-<span class="chip soon" title="soon"><span class="lang-fa">♥ حمایت · به‌زودی</span><span class="lang-en">♥ Support · Soon</span></span>
 </p>
 </div>
 <script>
