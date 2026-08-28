@@ -1132,6 +1132,9 @@ const CATALOG_EXACT_PHRASES = [
     [/top\s*seeded\s*-\s*this\s*week/i, 'پرطرفدارترین تورنت‌ها (این هفته)'],
     [/top\s*seeded/i, 'پرطرفدارترین تورنت‌ها'],
 
+    [/latest\s*releases?\s*(movies?|films?)/i, 'آخرین منتشرشده‌ها — فیلم'],
+    [/latest\s*releases?\s*(tv\s*)?(series|shows?)/i, 'آخرین منتشرشده‌ها — سریال'],
+    [/latest\s*releases?/i, 'آخرین منتشرشده‌ها'],
     [/latest\s*stand[\s-]*up\s*comedy/i, 'جدیدترین استندآپ‌ها'],
     [/all\s*family/i, 'همه آثار خانوادگی'],
     [/family\s*0\s*-\s*5/i, 'کودکانه (۰ تا ۵ سال)'],
@@ -1497,6 +1500,13 @@ function catalogSortScore(cat) {
         if (isMovie) return base
         if (isSeries) return base + 1
         return base + 2
+    }
+
+    // آخرین منتشرشده‌ها (Latest Releases) — always first among 101 lists
+    if (/latest\s*releases?|آخرین\s*منتشر/i.test(blob)) {
+        if (isMovie) return -10
+        if (isSeries) return -9
+        return -10
     }
 
     // داغ / trending / popular (not top-rated history)

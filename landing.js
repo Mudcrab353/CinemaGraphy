@@ -909,7 +909,7 @@ export function renderConfigurePage({
 <div class="cfg-item glass">
 <div class="top"><code>CATALOG101_MANIFEST_URL</code><span class="diff m"><span class="lang-fa">متوسط</span><span class="lang-en">Medium</span></span></div>
 <div class="hint"><span class="lang-fa">منیفست ۱۰۱</span><span class="lang-en">101 catalogs manifest</span></div>
-<input data-k="CATALOG101_MANIFEST_URL" placeholder="https://…/manifest.json" autocomplete="off"/>
+<input data-k="CATALOG101_MANIFEST_URL" placeholder="https://api.101catalogs.xyz/…/meta/off/manifest.json" autocomplete="off"/>
 </div>
 <div class="cfg-item glass">
 <div class="top"><code>CATALOG_ANIME_MANIFEST_URL</code><span class="diff m"><span class="lang-fa">متوسط</span><span class="lang-en">Medium</span></span></div>
