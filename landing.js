@@ -1114,10 +1114,13 @@ export function renderConfigurePage({
       flag('optDisableCatalog', 'DISABLE_CATALOG');
     }
     flag('optDisableSubs', 'DISABLE_SUBTITLES');
-    flag('optIptv', 'ENABLE_IPTV');
-    flag('optNamakade', 'ENABLE_NAMAKADE');
-    flag('f2turkishOn', 'ENABLE_F2_TURKISH');
-
+    // always 0/1 so server env defaults can be turned OFF in personal install
+    var iptv = document.getElementById('optIptv');
+    if (iptv) o.ENABLE_IPTV = iptv.checked ? '1' : '0';
+    var nk = document.getElementById('optNamakade');
+    if (nk) o.ENABLE_NAMAKADE = nk.checked ? '1' : '0';
+    var f2t = document.getElementById('f2turkishOn');
+    if (f2t) o.ENABLE_F2_TURKISH = f2t.checked ? '1' : '0';
     var axc = document.getElementById('animexCatalogOn');
     if (axc) o.ENABLE_ANIMEX_CATALOG = axc.checked ? '1' : '0';
 
