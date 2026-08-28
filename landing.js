@@ -1392,14 +1392,15 @@ details.faq summary{cursor:pointer;font-weight:700}
 <p style="font-size:.75rem;color:var(--a);margin:0 0 4px">v${ver}</p>
 <h1 class="lang-fa" style="margin:0 0 8px">📖 راهنما</h1>
 <h1 class="lang-en" style="margin:0 0 8px">📖 Guide</h1>
-<p class="lang-fa muted">نصب کلاینت، دیپلوی، متغیرها و سشن VIP.</p>
-<p class="lang-en muted">Client install, deploy, env vars, and VIP session.</p>
+<p class="lang-fa muted">نصب، دیپلوی رایگان Cloudflare/Vercel، جدول Env، لینک کاتالوگ‌ها و کوکی VIP.</p>
+<p class="lang-en muted">Install, free CF/Vercel deploy, env table, catalog URLs, VIP cookie.</p>
 
 <nav class="toc" aria-label="Sections">
 <a href="#install"><span class="lang-fa">نصب</span><span class="lang-en">Install</span></a>
 <a href="#configure"><span class="lang-fa">شخصی‌سازی</span><span class="lang-en">Configure</span></a>
-<a href="#cf"><span class="lang-fa">Cloudflare</span><span class="lang-en">Cloudflare</span></a>
-<a href="#vercel"><span class="lang-fa">Vercel</span><span class="lang-en">Vercel</span></a>
+<a href="#cf">Cloudflare</a>
+<a href="#vercel">Vercel</a>
+<a href="#catalogs"><span class="lang-fa">کاتالوگ‌ها</span><span class="lang-en">Catalogs</span></a>
 <a href="#env">Env</a>
 <a href="#vip"><span class="lang-fa">کوکی VIP</span><span class="lang-en">VIP cookie</span></a>
 <a href="#faq">FAQ</a>
@@ -1433,50 +1434,38 @@ details.faq summary{cursor:pointer;font-weight:700}
 </div>
 
 <div class="gbox glass" id="cf">
-<h2 class="lang-fa">۳) Cloudflare Workers</h2>
-<h2 class="lang-en">3) Cloudflare Workers</h2>
-<p class="lang-fa muted">ریپو: <a href="https://github.com/TheNerdCow/CinemaGraphy" target="_blank" rel="noopener">TheNerdCow/CinemaGraphy</a></p>
-<p class="lang-en muted">Repo: <a href="https://github.com/TheNerdCow/CinemaGraphy" target="_blank" rel="noopener">TheNerdCow/CinemaGraphy</a></p>
+<h2 class="lang-fa">۳) Cloudflare Workers (پیشنهاد برای نسخهٔ شخصی)</h2>
+<h2 class="lang-en">3) Cloudflare Workers (recommended personal host)</h2>
+<p class="lang-fa muted"><b>Vercel</b> معمولاً سریع‌تر است؛ <b>Cloudflare</b> محدودیت رایگان بازتری دارد و برای استفادهٔ روزمره پایدارتر است. هر دو از یک پروژه می‌آیند.</p>
+<p class="lang-en muted"><b>Vercel</b> is often faster; <b>Cloudflare</b> free limits are usually more generous for daily use. Same codebase.</p>
+<p class="muted">Repo: <a href="https://github.com/TheNerdCow/CinemaGraphy" target="_blank" rel="noopener">TheNerdCow/CinemaGraphy</a></p>
 
-<h3 class="lang-fa">الف) از داشبورد (بدون ترمینال)</h3>
-<h3 class="lang-en">A) Dashboard (no terminal)</h3>
+<h3 class="lang-fa">مراحل داشبورد</h3>
+<h3 class="lang-en">Dashboard steps</h3>
 <div class="olist">
 <div class="step"><b>1</b>
 <span class="lang-fa">ورود به <a href="https://dash.cloudflare.com" target="_blank" rel="noopener">dash.cloudflare.com</a></span>
 <span class="lang-en">Sign in at <a href="https://dash.cloudflare.com" target="_blank" rel="noopener">dash.cloudflare.com</a></span>
 </div>
 <div class="step"><b>2</b>
-<span class="lang-fa"><b>Compute</b> → <b>Workers &amp; Pages</b> → Create / اتصال به GitHub یا آپلود کد Worker</span>
-<span class="lang-en"><b>Compute</b> → <b>Workers &amp; Pages</b> → Create / connect GitHub or upload Worker</span>
+<span class="lang-fa"><b>Compute</b> → <b>Workers &amp; Pages</b> → Create / اتصال GitHub یا آپلود Worker</span>
+<span class="lang-en"><b>Compute</b> → <b>Workers &amp; Pages</b> → Create / connect GitHub or upload</span>
 </div>
 <div class="step"><b>3</b>
-<span class="lang-fa">بعد از دیپلوی: Worker را باز کنید → <b>Settings</b> → <b>Variables and Secrets</b></span>
-<span class="lang-en">After deploy: open the Worker → <b>Settings</b> → <b>Variables and Secrets</b></span>
+<span class="lang-fa">بعد از Deploy: Worker → <b>Settings</b> → <b>Variables and Secrets</b></span>
+<span class="lang-en">After deploy: Worker → <b>Settings</b> → <b>Variables and Secrets</b></span>
 </div>
 <div class="step"><b>4</b>
-<span class="lang-fa">هر متغیر را دستی اضافه کنید (جدول Env). برای کلیدها و کوکی‌ها نوع <b>Secret</b> را بزنید تا بعد از آپدیت کد پاک نشوند.</span>
-<span class="lang-en">Add each variable (Env table). Mark keys/cookies as <b>Secret</b> so code deploys do not wipe them.</span>
+<span class="lang-fa">متغیرهای جدول Env را اضافه کنید. <code>TMDB_API_KEY</code> را <b>Secret</b> کنید. نام متغیر را <b>کامل</b> بنویسید (مثلاً <code>CATALOG_ANIME_MANIFEST_URL</code> نه کوتاه‌شده).</span>
+<span class="lang-en">Add Env table vars. Mark <code>TMDB_API_KEY</code> as <b>Secret</b>. Use <b>full</b> names (e.g. <code>CATALOG_ANIME_MANIFEST_URL</code>).</span>
 </div>
 <div class="step"><b>5</b>
-<span class="lang-fa">منیفست: <code>https://YOUR-NAME.workers.dev/manifest.json</code></span>
-<span class="lang-en">Manifest: <code>https://YOUR-NAME.workers.dev/manifest.json</code></span>
+<span class="lang-fa">منیفست: <code>https://YOUR-NAME.workers.dev/manifest.json</code> — سپس <a href="/configure">شخصی‌سازی</a></span>
+<span class="lang-en">Manifest: <code>https://YOUR-NAME.workers.dev/manifest.json</code> — then <a href="/configure">Configure</a></span>
 </div>
 </div>
-
-<h3 class="lang-fa">ب) با Wrangler (توسعه‌دهنده)</h3>
-<h3 class="lang-en">B) Wrangler (developers)</h3>
-<div class="olist">
-<div class="step"><b>1</b> <code>pnpm install</code> → <code>npx wrangler login</code></div>
-<div class="step"><b>2</b>
-<span class="lang-fa">فایل <code>.dev.vars</code> از روی <code>.env.example</code> (در Git نرود)</span>
-<span class="lang-en"><code>.dev.vars</code> from <code>.env.example</code> (never commit)</span>
-</div>
-<div class="step"><b>3</b> <code>npx wrangler deploy</code>
-<span class="lang-fa"> — جزئیات: </span><span class="lang-en"> — see </span><code>docs/CLOUDFLARE.md</code>
-</div>
-</div>
-<p class="lang-fa muted">پلن رایگان CF محدودیت CPU دارد؛ ترافیک خیلی همزمان ممکن است ضعیف‌تر از Vercel باشد.</p>
-<p class="lang-en muted">CF Free has CPU limits; heavy concurrency may be weaker than Vercel.</p>
+<p class="lang-fa muted">CLI: <code>npx wrangler login</code> → <code>.dev.vars</code> → <code>npx wrangler deploy</code> — جزئیات <code>docs/CLOUDFLARE.md</code></p>
+<p class="lang-en muted">CLI: <code>npx wrangler login</code> → <code>.dev.vars</code> → <code>npx wrangler deploy</code> — see <code>docs/CLOUDFLARE.md</code></p>
 </div>
 
 <div class="gbox glass" id="vercel">
@@ -1484,57 +1473,82 @@ details.faq summary{cursor:pointer;font-weight:700}
 <h2 class="lang-en">4) Vercel</h2>
 <div class="olist">
 <div class="step"><b>1</b>
-<span class="lang-fa">Import ریپو در Vercel (Node / Other)</span>
-<span class="lang-en">Import the repo in Vercel (Node / Other)</span>
+<span class="lang-fa">Import ریپو در Vercel</span>
+<span class="lang-en">Import the repo in Vercel</span>
 </div>
 <div class="step"><b>2</b>
-<span class="lang-fa">Settings → Environment Variables — جدول Env. حداقل <code>TMDB_API_KEY</code></span>
-<span class="lang-en">Settings → Environment Variables — Env table. At least <code>TMDB_API_KEY</code></span>
+<span class="lang-fa">Environment Variables — همان جدول Env. حداقل <code>TMDB_API_KEY</code></span>
+<span class="lang-en">Environment Variables — same Env table. At least <code>TMDB_API_KEY</code></span>
 </div>
 <div class="step"><b>3</b>
-<span class="lang-fa">Deploy → <code>https://YOUR-APP.vercel.app/manifest.json</code></span>
-<span class="lang-en">Deploy → <code>https://YOUR-APP.vercel.app/manifest.json</code></span>
+<span class="lang-fa">Deploy → <code>…vercel.app/manifest.json</code>. اگر Billing pause شد از Cloudflare پشتیبان بگیرید.</span>
+<span class="lang-en">Deploy → <code>…vercel.app/manifest.json</code>. If paused, use Cloudflare as backup.</span>
 </div>
-<div class="step"><b>4</b>
-<span class="lang-fa">اگر Billing pause شد، از Cloudflare پشتیبان بگیرید.</span>
-<span class="lang-en">If billing is paused, use Cloudflare as backup.</span>
+</div>
+</div>
+
+<div class="gbox glass" id="catalogs">
+<h2 class="lang-fa">۵) کاتالوگ‌ها و منیفست‌های خارجی</h2>
+<h2 class="lang-en">5) External catalogs &amp; manifests</h2>
+<p class="lang-fa muted">این سرویس‌ها جدا هستند؛ فقط لینک <code>manifest.json</code> نهایی را در Env سینماگرافی می‌گذارید.</p>
+<p class="lang-en muted">These are separate addons — put only the final <code>manifest.json</code> URL into CinemaGraphy env.</p>
+<div class="olist">
+<div class="step"><b>101</b>
+<span class="lang-fa"><a href="https://config.101catalogs.xyz/" target="_blank" rel="noopener">config.101catalogs.xyz</a> → انتخاب لیست‌ها → Generate. ترجیحاً <b>meta/off</b> تا متای فارسی پروژه بماند.</span>
+<span class="lang-en"><a href="https://config.101catalogs.xyz/" target="_blank" rel="noopener">config.101catalogs.xyz</a> → pick lists → Generate. Prefer <b>meta/off</b> so FA meta stays on CinemaGraphy.</span>
+</div>
+<div class="step"><b>Anime</b>
+<span class="lang-fa"><a href="https://1fe84bc728af-stremio-anime-catalogs.baby-beamup.club/configure" target="_blank" rel="noopener">Anime catalogs configure</a> → منیفست را کپی → <code>CATALOG_ANIME_MANIFEST_URL</code></span>
+<span class="lang-en"><a href="https://1fe84bc728af-stremio-anime-catalogs.baby-beamup.club/configure" target="_blank" rel="noopener">Anime catalogs configure</a> → copy manifest → <code>CATALOG_ANIME_MANIFEST_URL</code></span>
+</div>
+<div class="step"><b>IPTV</b>
+<span class="lang-fa"><a href="https://iptvbridge.vercel.app/configure" target="_blank" rel="noopener">iptvbridge.vercel.app/configure</a> → <code>CATALOG_IPTVBRIDGE_MANIFEST_URL</code></span>
+<span class="lang-en"><a href="https://iptvbridge.vercel.app/configure" target="_blank" rel="noopener">iptvbridge.vercel.app/configure</a> → <code>CATALOG_IPTVBRIDGE_MANIFEST_URL</code></span>
+</div>
+<div class="step"><b>Meteor</b>
+<span class="lang-fa"><a href="https://meteorfortheweebs.midnightignite.me/stremio/configure" target="_blank" rel="noopener">Meteor configure</a> (اختیاری) → <code>TORRENT_METEOR_MANIFEST_URL</code></span>
+<span class="lang-en"><a href="https://meteorfortheweebs.midnightignite.me/stremio/configure" target="_blank" rel="noopener">Meteor configure</a> (optional) → <code>TORRENT_METEOR_MANIFEST_URL</code></span>
+</div>
+<div class="step"><b>Subsource</b>
+<span class="lang-fa"><a href="https://subsource.net/" target="_blank" rel="noopener">subsource.net</a> — در صورت پشتیبانی بیلد شما از <code>SUBSOURCE_MANIFEST_URL</code></span>
+<span class="lang-en"><a href="https://subsource.net/" target="_blank" rel="noopener">subsource.net</a> — if your build uses <code>SUBSOURCE_MANIFEST_URL</code></span>
 </div>
 </div>
 </div>
 
 <div class="gbox glass" id="env">
-<h2 class="lang-fa">۵) متغیرهای محیطی</h2>
-<h2 class="lang-en">5) Environment variables</h2>
-<p class="lang-fa muted">روی سرور برای نمونهٔ عمومی. خیلی‌ها از <a href="/configure">/configure</a> هم در لینک شخصی ست می‌شوند.</p>
-<p class="lang-en muted">On the host for a public instance. Many can also be set via <a href="/configure">/configure</a> in a personal link.</p>
+<h2 class="lang-fa">۶) جدول متغیرها (پیشنهادی لایو)</h2>
+<h2 class="lang-en">6) Env table (recommended live set)</h2>
+<p class="lang-fa muted">روی Worker: Settings → Variables and Secrets. VIP دیجی/آوا را اینجا نگذارید — فقط <a href="/configure">/configure</a>.</p>
+<p class="lang-en muted">On Worker: Settings → Variables and Secrets. No Digi/Ava VIP here — only <a href="/configure">/configure</a>.</p>
 <div class="env-wrap"><table>
 <thead><tr>
 <th>Var</th>
-<th><span class="lang-fa">توضیح</span><span class="lang-en">Meaning</span></th>
-<th><span class="lang-fa">نمونه</span><span class="lang-en">Example</span></th>
+<th><span class="lang-fa">پیشنهاد</span><span class="lang-en">Suggested</span></th>
+<th><span class="lang-fa">یادداشت</span><span class="lang-en">Note</span></th>
 </tr></thead>
 <tbody>
-<tr><td><code>TMDB_API_KEY</code></td><td><span class="lang-fa">متای TMDB</span><span class="lang-en">TMDB meta</span></td><td>—</td></tr>
-<tr><td><code>F2MEDIA_BASEURL</code></td><td>F2Media</td><td><code>https://www.film2med.top</code></td></tr>
-<tr><td><code>CINAMATIC_BASEURL</code></td><td>Cinamatic</td><td><code>https://cinamatic.top</code></td></tr>
-<tr><td><code>ASLMOVIEZ_BASEURL</code></td><td>AslMoviez</td><td>—</td></tr>
-<tr><td><code>SERIALBLOG_BASEURL</code></td><td>SerialBlog</td><td>—</td></tr>
-<tr><td><code>DONYAYESERIAL_BASEURL</code></td><td>DonyayeSerial</td><td>—</td></tr>
-<tr><td><code>ANIMEX_BASEURL</code></td><td>Animex</td><td><code>https://animex.click</code></td></tr>
-<tr><td><code>DIGIMOVIE_BASEURL</code></td><td>DigiMovie</td><td><code>https://www.digimoviez.com</code></td></tr>
-<tr><td><code>DIGIMOVIE_COOKIE</code></td><td><span class="lang-fa">سشن VIP (ترجیحی)</span><span class="lang-en">VIP session (preferred)</span></td><td>—</td></tr>
-<tr><td><code>AVAMOVIE_BASEURL</code></td><td>AvaMovie</td><td><code>https://avamovie.shop</code></td></tr>
-<tr><td><code>AVAMOVIE_COOKIE</code></td><td><span class="lang-fa">سشن VIP (ترجیحی)</span><span class="lang-en">VIP session (preferred)</span></td><td>—</td></tr>
-<tr><td><code>ENABLED_PROVIDERS</code></td><td><span class="lang-fa">لیست با ویرگول</span><span class="lang-en">comma list</span></td><td><code>f2media,animex</code></td></tr>
-<tr><td><code>CATALOG_IPTVBRIDGE_MANIFEST_URL</code></td><td>IPTV</td><td><code>https://iptvbridge.vercel.app/manifest.json</code></td></tr>
-<tr><td><code>ENABLE_NAMAKADE</code></td><td>Namakade</td><td><code>1</code></td></tr>
-<tr><td><code>PROXY_ENABLE</code></td><td><span class="lang-fa">پروکسی عمومی (غیر TMDB image)</span><span class="lang-en">generic proxy (not TMDB images)</span></td><td><code>false</code></td></tr>
+<tr><td><code>TMDB_API_KEY</code></td><td>Secret</td><td><span class="lang-fa">لازم — متا/پوستر</span><span class="lang-en">Required — meta/posters</span></td></tr>
+<tr><td><code>F2MEDIA_BASEURL</code></td><td><code>https://www.film2med.top</code></td><td>F2 + Turkish</td></tr>
+<tr><td><code>ENABLE_F2_TURKISH</code></td><td><code>1</code></td><td>Text</td></tr>
+<tr><td><code>ANIMEX_BASEURL</code></td><td><code>https://animex.click</code></td><td>—</td></tr>
+<tr><td><code>ENABLE_ANIMEX_CATALOG</code></td><td><code>1</code></td><td>Text</td></tr>
+<tr><td><code>CINAMATIC_BASEURL</code> …</td><td><span class="lang-fa">در صورت دسترسی</span><span class="lang-en">if you have access</span></td><td><span class="lang-fa">خالی = خاموش</span><span class="lang-en">empty = off</span></td></tr>
+<tr><td><code>CATALOG101_MANIFEST_URL</code></td><td>meta/off URL</td><td><a href="https://config.101catalogs.xyz/" target="_blank" rel="noopener">101 configure</a></td></tr>
+<tr><td><code>CATALOG_ANIME_MANIFEST_URL</code></td><td>from anime configure</td><td><span class="lang-fa">نام کامل متغیر</span><span class="lang-en">full var name</span></td></tr>
+<tr><td><code>CATALOG_IPTVBRIDGE_MANIFEST_URL</code></td><td>from IPTV configure</td><td>—</td></tr>
+<tr><td><code>TORRENT_METEOR_MANIFEST_URL</code></td><td>optional</td><td>Meteor</td></tr>
+<tr><td><code>SUBSOURCE_MANIFEST_URL</code></td><td>optional</td><td>—</td></tr>
+<tr><td><code>PROXY_ENABLE</code></td><td><code>false</code> یا <code>true</code></td><td><span class="lang-fa">پوستر TMDB جداست</span><span class="lang-en">TMDB posters separate</span></td></tr>
+<tr><td><code>PROXY_PATH</code></td><td><code>proxy</code></td><td>—</td></tr>
+<tr><td><code>LOG_LEVEL</code></td><td><code>info</code></td><td>—</td></tr>
+<tr><td><code>DEV_MODE</code></td><td><code>false</code></td><td>—</td></tr>
 </tbody></table></div>
 </div>
 
 <div class="gbox glass" id="vip">
-<h2 class="lang-fa">۶) کوکی VIP — Digi و Ava (یک روش برای هر دو)</h2>
-<h2 class="lang-en">6) VIP cookie — Digi &amp; Ava (same steps)</h2>
+<h2 class="lang-fa">۷) کوکی VIP — Digi و Ava (یک روش برای هر دو)</h2>
+<h2 class="lang-en">7) VIP cookie — Digi &amp; Ava (same steps)</h2>
 <p class="lang-fa muted">فقط در <a href="/configure">شخصی‌سازی</a>. روی Env سرور نگذارید. اکانت و ریسک با خودتان است.</p>
 <p class="lang-en muted">Only in <a href="/configure">Configure</a>. Never on server Env. Account risk is yours.</p>
 <p class="muted"><b>BASEURL:</b> Digi <code>https://digimoviez.com</code> · Ava <code>https://avamovie.shop</code></p>
