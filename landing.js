@@ -52,8 +52,7 @@ const RECOMMENDED = [
     descEn: 'Anime catalogs via Kitsu',
     href: 'https://anime-kitsu.strem.fun/manifest.json',
     icon: 'https://www.google.com/s2/favicons?domain=kitsu.io&sz=128',
-  },
-]
+  }]
 
 export function renderLandingPage({
   manifestUrl = PUBLIC_INSTALL,
@@ -1018,7 +1017,7 @@ export function renderConfigurePage({
     if (!el || el.nodeType !== 1) return false;
     if (el.hasAttribute('data-prov') || el.hasAttribute('data-k')) return true;
     var id = el.id || '';
-    if (id === 'optStreamsOnly' || id === 'optDisableMeta' || id === 'optDisableCatalog' || id === 'optDisableSubs' || id === 'optIptv' || id ===  || id === 'f2turkishOn' || id === 'animexCatalogOn') return true;
+    if (id === 'optStreamsOnly' || id === 'optDisableMeta' || id === 'optDisableCatalog' || id === 'optDisableSubs' || id === 'optIptv' || id === 'f2turkishOn' || id === 'animexCatalogOn') return true;
     if (el.name === 'metaLang' || el.name === 'addonLang') return true;
     return false;
   }
