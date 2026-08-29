@@ -14,8 +14,8 @@ const CONFIG_ALLOW = new Set([
     'CATALOG101_MANIFEST_URL', 'CATALOG_ANIME_MANIFEST_URL', 'CATALOG_IPTVBRIDGE_MANIFEST_URL',
     'CATALOG_TMDB_MANIFEST_URL', 'PROVIDER_TIMEOUT_MS', 'DIGIMOVIE_USERNAME', 'DIGIMOVIE_PASSWORD', 'DIGIMOVIE_COOKIE', 'AVAMOVIE_USERNAME', 'AVAMOVIE_PASSWORD', 'AVAMOVIE_COOKIE',
     'PROXY_ENABLE', 'PROXY_URL', 'PROXY_PATH', 'DISABLE_META', 'DISABLE_CATALOG', 'DISABLE_SUBTITLES',
-    'STREAMS_ONLY', 'ADDON_NAME_SUFFIX', 'META_LANG', 'ADDON_LANG', 'ENABLE_IPTV', 'ENABLE_F2_TURKISH', 'ENABLE_ANIMEX_CATALOG',
-    ...PROVIDER_BASEURL_KEYS,
+    'STREAMS_ONLY', 'ADDON_NAME_SUFFIX', 'META_LANG', 'ADDON_LANG', 'ENABLE_IPTV', 'ENABLE_NAMAKADE', 'ENABLE_F2_TURKISH', 'ENABLE_ANIMEX_CATALOG',
+    'NAMAKADE_BASEURL', ...PROVIDER_BASEURL_KEYS,
 ])
 const DEFAULT_IPTV_BRIDGE_MANIFEST_URL = 'https://iptvbridge.vercel.app/manifest.json'
 
@@ -95,10 +95,8 @@ export function mergeEnv(baseEnv = {}, config) {
     if (Object.prototype.hasOwnProperty.call(config, 'ENABLE_ANIMEX_CATALOG')) {
         e.ENABLE_ANIMEX_CATALOG = isConfigFlagOn(config, 'ENABLE_ANIMEX_CATALOG') ? '1' : '0'
     }
-    if (Object.prototype.hasOwnProperty.call(config)) {
-        e.ENABLE_NAMAKADE = isConfigFlagOn(config) ? '1' : '0'
+    if (Object.prototype.hasOwnProperty.call(config, 'ENABLE_NAMAKADE')) {
+        e.ENABLE_NAMAKADE = isConfigFlagOn(config, 'ENABLE_NAMAKADE') ? '1' : '0'
     }
-    delete e.ENABLE_NAMAKADE
-    delete e.NAMAKADE_BASEURL
     return e
 }
