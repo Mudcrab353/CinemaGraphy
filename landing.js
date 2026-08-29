@@ -52,7 +52,8 @@ const RECOMMENDED = [
     descEn: 'Anime catalogs via Kitsu',
     href: 'https://anime-kitsu.strem.fun/manifest.json',
     icon: 'https://www.google.com/s2/favicons?domain=kitsu.io&sz=128',
-  }]
+  },
+]
 
 export function renderLandingPage({
   manifestUrl = PUBLIC_INSTALL,
@@ -757,6 +758,223 @@ export function renderConfigurePage({
 <h2 class="lang-fa" style="margin-top:0">حالت افزونه</h2>
 <h2 class="lang-en" style="margin-top:0">Addon mode</h2>
 <div class="toggle-grid" style="margin:0">
+<label class="tog" style="background:rgba(0,0,0,.2);border-radius:12px;border:1px solid var(--gb)">
+<input type="checkbox" id="optStreamsOnly"/>
+<div>
+<b class="lang-fa">فقط استریم <span class="pill">STREAMS_ONLY</span></b>
+<b class="lang-en">Streams only <span class="pill">STREAMS_ONLY</span></b>
+<span class="hint lang-fa">متا و کاتالوگ فیلم/سریال خاموش؛ فقط پخش. کاتالوگ ماهواره (IPTV) اگر تیک خورده باشد جدا می‌ماند. حداقل یک پروایدر لازم است.</span>
+<span class="hint lang-en">Movie/series meta &amp; catalogs off — streams only. IPTV stays if enabled separately. Needs at least one provider.</span>
+</div>
+</label>
+<label class="tog" style="background:rgba(0,0,0,.2);border-radius:12px;border:1px solid var(--gb)">
+<input type="checkbox" id="optDisableMeta"/>
+<div>
+<b class="lang-fa">غیرفعال کردن متا</b>
+<b class="lang-en">Disable metadata</b>
+<span class="hint lang-fa">فقط متا حذف می‌شود.</span>
+<span class="hint lang-en">Removes meta resource only.</span>
+</div>
+</label>
+<label class="tog" style="background:rgba(0,0,0,.2);border-radius:12px;border:1px solid var(--gb)">
+<input type="checkbox" id="optDisableCatalog"/>
+<div>
+<b class="lang-fa">غیرفعال کردن کاتالوگ‌ها</b>
+<b class="lang-en">Disable catalogs</b>
+<span class="hint lang-fa">کاتالوگ فیلم/سریال (پروایدر و ۱۰۱/AIO/…) حذف می‌شود — ماهواره جداست.</span>
+<span class="hint lang-en">Hides movie/series catalogs only — IPTV is separate.</span>
+</div>
+</label>
+<label class="tog" style="background:rgba(0,0,0,.2);border-radius:12px;border:1px solid var(--gb)">
+<input type="checkbox" id="optDisableSubs"/>
+<div>
+<b class="lang-fa">غیرفعال کردن زیرنویس</b>
+<b class="lang-en">Disable subtitles</b>
+<span class="hint lang-fa">اگر OpenSubtitles جدا دارید.</span>
+<span class="hint lang-en">If you use a separate subtitle addon.</span>
+</div>
+</label>
+</div>
+</div>
+
+<div class="glass" style="padding:16px;margin-bottom:16px">
+<h2 class="lang-fa" style="margin-top:0">زبان متادیتا (TMDB)</h2>
+<h2 class="lang-en" style="margin-top:0">Metadata language (TMDB)</h2>
+<p class="hint lang-fa" style="font-size:.85rem;color:var(--m);margin-bottom:10px">عنوان، توضیح و ژانر. پوسترها همان تصاویر TMDB هستند؛ زبان روی متن اثر دارد.</p>
+<p class="hint lang-en" style="font-size:.85rem;color:var(--m);margin-bottom:10px">Titles, descriptions, genres. Posters are the same TMDB art; this switches text language.</p>
+<div class="sel-row" style="margin:0">
+<label class="tog" style="flex:1;min-width:140px;background:rgba(0,0,0,.22);border-radius:12px;border:1px solid var(--gb);padding:12px 14px;cursor:pointer">
+<input type="radio" name="metaLang" value="fa" checked style="width:16px;height:16px;accent-color:#e8a04a"/>
+<span class="lang-fa"><b>فارسی</b> (پیش‌فرض)</span>
+<span class="lang-en"><b>Persian</b> (default)</span>
+</label>
+<label class="tog" style="flex:1;min-width:140px;background:rgba(0,0,0,.22);border-radius:12px;border:1px solid var(--gb);padding:12px 14px;cursor:pointer">
+<input type="radio" name="metaLang" value="en" style="width:16px;height:16px;accent-color:#e8a04a"/>
+<span class="lang-fa"><b>انگلیسی</b></span>
+<span class="lang-en"><b>English</b></span>
+</label>
+</div>
+</div>
+
+<div class="glass" style="padding:16px;margin-bottom:16px">
+<h2 class="lang-fa" style="margin-top:0">زبان افزونه (نام در لیست)</h2>
+<h2 class="lang-en" style="margin-top:0">Addon language (list name)</h2>
+<p class="hint lang-fa" style="font-size:.85rem;color:var(--m);margin-bottom:10px">نام و توضیح منیفست در استریمیو/Nuvio — فارسی یا انگلیسی.</p>
+<p class="hint lang-en" style="font-size:.85rem;color:var(--m);margin-bottom:10px">Manifest display name &amp; description in Stremio/Nuvio.</p>
+<div class="sel-row" style="margin:0">
+<label class="tog" style="flex:1;min-width:140px;background:rgba(0,0,0,.22);border-radius:12px;border:1px solid var(--gb);padding:12px 14px;cursor:pointer">
+<input type="radio" name="addonLang" value="fa" checked style="width:16px;height:16px;accent-color:#e8a04a"/>
+<span class="lang-fa"><b>فارسی</b> — سینماگرافی</span>
+<span class="lang-en"><b>Persian</b> — سینماگرافی</span>
+</label>
+<label class="tog" style="flex:1;min-width:140px;background:rgba(0,0,0,.22);border-radius:12px;border:1px solid var(--gb);padding:12px 14px;cursor:pointer">
+<input type="radio" name="addonLang" value="en" style="width:16px;height:16px;accent-color:#e8a04a"/>
+<span class="lang-fa"><b>English</b> — CinemaGraphy</span>
+<span class="lang-en"><b>English</b> — CinemaGraphy</span>
+</label>
+</div>
+</div>
+
+<div class="sel-row">
+<button class="btn ghost" type="button" id="btnAll"><span class="lang-fa">انتخاب همه پروایدرها</span><span class="lang-en">Select all providers</span></button>
+<button class="btn ghost" type="button" id="btnNone"><span class="lang-fa">حذف انتخاب پروایدر</span><span class="lang-en">Clear providers</span></button>
+</div>
+
+<h2 class="lang-fa">پروایدرها</h2>
+<h2 class="lang-en">Providers</h2>
+<p class="sub lang-fa">اگر هیچ‌کدام را نزنید، استریم از <b>همهٔ پروایدرهای فعال سرور</b> می‌آید. با تیک زدن، فقط همان‌ها در این منیفست اختصاصی فعال می‌شوند.</p>
+<p class="sub lang-en">None checked = all server-enabled providers. Checking any limits this custom install to those only.</p>
+<div class="prov-grid glass" id="provGrid">
+<label><input type="checkbox" data-prov="f2media"/> F2Media</label>
+<label><input type="checkbox" data-prov="cinamatic"/> Cinamatic</label>
+<label><input type="checkbox" data-prov="aslmoviez"/> AslMoviez</label>
+<label><input type="checkbox" data-prov="serialblog"/> SerialBlog</label>
+<label><input type="checkbox" data-prov="donyayeserial"/> DonyayeSerial</label>
+<label><input type="checkbox" data-prov="animex"/> Animex</label>
+<label><input type="checkbox" data-prov="digimovie" id="provDigi"/> DigiMovie <span class="diff m">VIP</span></label>
+<label><input type="checkbox" data-prov="avamovie" id="provAva"/> AvaMovie <span class="diff m">VIP</span></label>
+</div>
+
+<div class="vip-block" id="vipDigiPanel" hidden>
+<div class="glass" style="padding:14px;margin:0 0 12px;border:1px solid rgba(232,160,74,.4)">
+<div style="font-weight:800;margin-bottom:6px">DigiMovie · VIP</div>
+<p class="note lang-fa" style="margin:0 0 10px;font-size:.8rem;line-height:1.45">لینک شخصی. ترجیحاً <b>کوکی سشن</b> از مرورگر. ریسک اکانت با شماست.</p>
+<p class="note lang-en" style="margin:0 0 10px;font-size:.8rem;line-height:1.45">Personal link only. Prefer browser <b>session cookie</b>. Account risk is yours.</p>
+<label class="hint" style="display:block;margin-bottom:4px">BASEURL</label>
+<input data-k="DIGIMOVIE_BASEURL" placeholder="https://www.digimoviez.com" autocomplete="off"/>
+<label class="hint" style="display:block;margin:10px 0 4px">COOKIE <span class="lang-fa">(ترجیحی)</span><span class="lang-en">(preferred)</span></label>
+<input data-k="DIGIMOVIE_COOKIE" placeholder="name=value; name2=value2" autocomplete="off" style="font-family:ui-monospace,monospace;font-size:.75rem;direction:ltr"/>
+<label class="hint" style="display:block;margin:10px 0 4px">USERNAME / PASSWORD <span class="lang-fa">(اختیاری)</span><span class="lang-en">(optional)</span></label>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+<input data-k="DIGIMOVIE_USERNAME" placeholder="username" autocomplete="off"/>
+<input data-k="DIGIMOVIE_PASSWORD" type="password" placeholder="password" autocomplete="off"/>
+</div>
+</div>
+</div>
+
+<div class="vip-block" id="vipAvaPanel" hidden>
+<div class="glass" style="padding:14px;margin:0 0 16px;border:1px solid rgba(232,160,74,.4)">
+<div style="font-weight:800;margin-bottom:6px">AvaMovie · VIP</div>
+<p class="note lang-fa" style="margin:0 0 10px;font-size:.8rem;line-height:1.45">لینک شخصی. کوکی بعد از ورود VIP. پیش‌فرض سایت: avamovie.shop</p>
+<p class="note lang-en" style="margin:0 0 10px;font-size:.8rem;line-height:1.45">Personal link. Cookie after VIP login. Default site: avamovie.shop</p>
+<label class="hint" style="display:block;margin-bottom:4px">BASEURL</label>
+<input data-k="AVAMOVIE_BASEURL" placeholder="https://avamovie.shop" autocomplete="off"/>
+<label class="hint" style="display:block;margin:10px 0 4px">COOKIE <span class="lang-fa">(ترجیحی)</span><span class="lang-en">(preferred)</span></label>
+<input data-k="AVAMOVIE_COOKIE" placeholder="Cookie header from browser" autocomplete="off" style="font-family:ui-monospace,monospace;font-size:.75rem;direction:ltr"/>
+<label class="hint" style="display:block;margin:10px 0 4px">USERNAME / PASSWORD</label>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+<input data-k="AVAMOVIE_USERNAME" placeholder="email / user" autocomplete="off"/>
+<input data-k="AVAMOVIE_PASSWORD" type="password" placeholder="password" autocomplete="off"/>
+</div>
+</div>
+</div>
+
+<h2 class="lang-fa">کلیدها و کاتالوگ‌های خارجی</h2>
+<h2 class="lang-en">Keys &amp; external catalogs</h2>
+<div class="cfg-item glass">
+<div class="top"><code>TMDB_API_KEY</code><span class="diff e"><span class="lang-fa">آسان</span><span class="lang-en">Easy</span></span></div>
+<div class="hint"><span class="lang-fa">اختیاری — خالی = کلید سرور (برای حالت فقط‌استریم معمولاً لازم نیست)</span><span class="lang-en">Optional — empty uses server key (usually unused in streams-only)</span></div>
+<input data-k="TMDB_API_KEY" placeholder="…" autocomplete="off"/>
+</div>
+<div class="cfg-item glass">
+<div class="top"><code>TORRENT_METEOR_MANIFEST_URL</code><span class="diff m"><span class="lang-fa">متوسط</span><span class="lang-en">Medium</span></span></div>
+<div class="hint"><span class="lang-fa">منیفست تورنت Meteor</span><span class="lang-en">Meteor torrent manifest URL</span></div>
+<input data-k="TORRENT_METEOR_MANIFEST_URL" placeholder="https://…/manifest.json" autocomplete="off"/>
+</div>
+<div class="cfg-item glass">
+<div class="top"><code>CATALOG_AIO_MANIFEST_URL</code><span class="diff m"><span class="lang-fa">متوسط</span><span class="lang-en">Medium</span></span></div>
+<div class="hint"><span class="lang-fa">منیفست AIOCatalogs</span><span class="lang-en">AIOCatalogs manifest</span></div>
+<input data-k="CATALOG_AIO_MANIFEST_URL" placeholder="https://…/manifest.json" autocomplete="off"/>
+</div>
+<div class="cfg-item glass">
+<div class="top"><code>CATALOG101_MANIFEST_URL</code><span class="diff m"><span class="lang-fa">متوسط</span><span class="lang-en">Medium</span></span></div>
+<div class="hint"><span class="lang-fa">منیفست ۱۰۱</span><span class="lang-en">101 catalogs manifest</span></div>
+<input data-k="CATALOG101_MANIFEST_URL" placeholder="https://…/manifest.json" autocomplete="off"/>
+</div>
+<div class="cfg-item glass">
+<div class="top"><code>CATALOG_ANIME_MANIFEST_URL</code><span class="diff m"><span class="lang-fa">متوسط</span><span class="lang-en">Medium</span></span></div>
+<div class="hint"><span class="lang-fa">کاتالوگ انیمه</span><span class="lang-en">Anime catalog manifest</span></div>
+<input data-k="CATALOG_ANIME_MANIFEST_URL" placeholder="https://…/manifest.json" autocomplete="off"/>
+</div>
+
+<div class="glass" style="padding:16px;margin-bottom:16px">
+<h2 class="lang-fa" style="margin-top:0">ماهواره / IPTV</h2>
+<h2 class="lang-en" style="margin-top:0">Satellite / IPTV</h2>
+<label class="tog" style="display:flex;gap:12px;align-items:flex-start;padding:12px 0;cursor:pointer">
+<input type="checkbox" id="optIptv" style="width:18px;height:18px;margin-top:3px;accent-color:#e8a04a;flex-shrink:0"/>
+<div>
+<b class="lang-fa">فعال‌سازی کاتالوگ ماهواره (IPTV Bridge)</b>
+<b class="lang-en">Enable IPTV / satellite catalogs</b>
+<span class="hint lang-fa" style="display:block;font-size:.82rem;color:var(--m);font-weight:500;margin-top:4px">بدون تیک = ماهواره در منیفست نیست. با تیک = پیش‌فرض سرور مگر لینک زیر را عوض کنید.</span>
+<span class="hint lang-en" style="display:block;font-size:.82rem;color:var(--m);font-weight:500;margin-top:4px">Off = no satellite catalogs. On = server default unless you set a custom URL.</span>
+</div>
+</label>
+<label class="lang-fa" style="display:block;font-size:.85rem;color:var(--m);margin:8px 0 4px">لینک منیفست IPTV (اختیاری)</label>
+<label class="lang-en" style="display:block;font-size:.85rem;color:var(--m);margin:8px 0 4px">IPTV manifest URL (optional)</label>
+<input id="iptvUrl" data-k="CATALOG_IPTVBRIDGE_MANIFEST_URL" placeholder="خالی = پیش‌فرض iptvbridge.vercel.app" autocomplete="off"/>
+<p class="note lang-fa" style="margin-top:8px">کاتالوگ ماهواره جدا از پروایدرهای فیلم است و <b>آخر لیست</b> می‌آید.</p>
+<p class="note lang-en" style="margin-top:8px">IPTV stays separate from movie providers and is listed <b>last</b>.</p>
+</div>
+
+<div class="glass" style="padding:16px;margin-bottom:16px">
+<h2 class="lang-fa" style="margin-top:0">سریال ترکی (F2Media)</h2>
+<h2 class="lang-en" style="margin-top:0">Turkish Series (F2Media)</h2>
+<label class="tog" style="display:flex;gap:12px;align-items:flex-start;padding:12px 0;cursor:pointer">
+<input type="checkbox" id="f2turkishOn" style="width:18px;height:18px;margin-top:3px;accent-color:#e8a04a;flex-shrink:0"/>
+<div>
+<b class="lang-fa">فعال‌سازی کاتالوگ سریال ترکی</b>
+<b class="lang-en">Enable Turkish series catalog</b>
+</div>
+</label>
+</div>
+
+<div class="glass" style="padding:16px;margin-bottom:16px">
+<h2 class="lang-fa" style="margin-top:0">انیمه - انیمکس</h2>
+<h2 class="lang-en" style="margin-top:0">Anime - Animex</h2>
+<label class="tog" style="display:flex;gap:12px;align-items:flex-start;padding:12px 0;cursor:pointer">
+<input type="checkbox" id="animexCatalogOn" style="width:18px;height:18px;margin-top:3px;accent-color:#e8a04a;flex-shrink:0"/>
+<div>
+<b class="lang-fa">فعال‌سازی کاتالوگ انیمه - انیمکس</b>
+<span class="hint lang-fa" style="display:block;font-size:.82rem;color:var(--m);font-weight:500;margin-top:4px">زیر «ترکی» و بالای کاتالوگ انیمهٔ خارجی. متا از TMDB؛ پوستر پشتیبان از انیمکس.</span>
+<b class="lang-en">Enable Anime - Animex catalog</b>
+<span class="hint lang-en" style="display:block;font-size:.82rem;color:var(--m);font-weight:500;margin-top:4px">Below Turkish, above external anime catalogs. TMDB meta; poster fallback from Animex.</span>
+</div>
+</label>
+</div>
+
+<div class="glass" style="padding:16px;margin-bottom:16px">
+<h2 class="lang-fa" style="margin-top:0">نماکده</h2>
+<h2 class="lang-en" style="margin-top:0">Namakade</h2>
+<label class="tog" style="display:flex;gap:12px;align-items:flex-start;padding:12px 0;cursor:pointer">
+<input type="checkbox" id="optNamakade" style="width:18px;height:18px;margin-top:3px;accent-color:#5dcea0;flex-shrink:0"/>
+<div>
+<b class="lang-fa">فعال‌سازی کاتالوگ نماکده</b>
+<b class="lang-en">Enable Namakade catalogs</b>
+</div>
+</label>
+<label class="lang-fa" style="display:block;font-size:.85rem;color:var(--m);margin:8px 0 4px">آدرس سایت (اختیاری)</label>
+<label class="lang-en" style="display:block;font-size:.85rem;color:var(--m);margin:8px 0 4px">Site URL (optional)</label>
+<input id="namakadeUrl" data-k="NAMAKADE_BASEURL" placeholder="https://namakade.com" autocomplete="off"/>
 </div>
 
 <div class="cfg-item glass">
@@ -899,6 +1117,8 @@ export function renderConfigurePage({
     // always 0/1 so server env defaults can be turned OFF in personal install
     var iptv = document.getElementById('optIptv');
     if (iptv) o.ENABLE_IPTV = iptv.checked ? '1' : '0';
+    var nk = document.getElementById('optNamakade');
+    if (nk) o.ENABLE_NAMAKADE = nk.checked ? '1' : '0';
     var f2t = document.getElementById('f2turkishOn');
     if (f2t) o.ENABLE_F2_TURKISH = f2t.checked ? '1' : '0';
     var axc = document.getElementById('animexCatalogOn');
@@ -935,6 +1155,8 @@ export function renderConfigurePage({
     if (ds) ds.checked = o.DISABLE_SUBTITLES === '1' || o.DISABLE_SUBTITLES === 'true';
     var iptvEl = document.getElementById('optIptv');
     if (iptvEl) iptvEl.checked = o.ENABLE_IPTV === '1' || o.ENABLE_IPTV === 'true' || Boolean(o.CATALOG_IPTVBRIDGE_MANIFEST_URL);
+    var nkEl = document.getElementById('optNamakade');
+    if (nkEl) nkEl.checked = o.ENABLE_NAMAKADE === '1' || o.ENABLE_NAMAKADE === 'true';
     var f2tEl = document.getElementById('f2turkishOn');
     if (f2tEl) f2tEl.checked = o.ENABLE_F2_TURKISH === '1' || o.ENABLE_F2_TURKISH === 'true';
     var axcEl = document.getElementById('animexCatalogOn');
@@ -992,11 +1214,7 @@ export function renderConfigurePage({
 
       var tip = document.getElementById('cfgTokenTip');
       if (tip) {
-        var keys = Object.keys(o).filter(function (k) {
-          var v = String(o[k] == null ? '' : o[k]).trim().toLowerCase();
-          if (!v || v === '0' || v === 'false' || v === 'off' || v === 'no') return false;
-          return true;
-        });
+        var keys = Object.keys(o);
         if (!keys.length) {
           tip.textContent = root.lang === 'fa'
             ? 'بدون تنظیم اضافه — همان منیفست عمومی سرور'
@@ -1017,7 +1235,7 @@ export function renderConfigurePage({
     if (!el || el.nodeType !== 1) return false;
     if (el.hasAttribute('data-prov') || el.hasAttribute('data-k')) return true;
     var id = el.id || '';
-    if (id === 'optStreamsOnly' || id === 'optDisableMeta' || id === 'optDisableCatalog' || id === 'optDisableSubs' || id === 'optIptv' || id === 'f2turkishOn' || id === 'animexCatalogOn') return true;
+    if (id === 'optStreamsOnly' || id === 'optDisableMeta' || id === 'optDisableCatalog' || id === 'optDisableSubs' || id === 'optIptv' || id === 'optNamakade' || id === 'f2turkishOn' || id === 'animexCatalogOn') return true;
     if (el.name === 'metaLang' || el.name === 'addonLang') return true;
     return false;
   }
@@ -1071,7 +1289,7 @@ export function renderConfigurePage({
     try { localStorage.removeItem(STORE); } catch (e) {}
     applyObj({});
     document.querySelectorAll('[data-prov]').forEach(function (cb) { cb.checked = false; });
-    ['optStreamsOnly','optDisableMeta','optDisableCatalog','optDisableSubs','optIptv','f2turkishOn'].forEach(function (id) {
+    ['optStreamsOnly','optDisableMeta','optDisableCatalog','optDisableSubs','optIptv','optNamakade','f2turkishOn'].forEach(function (id) {
       var el = document.getElementById(id);
       if (el) { el.checked = false; el.disabled = false; }
     });
@@ -1102,7 +1320,7 @@ export function renderConfigurePage({
   try { localStorage.removeItem(STORE); } catch (e) {}
   applyObj({});
   document.querySelectorAll('[data-prov]').forEach(function (cb) { cb.checked = false; });
-  ['optStreamsOnly','optDisableMeta','optDisableCatalog','optDisableSubs','optIptv','f2turkishOn'].forEach(function (id) {
+  ['optStreamsOnly','optDisableMeta','optDisableCatalog','optDisableSubs','optIptv','optNamakade','f2turkishOn'].forEach(function (id) {
     var el = document.getElementById(id);
     if (el) { el.checked = false; el.disabled = false; }
   });
@@ -1174,15 +1392,14 @@ details.faq summary{cursor:pointer;font-weight:700}
 <p style="font-size:.75rem;color:var(--a);margin:0 0 4px">v${ver}</p>
 <h1 class="lang-fa" style="margin:0 0 8px">📖 راهنما</h1>
 <h1 class="lang-en" style="margin:0 0 8px">📖 Guide</h1>
-<p class="lang-fa muted">نصب، دیپلوی رایگان Cloudflare/Vercel، جدول Env، لینک کاتالوگ‌ها و کوکی VIP.</p>
-<p class="lang-en muted">Install, free CF/Vercel deploy, env table, catalog URLs, VIP cookie.</p>
+<p class="lang-fa muted">نصب کلاینت، دیپلوی، متغیرها و سشن VIP.</p>
+<p class="lang-en muted">Client install, deploy, env vars, and VIP session.</p>
 
 <nav class="toc" aria-label="Sections">
 <a href="#install"><span class="lang-fa">نصب</span><span class="lang-en">Install</span></a>
 <a href="#configure"><span class="lang-fa">شخصی‌سازی</span><span class="lang-en">Configure</span></a>
-<a href="#cf">Cloudflare</a>
-<a href="#vercel">Vercel</a>
-<a href="#catalogs"><span class="lang-fa">کاتالوگ‌ها</span><span class="lang-en">Catalogs</span></a>
+<a href="#cf"><span class="lang-fa">Cloudflare</span><span class="lang-en">Cloudflare</span></a>
+<a href="#vercel"><span class="lang-fa">Vercel</span><span class="lang-en">Vercel</span></a>
 <a href="#env">Env</a>
 <a href="#vip"><span class="lang-fa">کوکی VIP</span><span class="lang-en">VIP cookie</span></a>
 <a href="#faq">FAQ</a>
@@ -1216,38 +1433,50 @@ details.faq summary{cursor:pointer;font-weight:700}
 </div>
 
 <div class="gbox glass" id="cf">
-<h2 class="lang-fa">۳) Cloudflare Workers (پیشنهاد برای نسخهٔ شخصی)</h2>
-<h2 class="lang-en">3) Cloudflare Workers (recommended personal host)</h2>
-<p class="lang-fa muted"><b>Vercel</b> معمولاً سریع‌تر است؛ <b>Cloudflare</b> محدودیت رایگان بازتری دارد و برای استفادهٔ روزمره پایدارتر است. هر دو از یک پروژه می‌آیند.</p>
-<p class="lang-en muted"><b>Vercel</b> is often faster; <b>Cloudflare</b> free limits are usually more generous for daily use. Same codebase.</p>
-<p class="muted">Repo: <a href="https://github.com/TheNerdCow/CinemaGraphy" target="_blank" rel="noopener">TheNerdCow/CinemaGraphy</a></p>
+<h2 class="lang-fa">۳) Cloudflare Workers</h2>
+<h2 class="lang-en">3) Cloudflare Workers</h2>
+<p class="lang-fa muted">ریپو: <a href="https://github.com/TheNerdCow/CinemaGraphy" target="_blank" rel="noopener">TheNerdCow/CinemaGraphy</a></p>
+<p class="lang-en muted">Repo: <a href="https://github.com/TheNerdCow/CinemaGraphy" target="_blank" rel="noopener">TheNerdCow/CinemaGraphy</a></p>
 
-<h3 class="lang-fa">مراحل داشبورد</h3>
-<h3 class="lang-en">Dashboard steps</h3>
+<h3 class="lang-fa">الف) از داشبورد (بدون ترمینال)</h3>
+<h3 class="lang-en">A) Dashboard (no terminal)</h3>
 <div class="olist">
 <div class="step"><b>1</b>
 <span class="lang-fa">ورود به <a href="https://dash.cloudflare.com" target="_blank" rel="noopener">dash.cloudflare.com</a></span>
 <span class="lang-en">Sign in at <a href="https://dash.cloudflare.com" target="_blank" rel="noopener">dash.cloudflare.com</a></span>
 </div>
 <div class="step"><b>2</b>
-<span class="lang-fa"><b>Compute</b> → <b>Workers &amp; Pages</b> → Create / اتصال GitHub یا آپلود Worker</span>
-<span class="lang-en"><b>Compute</b> → <b>Workers &amp; Pages</b> → Create / connect GitHub or upload</span>
+<span class="lang-fa"><b>Compute</b> → <b>Workers &amp; Pages</b> → Create / اتصال به GitHub یا آپلود کد Worker</span>
+<span class="lang-en"><b>Compute</b> → <b>Workers &amp; Pages</b> → Create / connect GitHub or upload Worker</span>
 </div>
 <div class="step"><b>3</b>
-<span class="lang-fa">بعد از Deploy: Worker → <b>Settings</b> → <b>Variables and Secrets</b></span>
-<span class="lang-en">After deploy: Worker → <b>Settings</b> → <b>Variables and Secrets</b></span>
+<span class="lang-fa">بعد از دیپلوی: Worker را باز کنید → <b>Settings</b> → <b>Variables and Secrets</b></span>
+<span class="lang-en">After deploy: open the Worker → <b>Settings</b> → <b>Variables and Secrets</b></span>
 </div>
 <div class="step"><b>4</b>
-<span class="lang-fa">متغیرهای جدول Env را اضافه کنید. <code>TMDB_API_KEY</code> را <b>Secret</b> کنید. نام متغیر را <b>کامل</b> بنویسید (مثلاً <code>CATALOG_ANIME_MANIFEST_URL</code> نه کوتاه‌شده).</span>
-<span class="lang-en">Add Env table vars. Mark <code>TMDB_API_KEY</code> as <b>Secret</b>. Use <b>full</b> names (e.g. <code>CATALOG_ANIME_MANIFEST_URL</code>).</span>
+<span class="lang-fa">هر متغیر را دستی اضافه کنید (جدول Env). برای کلیدها و کوکی‌ها نوع <b>Secret</b> را بزنید تا بعد از آپدیت کد پاک نشوند.</span>
+<span class="lang-en">Add each variable (Env table). Mark keys/cookies as <b>Secret</b> so code deploys do not wipe them.</span>
 </div>
 <div class="step"><b>5</b>
-<span class="lang-fa">منیفست: <code>https://YOUR-NAME.workers.dev/manifest.json</code> — سپس <a href="/configure">شخصی‌سازی</a></span>
-<span class="lang-en">Manifest: <code>https://YOUR-NAME.workers.dev/manifest.json</code> — then <a href="/configure">Configure</a></span>
+<span class="lang-fa">منیفست: <code>https://YOUR-NAME.workers.dev/manifest.json</code></span>
+<span class="lang-en">Manifest: <code>https://YOUR-NAME.workers.dev/manifest.json</code></span>
 </div>
 </div>
-<p class="lang-fa muted">CLI: <code>npx wrangler login</code> → <code>.dev.vars</code> → <code>npx wrangler deploy</code> — جزئیات <code>docs/CLOUDFLARE.md</code></p>
-<p class="lang-en muted">CLI: <code>npx wrangler login</code> → <code>.dev.vars</code> → <code>npx wrangler deploy</code> — see <code>docs/CLOUDFLARE.md</code></p>
+
+<h3 class="lang-fa">ب) با Wrangler (توسعه‌دهنده)</h3>
+<h3 class="lang-en">B) Wrangler (developers)</h3>
+<div class="olist">
+<div class="step"><b>1</b> <code>pnpm install</code> → <code>npx wrangler login</code></div>
+<div class="step"><b>2</b>
+<span class="lang-fa">فایل <code>.dev.vars</code> از روی <code>.env.example</code> (در Git نرود)</span>
+<span class="lang-en"><code>.dev.vars</code> from <code>.env.example</code> (never commit)</span>
+</div>
+<div class="step"><b>3</b> <code>npx wrangler deploy</code>
+<span class="lang-fa"> — جزئیات: </span><span class="lang-en"> — see </span><code>docs/CLOUDFLARE.md</code>
+</div>
+</div>
+<p class="lang-fa muted">پلن رایگان CF محدودیت CPU دارد؛ ترافیک خیلی همزمان ممکن است ضعیف‌تر از Vercel باشد.</p>
+<p class="lang-en muted">CF Free has CPU limits; heavy concurrency may be weaker than Vercel.</p>
 </div>
 
 <div class="gbox glass" id="vercel">
@@ -1255,88 +1484,57 @@ details.faq summary{cursor:pointer;font-weight:700}
 <h2 class="lang-en">4) Vercel</h2>
 <div class="olist">
 <div class="step"><b>1</b>
-<span class="lang-fa">Import ریپو در Vercel</span>
-<span class="lang-en">Import the repo in Vercel</span>
+<span class="lang-fa">Import ریپو در Vercel (Node / Other)</span>
+<span class="lang-en">Import the repo in Vercel (Node / Other)</span>
 </div>
 <div class="step"><b>2</b>
-<span class="lang-fa">Environment Variables — همان جدول Env. حداقل <code>TMDB_API_KEY</code></span>
-<span class="lang-en">Environment Variables — same Env table. At least <code>TMDB_API_KEY</code></span>
+<span class="lang-fa">Settings → Environment Variables — جدول Env. حداقل <code>TMDB_API_KEY</code></span>
+<span class="lang-en">Settings → Environment Variables — Env table. At least <code>TMDB_API_KEY</code></span>
 </div>
 <div class="step"><b>3</b>
-<span class="lang-fa">Deploy → <code>…vercel.app/manifest.json</code>. اگر Billing pause شد از Cloudflare پشتیبان بگیرید.</span>
-<span class="lang-en">Deploy → <code>…vercel.app/manifest.json</code>. If paused, use Cloudflare as backup.</span>
+<span class="lang-fa">Deploy → <code>https://YOUR-APP.vercel.app/manifest.json</code></span>
+<span class="lang-en">Deploy → <code>https://YOUR-APP.vercel.app/manifest.json</code></span>
 </div>
-</div>
-</div>
-
-<div class="gbox glass" id="catalogs">
-<h2 class="lang-fa">۵) کاتالوگ‌ها و منیفست‌های خارجی</h2>
-<h2 class="lang-en">5) External catalogs &amp; manifests</h2>
-<p class="lang-fa muted">این سرویس‌ها جدا هستند؛ فقط لینک <code>manifest.json</code> نهایی را در Env سینماگرافی می‌گذارید.</p>
-<p class="lang-en muted">These are separate addons — put only the final <code>manifest.json</code> URL into CinemaGraphy env.</p>
-<div class="olist">
-<div class="step"><b>101</b>
-<span class="lang-fa"><a href="https://config.101catalogs.xyz/" target="_blank" rel="noopener">config.101catalogs.xyz</a> → انتخاب لیست‌ها → Generate. ترجیحاً <b>meta/off</b> تا متای فارسی پروژه بماند.</span>
-<span class="lang-en"><a href="https://config.101catalogs.xyz/" target="_blank" rel="noopener">config.101catalogs.xyz</a> → pick lists → Generate. Prefer <b>meta/off</b> so FA meta stays on CinemaGraphy.</span>
-</div>
-<div class="step"><b>Anime</b>
-<span class="lang-fa"><a href="https://1fe84bc728af-stremio-anime-catalogs.baby-beamup.club/configure" target="_blank" rel="noopener">Anime catalogs configure</a> → منیفست را کپی → <code>CATALOG_ANIME_MANIFEST_URL</code></span>
-<span class="lang-en"><a href="https://1fe84bc728af-stremio-anime-catalogs.baby-beamup.club/configure" target="_blank" rel="noopener">Anime catalogs configure</a> → copy manifest → <code>CATALOG_ANIME_MANIFEST_URL</code></span>
-</div>
-<div class="step"><b>IPTV</b>
-<span class="lang-fa"><a href="https://iptvbridge.vercel.app/configure" target="_blank" rel="noopener">iptvbridge.vercel.app/configure</a> → <code>CATALOG_IPTVBRIDGE_MANIFEST_URL</code></span>
-<span class="lang-en"><a href="https://iptvbridge.vercel.app/configure" target="_blank" rel="noopener">iptvbridge.vercel.app/configure</a> → <code>CATALOG_IPTVBRIDGE_MANIFEST_URL</code></span>
-</div>
-<div class="step"><b>Meteor</b>
-<span class="lang-fa"><a href="https://meteorfortheweebs.midnightignite.me/stremio/configure" target="_blank" rel="noopener">Meteor configure</a> (اختیاری) → <code>TORRENT_METEOR_MANIFEST_URL</code></span>
-<span class="lang-en"><a href="https://meteorfortheweebs.midnightignite.me/stremio/configure" target="_blank" rel="noopener">Meteor configure</a> (optional) → <code>TORRENT_METEOR_MANIFEST_URL</code></span>
-</div>
-<div class="step"><b>Subsource</b>
-<span class="lang-fa"><a href="https://subsource.net/" target="_blank" rel="noopener">subsource.net</a> — در صورت پشتیبانی بیلد شما از <code>SUBSOURCE_MANIFEST_URL</code></span>
-<span class="lang-en"><a href="https://subsource.net/" target="_blank" rel="noopener">subsource.net</a> — if your build uses <code>SUBSOURCE_MANIFEST_URL</code></span>
+<div class="step"><b>4</b>
+<span class="lang-fa">اگر Billing pause شد، از Cloudflare پشتیبان بگیرید.</span>
+<span class="lang-en">If billing is paused, use Cloudflare as backup.</span>
 </div>
 </div>
 </div>
 
 <div class="gbox glass" id="env">
-<h2 class="lang-fa">۶) جدول متغیرها (عین تنظیمات لایو)</h2>
-<h2 class="lang-en">6) Env table (live Cloudflare set)</h2>
-<p class="lang-fa muted">Worker → <b>Settings</b> → <b>Variables and Secrets</b>. نام را <b>کامل</b> بنویسید. <code>TMDB_API_KEY</code> را Secret کنید. VIP دیجی/آوا را اینجا نگذارید — فقط <a href="/configure">/configure</a>.</p>
-<p class="lang-en muted">Worker → <b>Settings</b> → <b>Variables and Secrets</b>. Use <b>full</b> names. Mark <code>TMDB_API_KEY</code> as Secret. No Digi/Ava VIP here — only <a href="/configure">/configure</a>.</p>
+<h2 class="lang-fa">۵) متغیرهای محیطی</h2>
+<h2 class="lang-en">5) Environment variables</h2>
+<p class="lang-fa muted">روی سرور برای نمونهٔ عمومی. خیلی‌ها از <a href="/configure">/configure</a> هم در لینک شخصی ست می‌شوند.</p>
+<p class="lang-en muted">On the host for a public instance. Many can also be set via <a href="/configure">/configure</a> in a personal link.</p>
 <div class="env-wrap"><table>
 <thead><tr>
-<th>Name</th>
-<th>Type</th>
-<th><span class="lang-fa">مقدار / توضیح</span><span class="lang-en">Value / note</span></th>
+<th>Var</th>
+<th><span class="lang-fa">توضیح</span><span class="lang-en">Meaning</span></th>
+<th><span class="lang-fa">نمونه</span><span class="lang-en">Example</span></th>
 </tr></thead>
 <tbody>
-<tr><td><code>TMDB_API_KEY</code></td><td>Secret</td><td><span class="lang-fa">کلید TMDB (لازم)</span><span class="lang-en">TMDB key (required)</span></td></tr>
-<tr><td><code>F2MEDIA_BASEURL</code></td><td>Secret / Text</td><td><code>https://www.film2med.top</code></td></tr>
-<tr><td><code>ENABLE_F2_TURKISH</code></td><td>Text</td><td><code>1</code></td></tr>
-<tr><td><code>ANIMEX_BASEURL</code></td><td>Secret / Text</td><td><span class="lang-fa">دامنه انیمکس</span><span class="lang-en">Animex base URL</span></td></tr>
-<tr><td><code>ENABLE_ANIMEX_CATALOG</code></td><td>Text</td><td><code>1</code></td></tr>
-<tr><td><code>CINAMATIC_BASEURL</code></td><td>Secret / Text</td><td><span class="lang-fa">اگر دسترسی دارید</span><span class="lang-en">if you have access</span></td></tr>
-<tr><td><code>ASLMOVIEZ_BASEURL</code></td><td>Secret / Text</td><td><span class="lang-fa">اگر دسترسی دارید</span><span class="lang-en">if you have access</span></td></tr>
-<tr><td><code>SERIALBLOG_BASEURL</code></td><td>Secret / Text</td><td><span class="lang-fa">اگر دسترسی دارید</span><span class="lang-en">if you have access</span></td></tr>
-<tr><td><code>DONYAYESERIAL_BASEURL</code></td><td>Secret / Text</td><td><span class="lang-fa">اگر دسترسی دارید</span><span class="lang-en">if you have access</span></td></tr>
-<tr><td><code>CATALOG101_MANIFEST_URL</code></td><td>Secret / Text</td><td><span class="lang-fa">منیفست ۱۰۱ — ترجیحاً </span><code>meta/off</code><span class="lang-en"> 101 manifest — prefer </span><code>meta/off</code></td></tr>
-<tr><td><code>CATALOG_ANIME_MANIFEST_URL</code></td><td>Secret / Text</td><td><span class="lang-fa">منیفست کاتالوگ انیمه</span><span class="lang-en">anime catalogs manifest</span></td></tr>
-<tr><td><code>CATALOG_IPTVBRIDGE_MANIFEST_URL</code></td><td>Secret / Text</td><td><span class="lang-fa">منیفست IPTV Bridge</span><span class="lang-en">IPTV Bridge manifest</span></td></tr>
-<tr><td><code>TORRENT_METEOR_MANIFEST_URL</code></td><td>Secret / Text</td><td><span class="lang-fa">اختیاری — Meteor</span><span class="lang-en">optional — Meteor</span></td></tr>
-<tr><td><code>SUBSOURCE_MANIFEST_URL</code></td><td>Secret / Text</td><td><span class="lang-fa">اختیاری — زیرنویس</span><span class="lang-en">optional — subtitles</span></td></tr>
-<tr><td><code>PROXY_ENABLE</code></td><td>Text</td><td><code>true</code></td></tr>
-<tr><td><code>PROXY_PATH</code></td><td>Text</td><td><code>proxy</code></td></tr>
-<tr><td><code>PROXY_ALLOWED_URLS</code></td><td>Text</td><td><code>metahub.space,imdb.com,strem.io,tmdb.org</code></td></tr>
-<tr><td><code>LOG_LEVEL</code></td><td>Text</td><td><code>info</code></td></tr>
-<tr><td><code>DEV_MODE</code></td><td>Text</td><td><code>false</code></td></tr>
+<tr><td><code>TMDB_API_KEY</code></td><td><span class="lang-fa">متای TMDB</span><span class="lang-en">TMDB meta</span></td><td>—</td></tr>
+<tr><td><code>F2MEDIA_BASEURL</code></td><td>F2Media</td><td><code>https://www.film2med.top</code></td></tr>
+<tr><td><code>CINAMATIC_BASEURL</code></td><td>Cinamatic</td><td><code>https://cinamatic.top</code></td></tr>
+<tr><td><code>ASLMOVIEZ_BASEURL</code></td><td>AslMoviez</td><td>—</td></tr>
+<tr><td><code>SERIALBLOG_BASEURL</code></td><td>SerialBlog</td><td>—</td></tr>
+<tr><td><code>DONYAYESERIAL_BASEURL</code></td><td>DonyayeSerial</td><td>—</td></tr>
+<tr><td><code>ANIMEX_BASEURL</code></td><td>Animex</td><td><code>https://animex.click</code></td></tr>
+<tr><td><code>DIGIMOVIE_BASEURL</code></td><td>DigiMovie</td><td><code>https://www.digimoviez.com</code></td></tr>
+<tr><td><code>DIGIMOVIE_COOKIE</code></td><td><span class="lang-fa">سشن VIP (ترجیحی)</span><span class="lang-en">VIP session (preferred)</span></td><td>—</td></tr>
+<tr><td><code>AVAMOVIE_BASEURL</code></td><td>AvaMovie</td><td><code>https://avamovie.shop</code></td></tr>
+<tr><td><code>AVAMOVIE_COOKIE</code></td><td><span class="lang-fa">سشن VIP (ترجیحی)</span><span class="lang-en">VIP session (preferred)</span></td><td>—</td></tr>
+<tr><td><code>ENABLED_PROVIDERS</code></td><td><span class="lang-fa">لیست با ویرگول</span><span class="lang-en">comma list</span></td><td><code>f2media,animex</code></td></tr>
+<tr><td><code>CATALOG_IPTVBRIDGE_MANIFEST_URL</code></td><td>IPTV</td><td><code>https://iptvbridge.vercel.app/manifest.json</code></td></tr>
+<tr><td><code>ENABLE_NAMAKADE</code></td><td>Namakade</td><td><code>1</code></td></tr>
+<tr><td><code>PROXY_ENABLE</code></td><td><span class="lang-fa">پروکسی عمومی (غیر TMDB image)</span><span class="lang-en">generic proxy (not TMDB images)</span></td><td><code>false</code></td></tr>
 </tbody></table></div>
-<p class="lang-fa muted" style="margin-top:10px">در داشبورد Cloudflare گاهی نام‌ها کوتاه دیده می‌شوند؛ باید دقیقاً همین اسم‌های کامل را وارد کنید (مثلاً <code>CATALOG_ANIME_MANIFEST_URL</code> نه نسخهٔ ناقص).</p>
-<p class="lang-en muted" style="margin-top:10px">Cloudflare may truncate names in the UI — enter the full names exactly as above.</p>
 </div>
 
 <div class="gbox glass" id="vip">
-<h2 class="lang-fa">۷) کوکی VIP — Digi و Ava (یک روش برای هر دو)</h2>
-<h2 class="lang-en">7) VIP cookie — Digi &amp; Ava (same steps)</h2>
+<h2 class="lang-fa">۶) کوکی VIP — Digi و Ava (یک روش برای هر دو)</h2>
+<h2 class="lang-en">6) VIP cookie — Digi &amp; Ava (same steps)</h2>
 <p class="lang-fa muted">فقط در <a href="/configure">شخصی‌سازی</a>. روی Env سرور نگذارید. اکانت و ریسک با خودتان است.</p>
 <p class="lang-en muted">Only in <a href="/configure">Configure</a>. Never on server Env. Account risk is yours.</p>
 <p class="muted"><b>BASEURL:</b> Digi <code>https://digimoviez.com</code> · Ava <code>https://avamovie.shop</code></p>
