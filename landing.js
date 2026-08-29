@@ -758,223 +758,6 @@ export function renderConfigurePage({
 <h2 class="lang-fa" style="margin-top:0">حالت افزونه</h2>
 <h2 class="lang-en" style="margin-top:0">Addon mode</h2>
 <div class="toggle-grid" style="margin:0">
-<label class="tog" style="background:rgba(0,0,0,.2);border-radius:12px;border:1px solid var(--gb)">
-<input type="checkbox" id="optStreamsOnly"/>
-<div>
-<b class="lang-fa">فقط استریم <span class="pill">STREAMS_ONLY</span></b>
-<b class="lang-en">Streams only <span class="pill">STREAMS_ONLY</span></b>
-<span class="hint lang-fa">متا و کاتالوگ فیلم/سریال خاموش؛ فقط پخش. کاتالوگ ماهواره (IPTV) اگر تیک خورده باشد جدا می‌ماند. حداقل یک پروایدر لازم است.</span>
-<span class="hint lang-en">Movie/series meta &amp; catalogs off — streams only. IPTV stays if enabled separately. Needs at least one provider.</span>
-</div>
-</label>
-<label class="tog" style="background:rgba(0,0,0,.2);border-radius:12px;border:1px solid var(--gb)">
-<input type="checkbox" id="optDisableMeta"/>
-<div>
-<b class="lang-fa">غیرفعال کردن متا</b>
-<b class="lang-en">Disable metadata</b>
-<span class="hint lang-fa">فقط متا حذف می‌شود.</span>
-<span class="hint lang-en">Removes meta resource only.</span>
-</div>
-</label>
-<label class="tog" style="background:rgba(0,0,0,.2);border-radius:12px;border:1px solid var(--gb)">
-<input type="checkbox" id="optDisableCatalog"/>
-<div>
-<b class="lang-fa">غیرفعال کردن کاتالوگ‌ها</b>
-<b class="lang-en">Disable catalogs</b>
-<span class="hint lang-fa">کاتالوگ فیلم/سریال (پروایدر و ۱۰۱/AIO/…) حذف می‌شود — ماهواره جداست.</span>
-<span class="hint lang-en">Hides movie/series catalogs only — IPTV is separate.</span>
-</div>
-</label>
-<label class="tog" style="background:rgba(0,0,0,.2);border-radius:12px;border:1px solid var(--gb)">
-<input type="checkbox" id="optDisableSubs"/>
-<div>
-<b class="lang-fa">غیرفعال کردن زیرنویس</b>
-<b class="lang-en">Disable subtitles</b>
-<span class="hint lang-fa">اگر OpenSubtitles جدا دارید.</span>
-<span class="hint lang-en">If you use a separate subtitle addon.</span>
-</div>
-</label>
-</div>
-</div>
-
-<div class="glass" style="padding:16px;margin-bottom:16px">
-<h2 class="lang-fa" style="margin-top:0">زبان متادیتا (TMDB)</h2>
-<h2 class="lang-en" style="margin-top:0">Metadata language (TMDB)</h2>
-<p class="hint lang-fa" style="font-size:.85rem;color:var(--m);margin-bottom:10px">عنوان، توضیح و ژانر. پوسترها همان تصاویر TMDB هستند؛ زبان روی متن اثر دارد.</p>
-<p class="hint lang-en" style="font-size:.85rem;color:var(--m);margin-bottom:10px">Titles, descriptions, genres. Posters are the same TMDB art; this switches text language.</p>
-<div class="sel-row" style="margin:0">
-<label class="tog" style="flex:1;min-width:140px;background:rgba(0,0,0,.22);border-radius:12px;border:1px solid var(--gb);padding:12px 14px;cursor:pointer">
-<input type="radio" name="metaLang" value="fa" checked style="width:16px;height:16px;accent-color:#e8a04a"/>
-<span class="lang-fa"><b>فارسی</b> (پیش‌فرض)</span>
-<span class="lang-en"><b>Persian</b> (default)</span>
-</label>
-<label class="tog" style="flex:1;min-width:140px;background:rgba(0,0,0,.22);border-radius:12px;border:1px solid var(--gb);padding:12px 14px;cursor:pointer">
-<input type="radio" name="metaLang" value="en" style="width:16px;height:16px;accent-color:#e8a04a"/>
-<span class="lang-fa"><b>انگلیسی</b></span>
-<span class="lang-en"><b>English</b></span>
-</label>
-</div>
-</div>
-
-<div class="glass" style="padding:16px;margin-bottom:16px">
-<h2 class="lang-fa" style="margin-top:0">زبان افزونه (نام در لیست)</h2>
-<h2 class="lang-en" style="margin-top:0">Addon language (list name)</h2>
-<p class="hint lang-fa" style="font-size:.85rem;color:var(--m);margin-bottom:10px">نام و توضیح منیفست در استریمیو/Nuvio — فارسی یا انگلیسی.</p>
-<p class="hint lang-en" style="font-size:.85rem;color:var(--m);margin-bottom:10px">Manifest display name &amp; description in Stremio/Nuvio.</p>
-<div class="sel-row" style="margin:0">
-<label class="tog" style="flex:1;min-width:140px;background:rgba(0,0,0,.22);border-radius:12px;border:1px solid var(--gb);padding:12px 14px;cursor:pointer">
-<input type="radio" name="addonLang" value="fa" checked style="width:16px;height:16px;accent-color:#e8a04a"/>
-<span class="lang-fa"><b>فارسی</b> — سینماگرافی</span>
-<span class="lang-en"><b>Persian</b> — سینماگرافی</span>
-</label>
-<label class="tog" style="flex:1;min-width:140px;background:rgba(0,0,0,.22);border-radius:12px;border:1px solid var(--gb);padding:12px 14px;cursor:pointer">
-<input type="radio" name="addonLang" value="en" style="width:16px;height:16px;accent-color:#e8a04a"/>
-<span class="lang-fa"><b>English</b> — CinemaGraphy</span>
-<span class="lang-en"><b>English</b> — CinemaGraphy</span>
-</label>
-</div>
-</div>
-
-<div class="sel-row">
-<button class="btn ghost" type="button" id="btnAll"><span class="lang-fa">انتخاب همه پروایدرها</span><span class="lang-en">Select all providers</span></button>
-<button class="btn ghost" type="button" id="btnNone"><span class="lang-fa">حذف انتخاب پروایدر</span><span class="lang-en">Clear providers</span></button>
-</div>
-
-<h2 class="lang-fa">پروایدرها</h2>
-<h2 class="lang-en">Providers</h2>
-<p class="sub lang-fa">اگر هیچ‌کدام را نزنید، استریم از <b>همهٔ پروایدرهای فعال سرور</b> می‌آید. با تیک زدن، فقط همان‌ها در این منیفست اختصاصی فعال می‌شوند.</p>
-<p class="sub lang-en">None checked = all server-enabled providers. Checking any limits this custom install to those only.</p>
-<div class="prov-grid glass" id="provGrid">
-<label><input type="checkbox" data-prov="f2media"/> F2Media</label>
-<label><input type="checkbox" data-prov="cinamatic"/> Cinamatic</label>
-<label><input type="checkbox" data-prov="aslmoviez"/> AslMoviez</label>
-<label><input type="checkbox" data-prov="serialblog"/> SerialBlog</label>
-<label><input type="checkbox" data-prov="donyayeserial"/> DonyayeSerial</label>
-<label><input type="checkbox" data-prov="animex"/> Animex</label>
-<label><input type="checkbox" data-prov="digimovie" id="provDigi"/> DigiMovie <span class="diff m">VIP</span></label>
-<label><input type="checkbox" data-prov="avamovie" id="provAva"/> AvaMovie <span class="diff m">VIP</span></label>
-</div>
-
-<div class="vip-block" id="vipDigiPanel" hidden>
-<div class="glass" style="padding:14px;margin:0 0 12px;border:1px solid rgba(232,160,74,.4)">
-<div style="font-weight:800;margin-bottom:6px">DigiMovie · VIP</div>
-<p class="note lang-fa" style="margin:0 0 10px;font-size:.8rem;line-height:1.45">لینک شخصی. ترجیحاً <b>کوکی سشن</b> از مرورگر. ریسک اکانت با شماست.</p>
-<p class="note lang-en" style="margin:0 0 10px;font-size:.8rem;line-height:1.45">Personal link only. Prefer browser <b>session cookie</b>. Account risk is yours.</p>
-<label class="hint" style="display:block;margin-bottom:4px">BASEURL</label>
-<input data-k="DIGIMOVIE_BASEURL" placeholder="https://www.digimoviez.com" autocomplete="off"/>
-<label class="hint" style="display:block;margin:10px 0 4px">COOKIE <span class="lang-fa">(ترجیحی)</span><span class="lang-en">(preferred)</span></label>
-<input data-k="DIGIMOVIE_COOKIE" placeholder="name=value; name2=value2" autocomplete="off" style="font-family:ui-monospace,monospace;font-size:.75rem;direction:ltr"/>
-<label class="hint" style="display:block;margin:10px 0 4px">USERNAME / PASSWORD <span class="lang-fa">(اختیاری)</span><span class="lang-en">(optional)</span></label>
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-<input data-k="DIGIMOVIE_USERNAME" placeholder="username" autocomplete="off"/>
-<input data-k="DIGIMOVIE_PASSWORD" type="password" placeholder="password" autocomplete="off"/>
-</div>
-</div>
-</div>
-
-<div class="vip-block" id="vipAvaPanel" hidden>
-<div class="glass" style="padding:14px;margin:0 0 16px;border:1px solid rgba(232,160,74,.4)">
-<div style="font-weight:800;margin-bottom:6px">AvaMovie · VIP</div>
-<p class="note lang-fa" style="margin:0 0 10px;font-size:.8rem;line-height:1.45">لینک شخصی. کوکی بعد از ورود VIP. پیش‌فرض سایت: avamovie.shop</p>
-<p class="note lang-en" style="margin:0 0 10px;font-size:.8rem;line-height:1.45">Personal link. Cookie after VIP login. Default site: avamovie.shop</p>
-<label class="hint" style="display:block;margin-bottom:4px">BASEURL</label>
-<input data-k="AVAMOVIE_BASEURL" placeholder="https://avamovie.shop" autocomplete="off"/>
-<label class="hint" style="display:block;margin:10px 0 4px">COOKIE <span class="lang-fa">(ترجیحی)</span><span class="lang-en">(preferred)</span></label>
-<input data-k="AVAMOVIE_COOKIE" placeholder="Cookie header from browser" autocomplete="off" style="font-family:ui-monospace,monospace;font-size:.75rem;direction:ltr"/>
-<label class="hint" style="display:block;margin:10px 0 4px">USERNAME / PASSWORD</label>
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-<input data-k="AVAMOVIE_USERNAME" placeholder="email / user" autocomplete="off"/>
-<input data-k="AVAMOVIE_PASSWORD" type="password" placeholder="password" autocomplete="off"/>
-</div>
-</div>
-</div>
-
-<h2 class="lang-fa">کلیدها و کاتالوگ‌های خارجی</h2>
-<h2 class="lang-en">Keys &amp; external catalogs</h2>
-<div class="cfg-item glass">
-<div class="top"><code>TMDB_API_KEY</code><span class="diff e"><span class="lang-fa">آسان</span><span class="lang-en">Easy</span></span></div>
-<div class="hint"><span class="lang-fa">اختیاری — خالی = کلید سرور (برای حالت فقط‌استریم معمولاً لازم نیست)</span><span class="lang-en">Optional — empty uses server key (usually unused in streams-only)</span></div>
-<input data-k="TMDB_API_KEY" placeholder="…" autocomplete="off"/>
-</div>
-<div class="cfg-item glass">
-<div class="top"><code>TORRENT_METEOR_MANIFEST_URL</code><span class="diff m"><span class="lang-fa">متوسط</span><span class="lang-en">Medium</span></span></div>
-<div class="hint"><span class="lang-fa">منیفست تورنت Meteor</span><span class="lang-en">Meteor torrent manifest URL</span></div>
-<input data-k="TORRENT_METEOR_MANIFEST_URL" placeholder="https://…/manifest.json" autocomplete="off"/>
-</div>
-<div class="cfg-item glass">
-<div class="top"><code>CATALOG_AIO_MANIFEST_URL</code><span class="diff m"><span class="lang-fa">متوسط</span><span class="lang-en">Medium</span></span></div>
-<div class="hint"><span class="lang-fa">منیفست AIOCatalogs</span><span class="lang-en">AIOCatalogs manifest</span></div>
-<input data-k="CATALOG_AIO_MANIFEST_URL" placeholder="https://…/manifest.json" autocomplete="off"/>
-</div>
-<div class="cfg-item glass">
-<div class="top"><code>CATALOG101_MANIFEST_URL</code><span class="diff m"><span class="lang-fa">متوسط</span><span class="lang-en">Medium</span></span></div>
-<div class="hint"><span class="lang-fa">منیفست ۱۰۱</span><span class="lang-en">101 catalogs manifest</span></div>
-<input data-k="CATALOG101_MANIFEST_URL" placeholder="https://api.101catalogs.xyz/…/meta/off/manifest.json" autocomplete="off"/>
-</div>
-<div class="cfg-item glass">
-<div class="top"><code>CATALOG_ANIME_MANIFEST_URL</code><span class="diff m"><span class="lang-fa">متوسط</span><span class="lang-en">Medium</span></span></div>
-<div class="hint"><span class="lang-fa">کاتالوگ انیمه</span><span class="lang-en">Anime catalog manifest</span></div>
-<input data-k="CATALOG_ANIME_MANIFEST_URL" placeholder="https://…/manifest.json" autocomplete="off"/>
-</div>
-
-<div class="glass" style="padding:16px;margin-bottom:16px">
-<h2 class="lang-fa" style="margin-top:0">ماهواره / IPTV</h2>
-<h2 class="lang-en" style="margin-top:0">Satellite / IPTV</h2>
-<label class="tog" style="display:flex;gap:12px;align-items:flex-start;padding:12px 0;cursor:pointer">
-<input type="checkbox" id="optIptv" style="width:18px;height:18px;margin-top:3px;accent-color:#e8a04a;flex-shrink:0"/>
-<div>
-<b class="lang-fa">فعال‌سازی کاتالوگ ماهواره (IPTV Bridge)</b>
-<b class="lang-en">Enable IPTV / satellite catalogs</b>
-<span class="hint lang-fa" style="display:block;font-size:.82rem;color:var(--m);font-weight:500;margin-top:4px">بدون تیک = ماهواره در منیفست نیست. با تیک = پیش‌فرض سرور مگر لینک زیر را عوض کنید.</span>
-<span class="hint lang-en" style="display:block;font-size:.82rem;color:var(--m);font-weight:500;margin-top:4px">Off = no satellite catalogs. On = server default unless you set a custom URL.</span>
-</div>
-</label>
-<label class="lang-fa" style="display:block;font-size:.85rem;color:var(--m);margin:8px 0 4px">لینک منیفست IPTV (اختیاری)</label>
-<label class="lang-en" style="display:block;font-size:.85rem;color:var(--m);margin:8px 0 4px">IPTV manifest URL (optional)</label>
-<input id="iptvUrl" data-k="CATALOG_IPTVBRIDGE_MANIFEST_URL" placeholder="خالی = پیش‌فرض iptvbridge.vercel.app" autocomplete="off"/>
-<p class="note lang-fa" style="margin-top:8px">کاتالوگ ماهواره جدا از پروایدرهای فیلم است و <b>آخر لیست</b> می‌آید.</p>
-<p class="note lang-en" style="margin-top:8px">IPTV stays separate from movie providers and is listed <b>last</b>.</p>
-</div>
-
-<div class="glass" style="padding:16px;margin-bottom:16px">
-<h2 class="lang-fa" style="margin-top:0">سریال ترکی (F2Media)</h2>
-<h2 class="lang-en" style="margin-top:0">Turkish Series (F2Media)</h2>
-<label class="tog" style="display:flex;gap:12px;align-items:flex-start;padding:12px 0;cursor:pointer">
-<input type="checkbox" id="f2turkishOn" style="width:18px;height:18px;margin-top:3px;accent-color:#e8a04a;flex-shrink:0"/>
-<div>
-<b class="lang-fa">فعال‌سازی کاتالوگ سریال ترکی</b>
-<b class="lang-en">Enable Turkish series catalog</b>
-</div>
-</label>
-</div>
-
-<div class="glass" style="padding:16px;margin-bottom:16px">
-<h2 class="lang-fa" style="margin-top:0">انیمه - انیمکس</h2>
-<h2 class="lang-en" style="margin-top:0">Anime - Animex</h2>
-<label class="tog" style="display:flex;gap:12px;align-items:flex-start;padding:12px 0;cursor:pointer">
-<input type="checkbox" id="animexCatalogOn" style="width:18px;height:18px;margin-top:3px;accent-color:#e8a04a;flex-shrink:0"/>
-<div>
-<b class="lang-fa">فعال‌سازی کاتالوگ انیمه - انیمکس</b>
-<span class="hint lang-fa" style="display:block;font-size:.82rem;color:var(--m);font-weight:500;margin-top:4px">زیر «ترکی» و بالای کاتالوگ انیمهٔ خارجی. متا از TMDB؛ پوستر پشتیبان از انیمکس.</span>
-<b class="lang-en">Enable Anime - Animex catalog</b>
-<span class="hint lang-en" style="display:block;font-size:.82rem;color:var(--m);font-weight:500;margin-top:4px">Below Turkish, above external anime catalogs. TMDB meta; poster fallback from Animex.</span>
-</div>
-</label>
-</div>
-
-<div class="glass" style="padding:16px;margin-bottom:16px">
-<h2 class="lang-fa" style="margin-top:0">نماکده</h2>
-<h2 class="lang-en" style="margin-top:0">Namakade</h2>
-<label class="tog" style="display:flex;gap:12px;align-items:flex-start;padding:12px 0;cursor:pointer">
-<input type="checkbox" id="optNamakade" style="width:18px;height:18px;margin-top:3px;accent-color:#5dcea0;flex-shrink:0"/>
-<div>
-<b class="lang-fa">فعال‌سازی کاتالوگ نماکده</b>
-<b class="lang-en">Enable Namakade catalogs</b>
-</div>
-</label>
-<label class="lang-fa" style="display:block;font-size:.85rem;color:var(--m);margin:8px 0 4px">آدرس سایت (اختیاری)</label>
-<label class="lang-en" style="display:block;font-size:.85rem;color:var(--m);margin:8px 0 4px">Site URL (optional)</label>
-<input id="namakadeUrl" data-k="NAMAKADE_BASEURL" placeholder="https://namakade.com" autocomplete="off"/>
 </div>
 
 <div class="cfg-item glass">
@@ -1117,8 +900,6 @@ export function renderConfigurePage({
     // always 0/1 so server env defaults can be turned OFF in personal install
     var iptv = document.getElementById('optIptv');
     if (iptv) o.ENABLE_IPTV = iptv.checked ? '1' : '0';
-    var nk = document.getElementById('optNamakade');
-    if (nk) o.ENABLE_NAMAKADE = nk.checked ? '1' : '0';
     var f2t = document.getElementById('f2turkishOn');
     if (f2t) o.ENABLE_F2_TURKISH = f2t.checked ? '1' : '0';
     var axc = document.getElementById('animexCatalogOn');
@@ -1155,8 +936,6 @@ export function renderConfigurePage({
     if (ds) ds.checked = o.DISABLE_SUBTITLES === '1' || o.DISABLE_SUBTITLES === 'true';
     var iptvEl = document.getElementById('optIptv');
     if (iptvEl) iptvEl.checked = o.ENABLE_IPTV === '1' || o.ENABLE_IPTV === 'true' || Boolean(o.CATALOG_IPTVBRIDGE_MANIFEST_URL);
-    var nkEl = document.getElementById('optNamakade');
-    if (nkEl) nkEl.checked = o.ENABLE_NAMAKADE === '1' || o.ENABLE_NAMAKADE === 'true';
     var f2tEl = document.getElementById('f2turkishOn');
     if (f2tEl) f2tEl.checked = o.ENABLE_F2_TURKISH === '1' || o.ENABLE_F2_TURKISH === 'true';
     var axcEl = document.getElementById('animexCatalogOn');
@@ -1214,7 +993,11 @@ export function renderConfigurePage({
 
       var tip = document.getElementById('cfgTokenTip');
       if (tip) {
-        var keys = Object.keys(o);
+        var keys = Object.keys(o).filter(function (k) {
+          var v = String(o[k] == null ? '' : o[k]).trim().toLowerCase();
+          if (!v || v === '0' || v === 'false' || v === 'off' || v === 'no') return false;
+          return true;
+        });
         if (!keys.length) {
           tip.textContent = root.lang === 'fa'
             ? 'بدون تنظیم اضافه — همان منیفست عمومی سرور'
@@ -1235,7 +1018,7 @@ export function renderConfigurePage({
     if (!el || el.nodeType !== 1) return false;
     if (el.hasAttribute('data-prov') || el.hasAttribute('data-k')) return true;
     var id = el.id || '';
-    if (id === 'optStreamsOnly' || id === 'optDisableMeta' || id === 'optDisableCatalog' || id === 'optDisableSubs' || id === 'optIptv' || id === 'optNamakade' || id === 'f2turkishOn' || id === 'animexCatalogOn') return true;
+    if (id === 'optStreamsOnly' || id === 'optDisableMeta' || id === 'optDisableCatalog' || id === 'optDisableSubs' || id === 'optIptv' || id ===  || id === 'f2turkishOn' || id === 'animexCatalogOn') return true;
     if (el.name === 'metaLang' || el.name === 'addonLang') return true;
     return false;
   }
@@ -1289,7 +1072,7 @@ export function renderConfigurePage({
     try { localStorage.removeItem(STORE); } catch (e) {}
     applyObj({});
     document.querySelectorAll('[data-prov]').forEach(function (cb) { cb.checked = false; });
-    ['optStreamsOnly','optDisableMeta','optDisableCatalog','optDisableSubs','optIptv','optNamakade','f2turkishOn'].forEach(function (id) {
+    ['optStreamsOnly','optDisableMeta','optDisableCatalog','optDisableSubs','optIptv','f2turkishOn'].forEach(function (id) {
       var el = document.getElementById(id);
       if (el) { el.checked = false; el.disabled = false; }
     });
@@ -1320,7 +1103,7 @@ export function renderConfigurePage({
   try { localStorage.removeItem(STORE); } catch (e) {}
   applyObj({});
   document.querySelectorAll('[data-prov]').forEach(function (cb) { cb.checked = false; });
-  ['optStreamsOnly','optDisableMeta','optDisableCatalog','optDisableSubs','optIptv','optNamakade','f2turkishOn'].forEach(function (id) {
+  ['optStreamsOnly','optDisableMeta','optDisableCatalog','optDisableSubs','optIptv','f2turkishOn'].forEach(function (id) {
     var el = document.getElementById(id);
     if (el) { el.checked = false; el.disabled = false; }
   });
