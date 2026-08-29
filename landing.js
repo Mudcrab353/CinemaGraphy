@@ -963,19 +963,8 @@ export function renderConfigurePage({
 </div>
 
 <div class="glass" style="padding:16px;margin-bottom:16px">
-<h2 class="lang-fa" style="margin-top:0">نماکده</h2>
-<h2 class="lang-en" style="margin-top:0">Namakade</h2>
-<label class="tog" style="display:flex;gap:12px;align-items:flex-start;padding:12px 0;cursor:pointer">
-<input type="checkbox" id="optNamakade" style="width:18px;height:18px;margin-top:3px;accent-color:#5dcea0;flex-shrink:0"/>
-<div>
-<b class="lang-fa">فعال‌سازی کاتالوگ نماکده</b>
-<b class="lang-en">Enable Namakade catalogs</b>
-</div>
-</label>
-<label class="lang-fa" style="display:block;font-size:.85rem;color:var(--m);margin:8px 0 4px">آدرس سایت (اختیاری)</label>
-<label class="lang-en" style="display:block;font-size:.85rem;color:var(--m);margin:8px 0 4px">Site URL (optional)</label>
-<input id="namakadeUrl" data-k="NAMAKADE_BASEURL" placeholder="https://namakade.com" autocomplete="off"/>
-</div>
+
+
 
 <div class="cfg-item glass">
 <div class="top"><code>EXTERNAL_CATALOG_MANIFEST_URLS</code><span class="diff m"><span class="lang-fa">متوسط</span><span class="lang-en">Medium</span></span></div>
@@ -1117,8 +1106,6 @@ export function renderConfigurePage({
     // always 0/1 so server env defaults can be turned OFF in personal install
     var iptv = document.getElementById('optIptv');
     if (iptv) o.ENABLE_IPTV = iptv.checked ? '1' : '0';
-    var nk = document.getElementById('optNamakade');
-    if (nk) o.ENABLE_NAMAKADE = nk.checked ? '1' : '0';
     var f2t = document.getElementById('f2turkishOn');
     if (f2t) o.ENABLE_F2_TURKISH = f2t.checked ? '1' : '0';
     var axc = document.getElementById('animexCatalogOn');
@@ -1155,8 +1142,6 @@ export function renderConfigurePage({
     if (ds) ds.checked = o.DISABLE_SUBTITLES === '1' || o.DISABLE_SUBTITLES === 'true';
     var iptvEl = document.getElementById('optIptv');
     if (iptvEl) iptvEl.checked = o.ENABLE_IPTV === '1' || o.ENABLE_IPTV === 'true' || Boolean(o.CATALOG_IPTVBRIDGE_MANIFEST_URL);
-    var nkEl = document.getElementById('optNamakade');
-    if (nkEl) nkEl.checked = o.ENABLE_NAMAKADE === '1' || o.ENABLE_NAMAKADE === 'true';
     var f2tEl = document.getElementById('f2turkishOn');
     if (f2tEl) f2tEl.checked = o.ENABLE_F2_TURKISH === '1' || o.ENABLE_F2_TURKISH === 'true';
     var axcEl = document.getElementById('animexCatalogOn');
@@ -1214,7 +1199,11 @@ export function renderConfigurePage({
 
       var tip = document.getElementById('cfgTokenTip');
       if (tip) {
-        var keys = Object.keys(o);
+        var keys = Object.keys(o).filter(function (k) {
+          var v = String(o[k] == null ? '' : o[k]).trim().toLowerCase();
+          if (!v || v === '0' || v === 'false' || v === 'off' || v === 'no') return false;
+          return true;
+        });
         if (!keys.length) {
           tip.textContent = root.lang === 'fa'
             ? 'بدون تنظیم اضافه — همان منیفست عمومی سرور'
@@ -1235,7 +1224,7 @@ export function renderConfigurePage({
     if (!el || el.nodeType !== 1) return false;
     if (el.hasAttribute('data-prov') || el.hasAttribute('data-k')) return true;
     var id = el.id || '';
-    if (id === 'optStreamsOnly' || id === 'optDisableMeta' || id === 'optDisableCatalog' || id === 'optDisableSubs' || id === 'optIptv' || id === 'optNamakade' || id === 'f2turkishOn' || id === 'animexCatalogOn') return true;
+    if (id === 'optStreamsOnly' || id === 'optDisableMeta' || id === 'optDisableCatalog' || id === 'optDisableSubs' || id === 'optIptv' || id === 'f2turkishOn' || id === 'animexCatalogOn') return true;
     if (el.name === 'metaLang' || el.name === 'addonLang') return true;
     return false;
   }
@@ -1289,7 +1278,7 @@ export function renderConfigurePage({
     try { localStorage.removeItem(STORE); } catch (e) {}
     applyObj({});
     document.querySelectorAll('[data-prov]').forEach(function (cb) { cb.checked = false; });
-    ['optStreamsOnly','optDisableMeta','optDisableCatalog','optDisableSubs','optIptv','optNamakade','f2turkishOn'].forEach(function (id) {
+    ['optStreamsOnly','optDisableMeta','optDisableCatalog','optDisableSubs','optIptv','f2turkishOn'].forEach(function (id) {
       var el = document.getElementById(id);
       if (el) { el.checked = false; el.disabled = false; }
     });
@@ -1320,7 +1309,7 @@ export function renderConfigurePage({
   try { localStorage.removeItem(STORE); } catch (e) {}
   applyObj({});
   document.querySelectorAll('[data-prov]').forEach(function (cb) { cb.checked = false; });
-  ['optStreamsOnly','optDisableMeta','optDisableCatalog','optDisableSubs','optIptv','optNamakade','f2turkishOn'].forEach(function (id) {
+  ['optStreamsOnly','optDisableMeta','optDisableCatalog','optDisableSubs','optIptv','f2turkishOn'].forEach(function (id) {
     var el = document.getElementById(id);
     if (el) { el.checked = false; el.disabled = false; }
   });
@@ -1527,7 +1516,6 @@ details.faq summary{cursor:pointer;font-weight:700}
 <tr><td><code>AVAMOVIE_COOKIE</code></td><td><span class="lang-fa">سشن VIP (ترجیحی)</span><span class="lang-en">VIP session (preferred)</span></td><td>—</td></tr>
 <tr><td><code>ENABLED_PROVIDERS</code></td><td><span class="lang-fa">لیست با ویرگول</span><span class="lang-en">comma list</span></td><td><code>f2media,animex</code></td></tr>
 <tr><td><code>CATALOG_IPTVBRIDGE_MANIFEST_URL</code></td><td>IPTV</td><td><code>https://iptvbridge.vercel.app/manifest.json</code></td></tr>
-<tr><td><code>ENABLE_NAMAKADE</code></td><td>Namakade</td><td><code>1</code></td></tr>
 <tr><td><code>PROXY_ENABLE</code></td><td><span class="lang-fa">پروکسی عمومی (غیر TMDB image)</span><span class="lang-en">generic proxy (not TMDB images)</span></td><td><code>false</code></td></tr>
 </tbody></table></div>
 </div>
