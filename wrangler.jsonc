@@ -11,6 +11,6 @@
     "PROXY_ENABLE": "true",
     "PROXY_PATH": "proxy",
     "PROXY_ALLOWED_URLS": "metahub.space,imdb.com,strem.io,tmdb.org",
-    "TMDB_API_KEY=": ""
+    "TMDB_API_KEY": ""
   }
 }
