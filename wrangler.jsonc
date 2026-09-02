@@ -5,6 +5,9 @@
   "compatibility_date": "2026-07-16",
   "compatibility_flags": ["nodejs_compat"],
   "workers_dev": true,
+  "placement": {
+    "mode": "smart"
+}
   "vars": {
     "LOG_LEVEL": "info",
     "DEV_MODE": "false",
