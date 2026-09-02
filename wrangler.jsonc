@@ -7,7 +7,6 @@
   "workers_dev": true,
   "vars": {
     "LOG_LEVEL": "info",
-    "TEST": "TEST",
     "DEV_MODE": "false",
     "PROXY_ENABLE": "true",
     "PROXY_PATH": "proxy",
