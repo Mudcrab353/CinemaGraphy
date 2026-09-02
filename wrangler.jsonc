@@ -8,6 +8,18 @@
   "vars": {
     "LOG_LEVEL": "info",
     "DEV_MODE": "false",
+    "F2MEDIA_BASEURL": "https://www.film2med.top",
+    "ENABLE_F2_TURKISH": "1",
+    "CINAMATIC_BASEURL": "",
+    "ASLMOVIEZ_BASEURL": "",
+    "SERIALBLOG_BASEURL": "",
+    "DONYAYESERIAL_BASEURL": "",
+    "ANIMEX_BASEURL": "https://animex.click",
+    "ENABLE_ANIMEX_CATALOG": "1",
+    "CATALOG101_MANIFEST_URL": "https://api.101catalogs.xyz/t0-free/lists/000vBfBg4q4l4s4y4k4u4o5m504w5PBtBs0x044r4m4t4z4n4v4p515n4x5QB0/meta/off/manifest.json",
+    "CATALOG_ANIME_MANIFEST_URL": "https://1fe84bc728af-stremio-anime-catalogs.baby-beamup.club/manifest.json",
+    "CATALOG_IPTVBRIDGE_MANIFEST_URL": "https://iptvbridge.vercel.app/manifest.json",
+    "SUBSOURCE_MANIFEST_URL": "",
     "PROXY_ENABLE": "true",
     "PROXY_PATH": "proxy",
     "PROXY_ALLOWED_URLS": "metahub.space,imdb.com,strem.io,tmdb.org"
