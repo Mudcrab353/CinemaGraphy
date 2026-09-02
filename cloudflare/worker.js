@@ -66,7 +66,7 @@ export function createWorkerManifest(env = {}) {
         contactEmail: 'thenerdcow@gmail.com',
         description: 'سینماگرافی — دانلود و تماشای فیلم و سریال از منابع ایرانی و بین‌المللی.',
         logo: 'https://raw.githubusercontent.com/TheNerdCow/CinemaGraphy/refs/heads/master/logo.png',
-        name: `سینماگرافی${developmentSuffix}`,
+        name: `Development - سینماگرافی${developmentSuffix}`,
         catalogs: CATALOGS.flatMap((cfg) => {
             const types = cfg.catalogType === 'tv' ? ['tv'] : ['movie', 'series']
             return types.map((type) => ({
