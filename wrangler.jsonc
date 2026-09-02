@@ -10,7 +10,7 @@
     "DEV_MODE": "false",
     "F2MEDIA_BASEURL": "https://www.film2med.top",
     "ENABLE_F2_TURKISH": "1",
-    "CINAMATIC_BASEURL": "",
+    "CINAMATIC_BASEURL": "https://cinamatick.ir/#/",
     "ASLMOVIEZ_BASEURL": "",
     "SERIALBLOG_BASEURL": "",
     "DONYAYESERIAL_BASEURL": "",
