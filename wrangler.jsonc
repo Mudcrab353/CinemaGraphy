@@ -8,6 +8,7 @@
 
   "vars": {
     "LOG_LEVEL": "info",
+    "TEST": "TEST",
     "DEV_MODE": "true",
     "PROXY_ENABLE": "true",
     "PROXY_PATH": "proxy",
