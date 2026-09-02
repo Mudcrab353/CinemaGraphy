@@ -5,12 +5,25 @@
   "compatibility_date": "2026-07-16",
   "compatibility_flags": ["nodejs_compat"],
   "workers_dev": true,
+
   "vars": {
     "LOG_LEVEL": "info",
-    "DEV_MODE": "false",
+    "DEV_MODE": "true",
     "PROXY_ENABLE": "true",
     "PROXY_PATH": "proxy",
-    "PROXY_ALLOWED_URLS": "metahub.space,imdb.com,strem.io,tmdb.org",
-    "TMDB_API_KEY": ""
+    "PROXY_ALLOWED_URLS": "metahub.space,imdb.com,strem.io,tmdb.org"
+  },
+
+  "env": {
+    "dev": {
+      "name": "cinemagraphy-dev",
+      "vars": {
+        "LOG_LEVEL": "info",
+        "DEV_MODE": "true",
+        "PROXY_ENABLE": "true",
+        "PROXY_PATH": "proxy",
+        "PROXY_ALLOWED_URLS": "metahub.space,imdb.com,strem.io,tmdb.org"
+      }
+    }
   }
 }
