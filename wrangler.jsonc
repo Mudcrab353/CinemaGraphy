@@ -21,6 +21,7 @@
     "CATALOG_ANIME_MANIFEST_URL": "https://1fe84bc728af-stremio-anime-catalogs.baby-beamup.club/manifest.json",
     "SUBSOURCE_MANIFEST_URL": "",
     "PROXY_ENABLE": "true",
+    "ENABLED_PROVIDERS": "animex,cinamatic",
     "PROXY_PATH": "proxy",
     "PROXY_ALLOWED_URLS": "metahub.space,imdb.com,strem.io,tmdb.org"
   }
